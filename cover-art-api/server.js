@@ -20,8 +20,18 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+// CORS configuration with environment variable support
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : [
+      'http://localhost:5173', 
+      'http://localhost:3000', 
+      'https://your-radio-domain.com',
+      'https://new-stars-radio-app.vercel.app'
+    ];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://your-radio-domain.com'],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
@@ -442,22 +452,27 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🎵 Cover Art API server running on port ${PORT}`);
-  console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
-  console.log(`🖼️ Thumbnails directory: ${THUMBNAILS_DIR}`);
-});
+// Export for Vercel serverless (production)
+export default app;
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down server...');
-  db.close((err) => {
-    if (err) {
-      console.error('Error closing database:', err);
-    } else {
-      console.log('Database connection closed.');
-    }
-    process.exit(0);
+// Start server for local development only
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🎵 Cover Art API server running on port ${PORT}`);
+    console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
+    console.log(`🖼️ Thumbnails directory: ${THUMBNAILS_DIR}`);
   });
-});
+
+  // Graceful shutdown (local only)
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down server...');
+    db.close((err) => {
+      if (err) {
+        console.error('Error closing database:', err);
+      } else {
+        console.log('Database connection closed.');
+      }
+      process.exit(0);
+    });
+  });
+}
