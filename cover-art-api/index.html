@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Stars Radio - Cover Art API</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+        }
+        h1 { color: #00d4ff; }
+        .endpoint {
+            background: #1a1a1a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #00d4ff;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #00d400;
+            color: #000;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        code {
+            background: #2a2a2a;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #00ff88;
+        }
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 New Stars Radio - Cover Art API</h1>
+    <p><span class="status">OPERATIONAL</span></p>
+    <p>Version: 1.0.0</p>
+    
+    <h2>Available Endpoints</h2>
+    
+    <div class="endpoint">
+        <strong>Health Check</strong><br>
+        <code>GET /api/health</code><br>
+        <a href="/api/health" target="_blank">Test endpoint →</a>
+    </div>
+    
+    <div class="endpoint">
+        <strong>Cover Art (Coming Soon)</strong><br>
+        <code>GET /api/cover-art?artist=...&title=...</code><br>
+        <em>Requires database migration to Vercel Postgres</em>
+    </div>
+    
+    <div class="endpoint">
+        <strong>Upload (Coming Soon)</strong><br>
+        <code>POST /api/cover-art/upload</code><br>
+        <em>Requires Vercel Blob Storage setup</em>
+    </div>
+    
+    <h2>Documentation</h2>
+    <p>This API serves cover art for New Stars Radio's streaming application.</p>
+    <p>For full functionality, the database and file storage need to be migrated to Vercel's infrastructure.</p>
+</body>
+</html>
+
