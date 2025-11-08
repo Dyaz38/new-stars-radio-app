@@ -21,10 +21,20 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+  // Parse the pathname - handle both /api prefix and without
+  let pathname;
+  try {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    pathname = url.pathname;
+  } catch (e) {
+    pathname = req.url;
+  }
+
+  // Normalize pathname - remove trailing slashes
+  pathname = pathname.replace(/\/+$/, '') || '/';
 
   // Health check endpoint
-  if (pathname === '/api/health' || pathname === '/health') {
+  if (pathname === '/api/health' || pathname === '/health' || pathname.endsWith('/health')) {
     return res.status(200).json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
@@ -32,8 +42,8 @@ export default function handler(req, res) {
     });
   }
 
-  // Root endpoint
-  if (pathname === '/' || pathname === '/api') {
+  // Root endpoint - match /, /api, /api/, /api/index
+  if (pathname === '/' || pathname === '/api' || pathname === '/api/index' || pathname === '/index') {
     return res.status(200).json({ 
       message: 'New Stars Radio - Cover Art API',
       version: '1.0.0',
@@ -45,10 +55,11 @@ export default function handler(req, res) {
     });
   }
 
-  // 404 for other endpoints
+  // 404 for other endpoints - include debugging info
   return res.status(404).json({ 
     error: 'Endpoint not found',
     path: pathname,
+    originalUrl: req.url,
     method: req.method,
     message: 'This endpoint is not yet implemented'
   });
