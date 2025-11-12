@@ -11,6 +11,7 @@ import { usePWA } from './hooks/usePWA';
 import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { PWAPrompt } from './components/PWAPrompt';
+import { AdBanner } from './components/AdBanner';
 import type { ScheduleShow, Post } from './types';
 
 import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS } from './constants';
@@ -311,6 +312,13 @@ const RadioStreamingApp = () => {
         preload="none" 
         style={{display: 'none'}}
       />
+      
+      {/* Advertisement Banner - Top of Screen */}
+      <div className="container mx-auto px-4 pt-4">
+        <AdBanner 
+          className="max-w-4xl mx-auto"
+        />
+      </div>
       
             {/* Header */}
       <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 p-4">
