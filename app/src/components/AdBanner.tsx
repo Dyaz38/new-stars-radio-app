@@ -30,16 +30,19 @@ export const AdBanner = ({
   if (adClient === 'ca-pub-XXXXXXXXXXXXXXXX') {
     return (
       <div 
-        className={`bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-white/20 rounded-lg p-4 mb-4 ${className}`}
-        style={style}
+        className={`bg-yellow-400/90 border-4 border-yellow-600 rounded-lg p-6 mb-4 shadow-2xl ${className}`}
+        style={{
+          backgroundColor: 'rgba(250, 204, 21, 0.95)',
+          ...style
+        }}
       >
         <div className="text-center">
-          <div className="text-white/60 text-sm mb-2">📢 Advertisement Space</div>
-          <div className="text-white/40 text-xs">
-            Configure AdSense to show ads here
+          <div className="text-gray-900 font-bold text-lg mb-2">🎯 ADVERTISEMENT BANNER HERE 🎯</div>
+          <div className="text-gray-800 text-sm font-semibold">
+            📢 This space is ready for Google AdSense ads
             <br />
-            <span className="text-blue-400">
-              Add your ad client ID in AdBanner.tsx
+            <span className="text-blue-900">
+              Add your AdSense ID to start earning!
             </span>
           </div>
         </div>
