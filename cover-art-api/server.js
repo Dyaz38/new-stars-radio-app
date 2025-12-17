@@ -457,22 +457,22 @@ export default app;
 
 // Start server for local development only
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🎵 Cover Art API server running on port ${PORT}`);
-    console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
-    console.log(`🖼️ Thumbnails directory: ${THUMBNAILS_DIR}`);
-  });
+app.listen(PORT, () => {
+  console.log(`🎵 Cover Art API server running on port ${PORT}`);
+  console.log(`📁 Upload directory: ${UPLOAD_DIR}`);
+  console.log(`🖼️ Thumbnails directory: ${THUMBNAILS_DIR}`);
+});
 
   // Graceful shutdown (local only)
-  process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down server...');
-    db.close((err) => {
-      if (err) {
-        console.error('Error closing database:', err);
-      } else {
-        console.log('Database connection closed.');
-      }
-      process.exit(0);
-    });
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server...');
+  db.close((err) => {
+    if (err) {
+      console.error('Error closing database:', err);
+    } else {
+      console.log('Database connection closed.');
+    }
+    process.exit(0);
   });
+});
 }

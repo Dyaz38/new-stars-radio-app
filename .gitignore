@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+build/
+.vite/
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Database
+*.db
+*.sqlite
+
+# Docker
+*.log
+
+# Uploads
+ad-server/uploads/*
+!ad-server/uploads/.gitkeep
+
+# PDF files (if you want to exclude them)
+*.pdfnode_modules

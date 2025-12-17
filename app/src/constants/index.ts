@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   ITUNES: 'https://itunes.apple.com/search',
   GENIUS_SEARCH: 'https://api.genius.com/search',
   GENIUS_SONGS: 'https://api.genius.com/songs',
+  AD_SERVER: 'http://localhost:8000/api/v1', // Ad server API base URL
 } as const;
 
 // MusicBrainz API configuration
