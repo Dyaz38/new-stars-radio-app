@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               The radio app encountered an unexpected error. Don't worry, your listening experience should resume shortly.
             </p>
             
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <div className="bg-red-900/20 rounded-lg p-4 mb-6 text-left">
                 <p className="font-mono text-sm text-red-300 break-all">
                   {this.state.error.toString()}

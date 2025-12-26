@@ -268,7 +268,7 @@ export const AdBanner = ({
             height: 'auto',
             objectFit: 'contain',
           }}
-          onError={(e) => {
+          onError={() => {
             console.error('Failed to load ad image:', imageUrl);
             setError('Failed to load ad image');
           }}
