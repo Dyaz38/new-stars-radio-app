@@ -8,10 +8,11 @@ from pydantic import BaseModel, Field, field_validator
 
 class AdRequestLocation(BaseModel):
     """Location data for ad targeting."""
+    country: Optional[str] = Field(None, max_length=2, description="User's country (ISO 3166-1 alpha-2 code, e.g., 'NA' for Namibia)")
     city: Optional[str] = Field(None, max_length=100, description="User's city")
     state: Optional[str] = Field(None, max_length=50, description="User's state/province")
     
-    @field_validator('city', 'state')
+    @field_validator('country', 'city', 'state')
     @classmethod
     def validate_location(cls, v: Optional[str]) -> Optional[str]:
         """Validate and sanitize location strings."""
@@ -21,7 +22,7 @@ class AdRequestLocation(BaseModel):
         v = v.strip()
         if not v:
             return None
-        return v
+        return v.upper() if len(v) == 2 else v  # Uppercase country codes
 
 
 class AdRequest(BaseModel):
@@ -200,6 +201,8 @@ class ClickTrackingResponse(BaseModel):
                 "duplicate": False
             }
         }
+
+
 
 
 

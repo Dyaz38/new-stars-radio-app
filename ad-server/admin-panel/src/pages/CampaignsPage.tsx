@@ -14,6 +14,7 @@ interface Campaign {
   priority: number;
   impression_budget: number;
   impressions_served: number;
+  target_countries: string[];
   target_cities: string[];
   target_states: string[];
 }
@@ -25,6 +26,7 @@ interface CampaignForm {
   end_date: string;
   priority: number;
   impression_budget: number;
+  target_countries?: string[];
   target_cities?: string[];
   target_states?: string[];
 }
@@ -57,6 +59,8 @@ export default function CampaignsPage() {
     },
   });
 
+  const [createError, setCreateError] = useState("");
+  
   const createMutation = useMutation({
     mutationFn: async (data: CampaignForm) => {
       return await api.post("/campaigns", data);
@@ -64,9 +68,15 @@ export default function CampaignsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       setShowCreateModal(false);
+      setCreateError("");
+    },
+    onError: (error: any) => {
+      setCreateError(error.response?.data?.detail || "Failed to create campaign");
     },
   });
 
+  const [updateError, setUpdateError] = useState("");
+  
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: CampaignForm }) => {
       return await api.put(`/campaigns/${id}`, data);
@@ -74,6 +84,10 @@ export default function CampaignsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       setEditingCampaign(null);
+      setUpdateError("");
+    },
+    onError: (error: any) => {
+      setUpdateError(error.response?.data?.detail || "Failed to update campaign");
     },
   });
 
@@ -243,10 +257,15 @@ export default function CampaignsPage() {
                       {new Date(campaign.end_date).toLocaleDateString()}
                     </p>
                   </div>
-                  {(campaign.target_cities?.length > 0 || campaign.target_states?.length > 0) && (
+                  {(campaign.target_countries?.length > 0 || campaign.target_cities?.length > 0 || campaign.target_states?.length > 0) && (
                     <div>
                       <p className="text-gray-500">Targeting</p>
                       <p className="font-medium text-gray-900">
+                        {campaign.target_countries?.length > 0 &&
+                          `${campaign.target_countries.length} countries`}
+                        {campaign.target_countries?.length > 0 &&
+                          (campaign.target_cities?.length > 0 || campaign.target_states?.length > 0) &&
+                          ", "}
                         {campaign.target_cities?.length > 0 &&
                           `${campaign.target_cities.length} cities`}
                         {campaign.target_cities?.length > 0 &&
@@ -291,9 +310,13 @@ export default function CampaignsPage() {
       {showCreateModal && (
         <CampaignModal
           advertisers={advertisers || []}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setCreateError("");
+          }}
           onSubmit={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
+          error={createError}
         />
       )}
 
@@ -302,11 +325,15 @@ export default function CampaignsPage() {
         <CampaignModal
           campaign={editingCampaign}
           advertisers={advertisers || []}
-          onClose={() => setEditingCampaign(null)}
+          onClose={() => {
+            setEditingCampaign(null);
+            setUpdateError("");
+          }}
           onSubmit={(data) =>
             updateMutation.mutate({ id: editingCampaign.id, data })
           }
           isLoading={updateMutation.isPending}
+          error={updateError}
         />
       )}
     </div>
@@ -320,12 +347,14 @@ function CampaignModal({
   onClose,
   onSubmit,
   isLoading,
+  error: externalError = "",
 }: {
   campaign?: Campaign;
   advertisers: Advertiser[];
   onClose: () => void;
   onSubmit: (data: CampaignForm) => void;
   isLoading: boolean;
+  error?: string;
 }) {
   const [formData, setFormData] = useState<CampaignForm>({
     advertiser_id: campaign?.advertiser_id || "",
@@ -334,24 +363,41 @@ function CampaignModal({
     end_date: campaign?.end_date?.split("T")[0] || "",
     priority: campaign?.priority || 1,
     impression_budget: campaign?.impression_budget || 1000,
+    target_countries: campaign?.target_countries || [],
     target_cities: campaign?.target_cities || [],
     target_states: campaign?.target_states || [],
   });
 
+  const [countriesInput, setCountriesInput] = useState(
+    campaign?.target_countries?.join(", ") || ""
+  );
   const [citiesInput, setCitiesInput] = useState(
     campaign?.target_cities?.join(", ") || ""
   );
   const [statesInput, setStatesInput] = useState(
     campaign?.target_states?.join(", ") || ""
   );
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    setError("");
+    
+    // Convert dates to ISO datetime format
+    const submitData = {
       ...formData,
-      target_cities: citiesInput ? citiesInput.split(",").map((c) => c.trim()) : [],
-      target_states: statesInput ? statesInput.split(",").map((s) => s.trim()) : [],
-    });
+      start_date: formData.start_date + "T00:00:00",
+      end_date: formData.end_date + "T23:59:59",
+      target_countries: countriesInput ? countriesInput.split(",").map((c) => c.trim().toUpperCase()).filter(c => c) : [],
+      target_cities: citiesInput ? citiesInput.split(",").map((c) => c.trim()).filter(c => c) : [],
+      target_states: statesInput ? statesInput.split(",").map((s) => s.trim()).filter(s => s) : [],
+    };
+    
+    try {
+      onSubmit(submitData);
+    } catch (err: any) {
+      setError(err.message || "Failed to save campaign");
+    }
   };
 
   return (
@@ -360,6 +406,13 @@ function CampaignModal({
         <h2 className="text-2xl font-bold mb-6">
           {campaign ? "Edit Campaign" : "Create New Campaign"}
         </h2>
+        
+        {(error || externalError) && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error || externalError}</p>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -465,13 +518,29 @@ function CampaignModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Target Countries (comma-separated, 2-letter codes)
+            </label>
+            <input
+              type="text"
+              value={countriesInput}
+              onChange={(e) => setCountriesInput(e.target.value)}
+              placeholder="e.g., NA, ZA, US (Namibia, South Africa, USA)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Use ISO 3166-1 alpha-2 codes (e.g., NA for Namibia, US for United States)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Target Cities (comma-separated)
             </label>
             <input
               type="text"
               value={citiesInput}
               onChange={(e) => setCitiesInput(e.target.value)}
-              placeholder="e.g., New York, Los Angeles, Chicago"
+              placeholder="e.g., Windhoek, Cape Town, Johannesburg"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
@@ -484,7 +553,7 @@ function CampaignModal({
               type="text"
               value={statesInput}
               onChange={(e) => setStatesInput(e.target.value)}
-              placeholder="e.g., CA, NY, TX"
+              placeholder="e.g., Khomas, Erongo, Otjozondjupa"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>

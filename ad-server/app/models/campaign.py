@@ -44,6 +44,7 @@ class Campaign(Base):
     impressions_served = Column(Integer, nullable=False, default=0)
     
     # Targeting (optional)
+    target_countries = Column(JSONB, nullable=True)  # Array of country codes (ISO 3166-1 alpha-2)
     target_cities = Column(JSONB, nullable=True)  # Array of city names
     target_states = Column(JSONB, nullable=True)  # Array of state codes
     

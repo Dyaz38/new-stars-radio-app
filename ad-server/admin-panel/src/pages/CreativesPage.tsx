@@ -29,20 +29,22 @@ export default function CreativesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCreative, setEditingCreative] = useState<Creative | null>(null);
 
-  const { data: creatives, isLoading } = useQuery({
+  const { data: creatives, isLoading, error: creativesError } = useQuery({
     queryKey: ["creatives"],
     queryFn: async () => {
       const response = await api.get<Creative[]>("/creatives");
       return response.data;
     },
+    retry: 1,
   });
 
-  const { data: campaigns } = useQuery({
+  const { data: campaigns, error: campaignsError } = useQuery({
     queryKey: ["campaigns"],
     queryFn: async () => {
       const response = await api.get<Campaign[]>("/campaigns");
       return response.data;
     },
+    retry: 1,
   });
 
   const deleteMutation = useMutation({
@@ -60,6 +62,28 @@ export default function CreativesPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading creatives...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (creativesError || campaignsError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg font-semibold mb-4">Error loading data</div>
+          <p className="text-gray-600 mb-4">
+            {(creativesError as any)?.message || (campaignsError as any)?.message || "Failed to load creatives"}
+          </p>
+          <button
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ["creatives"] });
+              queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+            }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -273,7 +297,7 @@ function CreativeModal({
       formDataToSend.append("alt_text", formData.alt_text);
 
       if (imageFile) {
-        formDataToSend.append("image", imageFile);
+        formDataToSend.append("image_file", imageFile);
       }
 
       if (creative) {
@@ -290,7 +314,12 @@ function CreativeModal({
 
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to save creative");
+      console.error("Creative save error:", err);
+      const errorMessage = err.response?.data?.detail || 
+                          (typeof err.response?.data === 'string' ? err.response?.data : null) ||
+                          err.message || 
+                          "Failed to save creative";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

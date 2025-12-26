@@ -14,6 +14,7 @@ class CampaignBase(BaseModel):
     end_date: datetime
     priority: int = 5  # 1-10
     impression_budget: int
+    target_countries: Optional[List[str]] = None  # ISO 3166-1 alpha-2 country codes (e.g., ['NA', 'ZA'])
     target_cities: Optional[List[str]] = None
     target_states: Optional[List[str]] = None
 
@@ -31,7 +32,8 @@ class CampaignUpdate(BaseModel):
     end_date: Optional[datetime] = None
     priority: Optional[int] = None
     impression_budget: Optional[int] = None
-    target_cities: Optional[List[str]] = None
+    target_countries: Optional[List[str]] = None
+    target_cities: Optional[List[str] = None
     target_states: Optional[List[str]] = None
 
 

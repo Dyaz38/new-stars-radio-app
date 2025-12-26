@@ -1,9 +1,9 @@
 """
 Ad creative management endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 import shutil
 from pathlib import Path
@@ -38,10 +38,10 @@ def save_uploaded_file(file: UploadFile, campaign_id: UUID) -> str:
 
 @router.post("", response_model=CreativeResponse, status_code=status.HTTP_201_CREATED)
 async def create_creative(
-    campaign_id: UUID,
-    name: str,
-    click_url: str,
-    alt_text: str = None,
+    campaign_id: UUID = Form(...),
+    name: str = Form(...),
+    click_url: str = Form(...),
+    alt_text: Optional[str] = Form(None),
     image_file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -213,6 +213,8 @@ async def delete_creative(
     db.commit()
     
     return None
+
+
 
 
 

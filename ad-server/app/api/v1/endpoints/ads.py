@@ -86,6 +86,7 @@ async def request_ad(
     """
     try:
         # Extract location data if provided
+        country = request.location.country if request.location else None
         city = request.location.city if request.location else None
         state = request.location.state if request.location else None
         
@@ -94,6 +95,7 @@ async def request_ad(
         ad_data = ad_service.select_ad(
             user_id=request.user_id,
             placement=request.placement,
+            country=country,
             city=city,
             state=state
         )
@@ -102,7 +104,7 @@ async def request_ad(
         if ad_data is None:
             logger.info(
                 f"No ad available for user={request.user_id}, "
-                f"placement={request.placement}, location={city}/{state}"
+                f"placement={request.placement}, location={country}/{city}/{state}"
             )
             return NoAdResponse()
         

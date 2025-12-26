@@ -2,24 +2,37 @@ import { useEffect, useState, useRef } from 'react';
 import { API_ENDPOINTS } from '../constants';
 
 interface AdData {
-  creative_id: string;
+  ad_id: string;
   campaign_id: string;
   image_url: string;
+  image_width: number;
+  image_height: number;
   click_url: string;
   alt_text?: string;
-  width: number;
-  height: number;
-  impression_id: string;
+  impression_tracking_token: string;
+  click_tracking_token: string;
 }
 
 interface AdBannerProps {
   style?: React.CSSProperties;
   className?: string;
-  width?: number;  // Desired banner width
-  height?: number; // Desired banner height
-  city?: string;   // User's city for targeting
-  state?: string;  // User's state for targeting
+  country?: string; // User's country (ISO 3166-1 alpha-2 code, e.g., 'NA' for Namibia)
+  city?: string;    // User's city for targeting
+  state?: string;   // User's state for targeting
 }
+
+// Get responsive ad dimensions based on screen width
+const getAdDimensions = (): { width: number; height: number } => {
+  const screenWidth = window.innerWidth;
+  
+  if (screenWidth < 768) {
+    // Mobile: 320x50 (Standard Mobile Banner)
+    return { width: 320, height: 50 };
+  } else {
+    // Tablet & Desktop: 728x90 (Leaderboard)
+    return { width: 728, height: 90 };
+  }
+};
 
 // Generate or retrieve a unique user ID
 const getUserId = (): string => {
@@ -38,34 +51,54 @@ const getUserId = (): string => {
 export const AdBanner = ({ 
   style,
   className = '',
-  width = 728,  // Standard banner width
-  height = 90,  // Standard banner height
+  country,
   city,
   state
 }: AdBannerProps) => {
   const [adData, setAdData] = useState<AdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [impressionTracked, setImpressionTracked] = useState(false);
+  const [dimensions, setDimensions] = useState(getAdDimensions());
   const adRef = useRef<HTMLAnchorElement>(null);
+
+  // Handle window resize to update ad dimensions
+  useEffect(() => {
+    const handleResize = () => {
+      const newDimensions = getAdDimensions();
+      if (newDimensions.width !== dimensions.width || newDimensions.height !== dimensions.height) {
+        setDimensions(newDimensions);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [dimensions]);
 
   useEffect(() => {
     const fetchAd = async () => {
       try {
         setLoading(true);
         setError(null);
+        setImpressionTracked(false);
         
         const userId = getUserId();
-        const params = new URLSearchParams({
-          user_id: userId,
-          width: width.toString(),
-          height: height.toString(),
-        });
         
-        if (city) params.append('city', city);
-        if (state) params.append('state', state);
+        const requestBody = {
+          user_id: userId,
+          placement: 'banner_top',
+          location: (country || city || state) ? { country, city, state } : undefined
+        };
         
         const response = await fetch(
-          `${API_ENDPOINTS.AD_SERVER}/ads/serve?${params.toString()}`
+          `${API_ENDPOINTS.AD_SERVER}/ads/request`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+          }
         );
         
         if (!response.ok) {
@@ -77,8 +110,15 @@ export const AdBanner = ({
           return;
         }
         
-        const data: AdData = await response.json();
-        setAdData(data);
+        const data = await response.json();
+        
+        // Check if it's a fallback response
+        if ('fallback' in data) {
+          setError('No ads available');
+          return;
+        }
+        
+        setAdData(data as AdData);
       } catch (err) {
         console.error('Error fetching ad:', err);
         setError(err instanceof Error ? err.message : 'Failed to load ad');
@@ -92,23 +132,53 @@ export const AdBanner = ({
     // Refresh ad every 30 seconds (optional)
     const interval = setInterval(fetchAd, 30000);
     return () => clearInterval(interval);
-  }, [width, height, city, state]);
+  }, [dimensions.width, dimensions.height, city, state]);
+
+  // Track impression when ad is loaded
+  useEffect(() => {
+    const trackImpression = async () => {
+      if (!adData || impressionTracked) return;
+
+      try {
+        await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/tracking/impression`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ad_id: adData.ad_id,
+            campaign_id: adData.campaign_id,
+            user_id: getUserId(),
+            tracking_token: adData.impression_tracking_token,
+            timestamp: new Date().toISOString(),
+            location: (city || state) ? { city, state } : undefined
+          }),
+        });
+        setImpressionTracked(true);
+      } catch (err) {
+        console.error('Error tracking impression:', err);
+      }
+    };
+
+    trackImpression();
+  }, [adData, impressionTracked, city, state]);
 
   const handleClick = async () => {
     if (!adData) return;
     
     try {
       // Track click
-      await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/click`, {
+      await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/tracking/click`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: getUserId(),
-          creative_id: adData.creative_id,
+          ad_id: adData.ad_id,
           campaign_id: adData.campaign_id,
-          impression_id: adData.impression_id,
+          user_id: getUserId(),
+          tracking_token: adData.click_tracking_token,
+          timestamp: new Date().toISOString(),
         }),
       });
       
@@ -124,10 +194,10 @@ export const AdBanner = ({
   if (loading) {
     return (
       <div 
-        className={`bg-gray-100 border-2 border-gray-300 rounded-lg p-4 mb-4 flex items-center justify-center ${className}`}
-        style={{ minHeight: height, ...style }}
+        className={`bg-gray-100 border-2 border-gray-300 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
+        style={{ minHeight: dimensions.height, ...style }}
       >
-        <div className="text-gray-500 text-sm">Loading ad...</div>
+        <div className="text-gray-500 text-xs sm:text-sm">Loading ad...</div>
       </div>
     );
   }
@@ -135,20 +205,20 @@ export const AdBanner = ({
   if (error || !adData) {
     return (
       <div 
-        className={`bg-yellow-400/90 border-4 border-yellow-600 rounded-lg p-6 mb-4 shadow-2xl ${className}`}
+        className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
         style={{
           backgroundColor: 'rgba(250, 204, 21, 0.95)',
-          minHeight: height,
+          minHeight: dimensions.height,
           ...style
         }}
       >
         <div className="text-center">
-          <div className="text-gray-900 font-bold text-lg mb-2">🎯 ADVERTISEMENT BANNER HERE 🎯</div>
-          <div className="text-gray-800 text-sm font-semibold">
-            {error || 'No ads available at this time'}
-            <br />
+          <div className="text-gray-900 font-bold text-sm sm:text-lg mb-1 sm:mb-2">🎯 ADVERTISEMENT 🎯</div>
+          <div className="text-gray-800 text-xs sm:text-sm font-semibold">
+            {error || 'No ads available'}
+            <br className="hidden sm:block" />
             <span className="text-blue-900 text-xs">
-              Ad space available - contact us to advertise!
+              Ad space available!
             </span>
           </div>
         </div>
@@ -163,8 +233,11 @@ export const AdBanner = ({
 
   return (
     <div 
-      className={`ad-banner-container mb-4 ${className}`}
-      style={style}
+      className={`ad-banner-container mb-4 flex items-center justify-center ${className}`}
+      style={{
+        minHeight: dimensions.height,
+        ...style
+      }}
     >
       <a
         ref={adRef}
@@ -178,19 +251,20 @@ export const AdBanner = ({
         className="block cursor-pointer hover:opacity-90 transition-opacity"
         style={{
           display: 'block',
-          width: adData.width || width,
-          height: adData.height || height,
+          maxWidth: '100%',
           margin: '0 auto',
         }}
       >
         <img
           src={imageUrl}
           alt={adData.alt_text || 'Advertisement'}
-          width={adData.width}
-          height={adData.height}
-          className="w-full h-auto rounded-lg"
+          width={adData.image_width}
+          height={adData.image_height}
+          className="w-full h-auto rounded-lg shadow-md sm:shadow-lg"
           style={{
-            maxWidth: '100%',
+            maxWidth: dimensions.width,
+            maxHeight: dimensions.height,
+            width: '100%',
             height: 'auto',
             objectFit: 'contain',
           }}

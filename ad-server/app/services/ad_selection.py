@@ -30,6 +30,7 @@ class AdSelectionService:
         self,
         user_id: str,
         placement: str,
+        country: Optional[str] = None,
         city: Optional[str] = None,
         state: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
@@ -47,17 +48,18 @@ class AdSelectionService:
         Args:
             user_id: Unique identifier for the user/device
             placement: Ad placement identifier (e.g., 'banner_bottom')
+            country: User's country code (optional, for targeting, e.g., 'NA')
             city: User's city (optional, for targeting)
             state: User's state (optional, for targeting)
         
         Returns:
             Dictionary with ad data and tracking tokens, or None if no ad available
         """
-        logger.info(f"Selecting ad for user={user_id}, placement={placement}, location={city}/{state}")
+        logger.info(f"Selecting ad for user={user_id}, placement={placement}, location={country}/{city}/{state}")
         
         try:
             # Step 1: Find eligible campaigns
-            eligible_campaign = self._find_eligible_campaign(city, state)
+            eligible_campaign = self._find_eligible_campaign(country, city, state)
             
             if not eligible_campaign:
                 logger.info("No eligible campaigns found - returning None for AdSense fallback")
@@ -111,6 +113,7 @@ class AdSelectionService:
     
     def _find_eligible_campaign(
         self,
+        country: Optional[str],
         city: Optional[str],
         state: Optional[str]
     ) -> Optional[Campaign]:
@@ -140,21 +143,29 @@ class AdSelectionService:
         )
         
         # Apply geographic targeting
-        if city or state:
+        if country or city or state:
             # Campaign matches if:
-            # 1. No targeting specified (target_cities and target_states are null/empty), OR
-            # 2. City matches target_cities (if city provided), OR
-            # 3. State matches target_states (if state provided)
+            # 1. No targeting specified (all target fields are null/empty), OR
+            # 2. Country matches target_countries (if country provided), OR
+            # 3. City matches target_cities (if city provided), OR
+            # 4. State matches target_states (if state provided)
             
             targeting_conditions = []
             
             # No targeting specified
             targeting_conditions.append(
                 and_(
+                    or_(Campaign.target_countries.is_(None), Campaign.target_countries == []),
                     or_(Campaign.target_cities.is_(None), Campaign.target_cities == []),
                     or_(Campaign.target_states.is_(None), Campaign.target_states == [])
                 )
             )
+            
+            # Country targeting (most important - if campaign targets specific countries, user must match)
+            if country:
+                targeting_conditions.append(
+                    Campaign.target_countries.contains([country])
+                )
             
             # City targeting
             if city:
@@ -225,6 +236,8 @@ class AdSelectionService:
             logger.error(f"Error updating campaign metrics: {str(e)}")
             self.db.rollback()
             raise
+
+
 
 
 

@@ -317,6 +317,7 @@ const RadioStreamingApp = () => {
       <div className="container mx-auto px-4 pt-4">
         <AdBanner 
           className="max-w-4xl mx-auto"
+          country="NA"  // Namibia - change or detect dynamically for other countries
         />
       </div>
       
