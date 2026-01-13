@@ -64,3 +64,11 @@ class AdClickRequest(BaseModel):
 
 
 
+
+
+
+
+
+
+
+

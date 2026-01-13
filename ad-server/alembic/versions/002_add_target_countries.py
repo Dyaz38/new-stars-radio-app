@@ -28,3 +28,4 @@ def downgrade() -> None:
     """Remove target_countries column from campaigns table."""
     op.drop_column('campaigns', 'target_countries')
 
+
