@@ -1,0 +1,5 @@
+# Ignore parent directory Python files
+../requirements.txt
+../*.py
+../app
+../alembic
