@@ -21,6 +21,9 @@ wheels/
 *.egg
 MANIFEST
 
+# But allow admin-panel lib directory
+!admin-panel/src/lib/
+
 # Virtual environments
 venv/
 env/
