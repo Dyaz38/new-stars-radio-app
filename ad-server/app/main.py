@@ -62,9 +62,27 @@ async def startup_event():
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {settings.DEBUG}")
     
+    # Log database configuration (without exposing password)
+    db_url = settings.DATABASE_URL
+    if db_url:
+        # Mask password in logs
+        if "@" in db_url:
+            parts = db_url.split("@")
+            if len(parts) == 2:
+                masked_url = parts[0].split(":")[0] + ":***@" + parts[1]
+                logger.info(f"Database URL configured: {masked_url}")
+            else:
+                logger.info(f"Database URL configured: {db_url[:50]}...")
+        else:
+            logger.warning("DATABASE_URL format may be incorrect")
+    else:
+        logger.error("DATABASE_URL is not set! Application may fail.")
+    
     # Create static directories if they don't exist
     static_path.mkdir(exist_ok=True)
     (static_path / "ads").mkdir(exist_ok=True)
+    
+    logger.info("Startup complete")
 
 
 @app.on_event("shutdown")

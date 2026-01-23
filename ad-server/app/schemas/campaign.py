@@ -33,7 +33,7 @@ class CampaignUpdate(BaseModel):
     priority: Optional[int] = None
     impression_budget: Optional[int] = None
     target_countries: Optional[List[str]] = None
-    target_cities: Optional[List[str] = None
+    target_cities: Optional[List[str]] = None
     target_states: Optional[List[str]] = None
 
 
