@@ -22,6 +22,7 @@ COPY ./app ./app
 COPY ./alembic ./alembic
 COPY ./tests ./tests
 COPY alembic.ini .
+COPY start.py .
 
 # Create necessary directories
 RUN mkdir -p /app/static/ads /app/logs
@@ -39,5 +40,5 @@ EXPOSE ${PORT:-8000}
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)" || exit 1
 
-# Start command - use PORT from environment or default to 8000
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Start command - use Python script to read PORT from environment
+CMD ["python", "start.py"]
