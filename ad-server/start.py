@@ -12,6 +12,14 @@ if migration_result.returncode != 0:
     sys.exit(1)
 print("✅ Migrations complete")
 
+# Seed admin user (only if it doesn't exist - the seed script handles this)
+print("🌱 Checking for admin user...")
+seed_result = subprocess.run([sys.executable, "-m", "app.db.seed"])
+if seed_result.returncode == 0:
+    print("✅ Admin user check complete")
+else:
+    print("⚠️  Admin user seeding had issues (may already exist)")
+
 # Get PORT from environment or default to 8000
 port = os.environ.get("PORT", "8000")
 
