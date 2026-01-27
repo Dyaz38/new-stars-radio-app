@@ -6,7 +6,8 @@ import subprocess
 
 # Run database migrations first
 print("🔄 Running database migrations...")
-migration_result = subprocess.run(["alembic", "upgrade", "head"])
+# Use 'heads' to upgrade all head revisions (handles multiple migration branches)
+migration_result = subprocess.run(["alembic", "upgrade", "heads"])
 if migration_result.returncode != 0:
     print("❌ Migration failed! Check your database connection.")
     sys.exit(1)
