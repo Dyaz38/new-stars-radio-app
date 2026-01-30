@@ -41,6 +41,17 @@ self.addEventListener('activate', (event) => {
 
 // Handle fetch requests (cache-first strategy)
 self.addEventListener('fetch', (event) => {
+  // Skip service worker for Vite dev server requests (localhost in development)
+  const url = new URL(event.request.url);
+  if (url.hostname === 'localhost' || 
+      url.hostname === '127.0.0.1' ||
+      url.pathname.startsWith('/@') ||
+      url.pathname.includes('vite') ||
+      url.pathname.includes('react-refresh')) {
+    // Let Vite dev server handle these requests directly
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -70,6 +81,10 @@ self.addEventListener('fetch', (event) => {
           }
 
           return response;
+        }).catch((error) => {
+          // If fetch fails, return error response
+          console.error('Service Worker fetch error:', error);
+          throw error;
         });
       })
   );

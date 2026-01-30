@@ -28,8 +28,14 @@ export const usePWA = () => {
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
-  // Register service worker
+  // Register service worker (only in production)
   useEffect(() => {
+    // Skip service worker registration in development mode
+    if (import.meta.env.DEV) {
+      console.log('[PWA] Skipping service worker registration in development mode');
+      return;
+    }
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
