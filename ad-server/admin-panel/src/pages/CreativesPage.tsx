@@ -301,15 +301,11 @@ function CreativeModal({
       }
 
       if (creative) {
-        // Update existing creative
-        await api.put(`/creatives/${creative.id}`, formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        // Update existing creative (api interceptor clears Content-Type for FormData)
+        await api.put(`/creatives/${creative.id}`, formDataToSend);
       } else {
-        // Create new creative
-        await api.post("/creatives", formDataToSend, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        // Create new creative (api interceptor clears Content-Type for FormData)
+        await api.post("/creatives", formDataToSend);
       }
 
       onSuccess();
