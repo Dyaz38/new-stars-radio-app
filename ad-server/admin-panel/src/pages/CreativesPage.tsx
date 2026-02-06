@@ -311,10 +311,22 @@ function CreativeModal({
       onSuccess();
     } catch (err: any) {
       console.error("Creative save error:", err);
-      const errorMessage = err.response?.data?.detail || 
-                          (typeof err.response?.data === 'string' ? err.response?.data : null) ||
-                          err.message || 
-                          "Failed to save creative";
+      let errorMessage: string;
+      if (err.response?.data?.detail) {
+        errorMessage = typeof err.response.data.detail === 'string'
+          ? err.response.data.detail
+          : Array.isArray(err.response.data.detail)
+            ? err.response.data.detail.map((e: any) => e?.msg || e).join(', ')
+            : JSON.stringify(err.response.data.detail);
+      } else if (err.response?.data && typeof err.response.data === 'string') {
+        errorMessage = err.response.data;
+      } else if (err.response?.status) {
+        errorMessage = `Server error (${err.response.status}). Check browser Console (F12) for details.`;
+      } else if (err.message === 'Network Error' || !err.response) {
+        errorMessage = 'Request failed. Check: 1) Browser Console (F12) for CORS errors, 2) Admin Panel was redeployed with latest code, 3) Backend is running.';
+      } else {
+        errorMessage = err.message || 'Failed to save creative';
+      }
       setError(errorMessage);
     } finally {
       setIsLoading(false);

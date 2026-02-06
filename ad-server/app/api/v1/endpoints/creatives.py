@@ -69,9 +69,14 @@ async def create_creative(
             detail=f"File type not allowed. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
     
-    # Check file size (basic check - FastAPI handles this)
-    # Save file
-    image_path = save_uploaded_file(image_file, campaign_id)
+    # Save file (may fail on read-only filesystem e.g. some cloud hosts)
+    try:
+        image_path = save_uploaded_file(image_file, campaign_id)
+    except OSError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="File upload not available on this server. Use a creative with an image URL instead, or contact support."
+        ) from e
     
     # Get image dimensions (simplified - in production use PIL/Pillow)
     # For now, use default banner dimensions
