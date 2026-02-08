@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def save_uploaded_file(file: UploadFile, campaign_id: UUID) -> str:
-    """Save uploaded file and return relative path."""
+def save_uploaded_file(file: UploadFile, campaign_id: UUID, effective_filename: str | None = None) -> str:
+    """Save uploaded file and return relative path. Use effective_filename if file.filename is missing."""
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate filename: campaign_id_filename.ext
-    filename = f"{campaign_id}_{file.filename}"
+    name = (effective_filename or (file.filename or "") or "image.jpg").strip() or "image.jpg"
+    filename = f"{campaign_id}_{name}"
     file_path = upload_dir / filename
 
     try:
@@ -73,22 +73,18 @@ async def create_creative(
             detail="Campaign not found"
         )
     
-    # Validate file
-    if not image_file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No file provided"
-        )
-    
-    file_ext = Path(image_file.filename).suffix.lower()
+    # Validate file (allow missing filename for some clients; use default)
+    effective_filename = (image_file.filename or "").strip() or "image.jpg"
+    file_ext = Path(effective_filename).suffix.lower()
     if file_ext not in settings.ALLOWED_EXTENSIONS:
+        logger.warning("Creative create 400: file type not allowed filename=%r ext=%r", image_file.filename, file_ext)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+            detail=f"File type not allowed. Use one of: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
-    
+
     # Save file (may fail on read-only filesystem e.g. Railway, Heroku)
-    image_path = save_uploaded_file(image_file, campaign_id)
+    image_path = save_uploaded_file(image_file, campaign_id, effective_filename)
 
     # Get image dimensions (simplified - in production use PIL/Pillow)
     image_width = 728
@@ -115,7 +111,7 @@ async def create_creative(
         logger.warning("Creative create integrity error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid data (e.g. campaign or constraint violation). Check campaign exists and try again.",
+            detail="Save failed (invalid campaign or duplicate). Try using Image URL instead of file upload, or pick another campaign.",
         ) from e
     except SQLAlchemyError as e:
         db.rollback()

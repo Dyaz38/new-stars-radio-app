@@ -308,12 +308,19 @@ function CreativeModal({
           return;
         }
         if (hasFile) {
+          if (!formData.campaign_id) {
+            setError("Please select a campaign.");
+            setIsLoading(false);
+            return;
+          }
           const formDataToSend = new FormData();
           formDataToSend.append("campaign_id", formData.campaign_id);
           formDataToSend.append("name", formData.name);
           formDataToSend.append("click_url", formData.click_url);
           formDataToSend.append("alt_text", formData.alt_text);
-          formDataToSend.append("image_file", imageFile!);
+          // Ensure file part has a filename (helps some backends)
+          const file = imageFile!;
+          formDataToSend.append("image_file", file, file.name || "image.jpg");
           await api.post("/creatives", formDataToSend);
         } else {
           await api.post("/creatives/with-url", {
@@ -332,20 +339,21 @@ function CreativeModal({
     } catch (err: any) {
       console.error("Creative save error:", err);
       let errorMessage: string;
-      if (err.response?.data?.detail) {
-        errorMessage = typeof err.response.data.detail === 'string'
-          ? err.response.data.detail
-          : Array.isArray(err.response.data.detail)
-            ? err.response.data.detail.map((e: any) => e?.msg || e).join(', ')
-            : JSON.stringify(err.response.data.detail);
-      } else if (err.response?.data && typeof err.response.data === 'string') {
+      const detail = err.response?.data?.detail;
+      if (detail !== undefined && detail !== null) {
+        errorMessage = typeof detail === "string"
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((e: any) => e?.msg ?? e?.loc?.join?.(" ") ?? e).filter(Boolean).join(", ") || JSON.stringify(detail)
+            : JSON.stringify(detail);
+      } else if (err.response?.data && typeof err.response.data === "string") {
         errorMessage = err.response.data;
       } else if (err.response?.status) {
-        errorMessage = `Server error (${err.response.status}). Check browser Console (F12) for details.`;
-      } else if (err.message === 'Network Error' || !err.response) {
-        errorMessage = 'Request failed. Check: 1) Browser Console (F12) for CORS errors, 2) Admin Panel was redeployed with latest code, 3) Backend is running.';
+        errorMessage = `Server error (${err.response.status}). Try using Image URL instead of file upload, or try again.`;
+      } else if (err.message === "Network Error" || !err.response) {
+        errorMessage = "Request failed. Check browser Console (F12) for CORS/network errors.";
       } else {
-        errorMessage = err.message || 'Failed to save creative';
+        errorMessage = err.message || "Failed to save creative";
       }
       setError(errorMessage);
     } finally {
