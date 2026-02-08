@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 import logging
 import sys
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.database import engine
 from app.api.v1.router import api_router
 from app.middleware import RateLimitMiddleware
 
@@ -130,8 +132,22 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for monitoring and load balancers."""
+    """Health check endpoint for monitoring and load balancers. Quick DB ping to verify readiness."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.warning("Health check: database unreachable: %s", e)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "database": "unreachable",
+                "version": settings.VERSION,
+            },
+        )
     return {
         "status": "healthy",
-        "version": settings.VERSION
+        "database": "ok",
+        "version": settings.VERSION,
     }

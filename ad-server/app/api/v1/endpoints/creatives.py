@@ -1,20 +1,25 @@
 """
 Ad creative management endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session
+import logging
+from pathlib import Path
+import shutil
 from typing import List, Optional
 from uuid import UUID
-import shutil
-from pathlib import Path
 
-from app.core.database import get_db
-from app.core.config import settings
+from fastapi import APIRouter, Depends, File, Form, HTTPException, status, UploadFile
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from app.api.dependencies import get_current_user
-from app.schemas.creative import CreativeCreate, CreativeUpdate, CreativeResponse
+from app.core.config import settings
+from app.core.database import get_db
 from app.models.ad_creative import AdCreative, CreativeStatus
 from app.models.campaign import Campaign
 from app.models.user import User
+from app.schemas.creative import CreativeCreate, CreativeResponse, CreativeUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -23,15 +28,28 @@ def save_uploaded_file(file: UploadFile, campaign_id: UUID) -> str:
     """Save uploaded file and return relative path."""
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Generate filename: campaign_id_filename.ext
-    file_ext = Path(file.filename).suffix
     filename = f"{campaign_id}_{file.filename}"
     file_path = upload_dir / filename
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+
+    try:
+        # Ensure we have a readable file object (multipart stream)
+        file_body = file.file
+        if file_body is None:
+            raise ValueError("Upload file has no body")
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file_body, buffer)
+    except Exception as e:
+        logger.warning("Creative image save failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "File upload is not available on this server (e.g. read-only storage). "
+                "Use a creative with an image URL instead, or contact support."
+            ),
+        ) from e
+
     # Return relative path for database storage
     return f"ads/{filename}"
 
@@ -69,23 +87,14 @@ async def create_creative(
             detail=f"File type not allowed. Allowed: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
     
-    # Save file (may fail on read-only filesystem e.g. some cloud hosts)
-    try:
-        image_path = save_uploaded_file(image_file, campaign_id)
-    except OSError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="File upload not available on this server. Use a creative with an image URL instead, or contact support."
-        ) from e
-    
+    # Save file (may fail on read-only filesystem e.g. Railway, Heroku)
+    image_path = save_uploaded_file(image_file, campaign_id)
+
     # Get image dimensions (simplified - in production use PIL/Pillow)
-    # For now, use default banner dimensions
     image_width = 728
     image_height = 90
-    
-    # Build full URL
     image_url = f"/static/{image_path}"
-    
+
     creative = AdCreative(
         campaign_id=campaign_id,
         name=name,
@@ -94,13 +103,28 @@ async def create_creative(
         image_height=image_height,
         click_url=click_url,
         alt_text=alt_text,
-        status=CreativeStatus.ACTIVE
+        status=CreativeStatus.ACTIVE,
     )
-    
     db.add(creative)
-    db.commit()
-    db.refresh(creative)
-    
+
+    try:
+        db.commit()
+        db.refresh(creative)
+    except IntegrityError as e:
+        db.rollback()
+        logger.warning("Creative create integrity error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid data (e.g. campaign or constraint violation). Check campaign exists and try again.",
+        ) from e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Creative create database error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please try again.",
+        ) from e
+
     return creative
 
 

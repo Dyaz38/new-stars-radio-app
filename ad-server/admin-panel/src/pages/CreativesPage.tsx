@@ -268,6 +268,7 @@ function CreativeModal({
     name: creative?.name || "",
     click_url: creative?.click_url || "",
     alt_text: creative?.alt_text || "",
+    image_url: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(creative?.image_url || "");
@@ -290,22 +291,41 @@ function CreativeModal({
     setError("");
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("campaign_id", formData.campaign_id);
-      formDataToSend.append("name", formData.name);
-      formDataToSend.append("click_url", formData.click_url);
-      formDataToSend.append("alt_text", formData.alt_text);
-
-      if (imageFile) {
-        formDataToSend.append("image_file", imageFile);
-      }
-
       if (creative) {
-        // Update existing creative (api interceptor clears Content-Type for FormData)
+        const formDataToSend = new FormData();
+        formDataToSend.append("campaign_id", formData.campaign_id);
+        formDataToSend.append("name", formData.name);
+        formDataToSend.append("click_url", formData.click_url);
+        formDataToSend.append("alt_text", formData.alt_text);
+        if (imageFile) formDataToSend.append("image_file", imageFile);
         await api.put(`/creatives/${creative.id}`, formDataToSend);
       } else {
-        // Create new creative (api interceptor clears Content-Type for FormData)
-        await api.post("/creatives", formDataToSend);
+        const hasFile = !!imageFile;
+        const imageUrl = formData.image_url?.trim() || "";
+        if (!hasFile && !imageUrl) {
+          setError("Please provide an image (upload a file or enter an image URL).");
+          setIsLoading(false);
+          return;
+        }
+        if (hasFile) {
+          const formDataToSend = new FormData();
+          formDataToSend.append("campaign_id", formData.campaign_id);
+          formDataToSend.append("name", formData.name);
+          formDataToSend.append("click_url", formData.click_url);
+          formDataToSend.append("alt_text", formData.alt_text);
+          formDataToSend.append("image_file", imageFile!);
+          await api.post("/creatives", formDataToSend);
+        } else {
+          await api.post("/creatives/with-url", {
+            campaign_id: formData.campaign_id,
+            name: formData.name,
+            click_url: formData.click_url,
+            alt_text: formData.alt_text || undefined,
+            image_url: imageUrl,
+            image_width: 728,
+            image_height: 90,
+          });
+        }
       }
 
       onSuccess();
@@ -411,12 +431,29 @@ function CreativeModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Image {creative ? "(Leave empty to keep current image)" : "*"}
+              Image URL (optional – use if file upload fails)
+            </label>
+            <input
+              type="url"
+              value={formData.image_url || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, image_url: e.target.value }))
+              }
+              onBlur={(e) => {
+                const url = e.target.value.trim();
+                if (url) setImagePreview(url);
+              }}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Or upload image file {creative ? "(leave empty to keep current)" : ""}
             </label>
             <input
               type="file"
               accept="image/*"
-              required={!creative}
               onChange={handleImageChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
