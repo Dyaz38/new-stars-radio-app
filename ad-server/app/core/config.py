@@ -29,8 +29,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     
-    # CORS - can be string (comma-separated) or list
-    CORS_ORIGINS: str | List[str] = "http://localhost:3000,http://localhost:5173,http://localhost:8000"
+    # CORS - can be string (comma-separated) or list. Set CORS_ORIGINS on Railway to override.
+    CORS_ORIGINS: str | List[str] = (
+        "http://localhost:3000,http://localhost:5173,http://localhost:8000,"
+        "https://newstarsadminpanel.vercel.app"
+    )
     
     # File Upload
     UPLOAD_DIR: str = "static/ads"
@@ -68,12 +71,18 @@ class Settings(BaseSettings):
         return []
     
     def get_cors_origins_list(self) -> List[str]:
-        """Get CORS origins as a list."""
+        """Get CORS origins as a list. Always includes production admin panel URL so login works."""
         if isinstance(self.CORS_ORIGINS, list):
-            return self.CORS_ORIGINS
-        if isinstance(self.CORS_ORIGINS, str):
-            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-        return []
+            origins = list(self.CORS_ORIGINS)
+        elif isinstance(self.CORS_ORIGINS, str):
+            origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        else:
+            origins = []
+        # Ensure production admin panel is always allowed (avoids CORS blocking login)
+        admin_origin = "https://newstarsadminpanel.vercel.app"
+        if admin_origin not in origins:
+            origins.append(admin_origin)
+        return origins
     
     model_config = SettingsConfigDict(
         env_file=".env",
