@@ -370,7 +370,12 @@ function CreativeModal({
 
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600 font-medium">{error}</p>
+            {!creative && (
+              <p className="text-sm text-gray-600 mt-2">
+                Workaround: Use <strong>Image URL</strong> instead of file upload. Host your image on Imgur, your website, or any host, then paste the direct image link.
+              </p>
+            )}
           </div>
         )}
 

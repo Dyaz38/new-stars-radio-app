@@ -65,6 +65,8 @@ async def create_creative(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new ad creative with image upload."""
+    logger.info("create_creative: campaign_id=%s name=%r", campaign_id, name)
+
     # Verify campaign exists
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
@@ -72,7 +74,7 @@ async def create_creative(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found"
         )
-    
+
     # Validate file (allow missing filename for some clients; use default)
     effective_filename = (image_file.filename or "").strip() or "image.jpg"
     file_ext = Path(effective_filename).suffix.lower()
@@ -109,9 +111,18 @@ async def create_creative(
     except IntegrityError as e:
         db.rollback()
         logger.warning("Creative create integrity error: %s", e)
+        hint = "Duplicate name in campaign? Try a different creative name, or use Image URL instead of file upload."
+        try:
+            err_msg = str(e.orig) if hasattr(e, "orig") and e.orig else str(e)
+            if "foreign key" in err_msg.lower() or "violates foreign key" in err_msg.lower():
+                hint = "Campaign may no longer exist. Pick another campaign or refresh the page."
+            elif "unique" in err_msg.lower() or "duplicate" in err_msg.lower():
+                hint = "A creative with this name might already exist. Try a different name."
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Save failed (invalid campaign or duplicate). Try using Image URL instead of file upload, or pick another campaign.",
+            detail=hint,
         ) from e
     except SQLAlchemyError as e:
         db.rollback()
