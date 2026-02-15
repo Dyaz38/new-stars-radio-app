@@ -59,12 +59,14 @@ async def create_creative(
     try:
         image_url = upload_creative_image(image_file, campaign_id, effective_filename)
     except Exception as e:
-        logger.warning("Creative image upload failed: %s", e, exc_info=True)
+        logger.exception("Creative image upload failed: %s", e)
+        err_msg = str(e).split("\n")[0][:200]  # First line, truncated
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "File upload failed. If R2 is configured, check credentials. "
-                "Otherwise use Image URL instead of file upload."
+                f"File upload failed: {err_msg}. "
+                "Check R2 credentials in Railway (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME). "
+                "Or use Image URL instead of file upload."
             ),
         ) from e
 
