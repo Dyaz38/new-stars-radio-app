@@ -39,6 +39,24 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "static/ads"
     MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
     ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+
+    # Cloudflare R2 (S3-compatible object storage) - when set, uploads go to R2 instead of disk
+    R2_ACCOUNT_ID: Optional[str] = None
+    R2_ACCESS_KEY_ID: Optional[str] = None
+    R2_SECRET_ACCESS_KEY: Optional[str] = None
+    R2_BUCKET_NAME: Optional[str] = None
+    R2_PUBLIC_URL: Optional[str] = None  # e.g. https://pub-xxx.r2.dev or custom domain
+
+    @property
+    def r2_enabled(self) -> bool:
+        """True if R2 is configured."""
+        return bool(
+            self.R2_ACCOUNT_ID
+            and self.R2_ACCESS_KEY_ID
+            and self.R2_SECRET_ACCESS_KEY
+            and self.R2_BUCKET_NAME
+            and self.R2_PUBLIC_URL
+        )
     
     # Ad Serving
     DEFAULT_AD_PRIORITY: int = 5

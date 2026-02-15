@@ -3,7 +3,6 @@ Ad creative management endpoints.
 """
 import logging
 from pathlib import Path
-import shutil
 from typing import List, Optional
 from uuid import UUID
 
@@ -18,40 +17,11 @@ from app.models.ad_creative import AdCreative, CreativeStatus
 from app.models.campaign import Campaign
 from app.models.user import User
 from app.schemas.creative import CreativeCreate, CreativeResponse, CreativeUpdate
+from app.services.storage import upload_creative_image
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def save_uploaded_file(file: UploadFile, campaign_id: UUID, effective_filename: str | None = None) -> str:
-    """Save uploaded file and return relative path. Use effective_filename if file.filename is missing."""
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    name = (effective_filename or (file.filename or "") or "image.jpg").strip() or "image.jpg"
-    filename = f"{campaign_id}_{name}"
-    file_path = upload_dir / filename
-
-    try:
-        # Ensure we have a readable file object (multipart stream)
-        file_body = file.file
-        if file_body is None:
-            raise ValueError("Upload file has no body")
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file_body, buffer)
-    except Exception as e:
-        logger.warning("Creative image save failed: %s", e, exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "File upload is not available on this server (e.g. read-only storage). "
-                "Use a creative with an image URL instead, or contact support."
-            ),
-        ) from e
-
-    # Return relative path for database storage
-    return f"ads/{filename}"
 
 
 @router.post("", response_model=CreativeResponse, status_code=status.HTTP_201_CREATED)
@@ -85,13 +55,22 @@ async def create_creative(
             detail=f"File type not allowed. Use one of: {', '.join(settings.ALLOWED_EXTENSIONS)}"
         )
 
-    # Save file (may fail on read-only filesystem e.g. Railway, Heroku)
-    image_path = save_uploaded_file(image_file, campaign_id, effective_filename)
+    # Upload to R2 (if configured) or local disk
+    try:
+        image_url = upload_creative_image(image_file, campaign_id, effective_filename)
+    except Exception as e:
+        logger.warning("Creative image upload failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "File upload failed. If R2 is configured, check credentials. "
+                "Otherwise use Image URL instead of file upload."
+            ),
+        ) from e
 
     # Get image dimensions (simplified - in production use PIL/Pillow)
     image_width = 728
     image_height = 90
-    image_url = f"/static/{image_path}"
 
     creative = AdCreative(
         campaign_id=campaign_id,

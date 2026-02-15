@@ -4,6 +4,15 @@ import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 
+/** Resolve image URL: full URLs and data URLs as-is, relative paths get API origin prepended */
+function resolveImageUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  const origin = new URL(base).origin;
+  return origin + (url.startsWith("/") ? url : "/" + url);
+}
+
 interface Creative {
   id: string;
   campaign_id: string;
@@ -158,7 +167,7 @@ export default function CreativesPage() {
               <div key={creative.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div className="relative pb-[56.25%] bg-gray-100">
                   <img
-                    src={creative.image_url}
+                    src={resolveImageUrl(creative.image_url)}
                     alt={creative.alt_text}
                     className="absolute inset-0 w-full h-full object-contain"
                   />
@@ -271,7 +280,9 @@ function CreativeModal({
     image_url: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>(creative?.image_url || "");
+  const [imagePreview, setImagePreview] = useState<string>(
+    creative ? resolveImageUrl(creative.image_url) : ""
+  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
