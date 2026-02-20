@@ -8,7 +8,7 @@ interface Campaign {
   id: string;
   advertiser_id: string;
   name: string;
-  status: "active" | "paused" | "completed";
+  status: "draft" | "active" | "paused" | "completed";
   start_date: string;
   end_date: string;
   priority: number;
@@ -22,6 +22,7 @@ interface Campaign {
 interface CampaignForm {
   advertiser_id: string;
   name: string;
+  status?: string;
   start_date: string;
   end_date: string;
   priority: number;
@@ -92,8 +93,9 @@ export default function CampaignsPage() {
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: "pause" | "resume" }) => {
-      return await api.post(`/campaigns/${id}/${action}`);
+    mutationFn: async ({ id, action }: { id: string; action: "pause" | "resume" | "activate" }) => {
+      const statusMap = { activate: "active", pause: "paused", resume: "active" };
+      return await api.put(`/campaigns/${id}`, { status: statusMap[action] });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
@@ -196,14 +198,26 @@ export default function CampaignsPage() {
                           ? "bg-green-100 text-green-800"
                           : campaign.status === "paused"
                           ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
+                          : campaign.status === "draft"
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-gray-100 text-gray-600"
                       }`}
                     >
                       {campaign.status}
                     </span>
                   </div>
                   <div className="flex space-x-2">
-                    {campaign.status === "active" ? (
+                    {campaign.status === "draft" ? (
+                      <button
+                        onClick={() =>
+                          toggleStatusMutation.mutate({ id: campaign.id, action: "activate" })
+                        }
+                        className="text-green-600 hover:text-green-800"
+                        title="Activate"
+                      >
+                        ▶️
+                      </button>
+                    ) : campaign.status === "active" ? (
                       <button
                         onClick={() =>
                           toggleStatusMutation.mutate({ id: campaign.id, action: "pause" })
@@ -359,6 +373,7 @@ function CampaignModal({
   const [formData, setFormData] = useState<CampaignForm>({
     advertiser_id: campaign?.advertiser_id || "",
     name: campaign?.name || "",
+    status: campaign?.status || "draft",
     start_date: campaign?.start_date?.split("T")[0] || "",
     end_date: campaign?.end_date?.split("T")[0] || "",
     priority: campaign?.priority || 1,
@@ -384,7 +399,7 @@ function CampaignModal({
     setError("");
     
     // Convert dates to ISO datetime format
-    const submitData = {
+    const submitData: Record<string, unknown> = {
       ...formData,
       start_date: formData.start_date + "T00:00:00",
       end_date: formData.end_date + "T23:59:59",
@@ -392,6 +407,12 @@ function CampaignModal({
       target_cities: citiesInput ? citiesInput.split(",").map((c) => c.trim()).filter(c => c) : [],
       target_states: statesInput ? statesInput.split(",").map((s) => s.trim()).filter(s => s) : [],
     };
+    // Only include status when editing (create always uses draft)
+    if (campaign && formData.status) {
+      submitData.status = formData.status;
+    } else if (!campaign) {
+      delete submitData.status;
+    }
     
     try {
       onSubmit(submitData);
@@ -447,6 +468,25 @@ function CampaignModal({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
+
+          {campaign && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={formData.status || "draft"}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Set to Active to start serving ads.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
