@@ -40,7 +40,15 @@ def _upload_to_r2(file: UploadFile, object_key: str) -> str:
     if file_body is None:
         raise ValueError("Upload file has no body")
 
-    endpoint_url = f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+    # R2_ACCOUNT_ID must be just the ID (e.g. cab369bb...), not a URL
+    account_id = (settings.R2_ACCOUNT_ID or "").strip()
+    for prefix in ("https://", "http://", "https:/", "http:/"):
+        if account_id.lower().startswith(prefix):
+            account_id = account_id[len(prefix) :].lstrip("/")
+            break
+    if account_id.endswith(".r2.cloudflarestorage.com"):
+        account_id = account_id.replace(".r2.cloudflarestorage.com", "")
+    endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com"
     client = boto3.client(
         "s3",
         endpoint_url=endpoint_url,

@@ -130,7 +130,7 @@ async def create_creative_with_url(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found"
         )
-    
+
     creative = AdCreative(
         campaign_id=creative_data.campaign_id,
         name=creative_data.name,
@@ -139,13 +139,28 @@ async def create_creative_with_url(
         image_height=creative_data.image_height,
         click_url=creative_data.click_url,
         alt_text=creative_data.alt_text,
-        status=CreativeStatus.ACTIVE
+        status=CreativeStatus.ACTIVE,
     )
-    
     db.add(creative)
-    db.commit()
-    db.refresh(creative)
-    
+
+    try:
+        db.commit()
+        db.refresh(creative)
+    except IntegrityError as e:
+        db.rollback()
+        logger.warning("Creative create (with-url) integrity error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Save failed. Try a different creative name or check the campaign.",
+        ) from e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Creative create (with-url) database error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please try again.",
+        ) from e
+
     return creative
 
 
@@ -197,18 +212,33 @@ async def update_creative(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Creative not found"
         )
-    
+
     update_data = creative_data.model_dump(exclude_unset=True)
-    
+
     if "status" in update_data:
         update_data["status"] = CreativeStatus(update_data["status"])
-    
+
     for field, value in update_data.items():
         setattr(creative, field, value)
-    
-    db.commit()
-    db.refresh(creative)
-    
+
+    try:
+        db.commit()
+        db.refresh(creative)
+    except IntegrityError as e:
+        db.rollback()
+        logger.warning("Creative update integrity error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Update failed. Check the data and try again.",
+        ) from e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Creative update database error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please try again.",
+        ) from e
+
     return creative
 
 
@@ -225,10 +255,18 @@ async def delete_creative(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Creative not found"
         )
-    
-    db.delete(creative)
-    db.commit()
-    
+
+    try:
+        db.delete(creative)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Creative delete database error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Delete failed. Please try again.",
+        ) from e
+
     return None
 
 

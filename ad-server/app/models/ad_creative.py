@@ -45,7 +45,8 @@ class AdCreative(Base):
         nullable=False,
         default=CreativeStatus.ACTIVE
     )
-    
+    times_served = Column(Integer, default=0, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime,

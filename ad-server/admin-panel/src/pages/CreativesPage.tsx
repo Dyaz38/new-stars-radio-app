@@ -303,13 +303,19 @@ function CreativeModal({
 
     try {
       if (creative) {
-        const formDataToSend = new FormData();
-        formDataToSend.append("campaign_id", formData.campaign_id);
-        formDataToSend.append("name", formData.name);
-        formDataToSend.append("click_url", formData.click_url);
-        formDataToSend.append("alt_text", formData.alt_text);
-        if (imageFile) formDataToSend.append("image_file", imageFile);
-        await api.put(`/creatives/${creative.id}`, formDataToSend);
+        // Backend PUT expects JSON, not FormData
+        const payload: Record<string, string | number | undefined> = {
+          name: formData.name,
+          click_url: formData.click_url,
+          alt_text: formData.alt_text || undefined,
+        };
+        const imageUrl = formData.image_url?.trim();
+        if (imageUrl) {
+          payload.image_url = imageUrl;
+          payload.image_width = 728;
+          payload.image_height = 90;
+        }
+        await api.put(`/creatives/${creative.id}`, payload);
       } else {
         const hasFile = !!imageFile;
         const imageUrl = formData.image_url?.trim() || "";
