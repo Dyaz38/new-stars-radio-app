@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.api.v1.router import api_router
 from app.middleware import RateLimitMiddleware
+from app.db.seed import create_initial_admin
 
 # Configure logging
 logging.basicConfig(
@@ -82,6 +83,11 @@ def _cors_headers_for_request(origin: str | None) -> dict:
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
         }
+    if origin.endswith(".vercel.app"):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        }
     return {}
 
 
@@ -124,7 +130,14 @@ async def startup_event():
     # Create static directories if they don't exist
     static_path.mkdir(exist_ok=True)
     (static_path / "ads").mkdir(exist_ok=True)
-    
+
+    # Ensure admin user exists (idempotent - skips if already present)
+    try:
+        create_initial_admin()
+        logger.info("Admin user check complete")
+    except Exception as e:
+        logger.warning("Admin user seed check failed (may already exist): %s", e)
+
     logger.info("Startup complete")
 
 
