@@ -49,13 +49,15 @@ class VercelCORSMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(VercelCORSMiddleware)
 
-# Add CORS middleware (exact origins from config)
+# Add CORS middleware - allow exact origins + any *.vercel.app for preview deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins_list(),
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Preview URLs like newstarsadminpanel-xxx-xxx.vercel.app
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add GZip compression
