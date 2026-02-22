@@ -404,20 +404,23 @@ function CampaignModal({
     e.preventDefault();
     setError("");
     
-    // Convert dates to ISO datetime format
-    const submitData: Record<string, unknown> = {
-      ...formData,
+    const targetCountries = countriesInput ? countriesInput.split(",").map((c) => c.trim().toUpperCase()).filter(c => c) : [];
+    const targetCities = citiesInput ? citiesInput.split(",").map((c) => c.trim()).filter(c => c) : [];
+    const targetStates = statesInput ? statesInput.split(",").map((s) => s.trim()).filter(s => s) : [];
+
+    const submitData: CampaignForm = {
+      advertiser_id: formData.advertiser_id,
+      name: formData.name,
       start_date: formData.start_date + "T00:00:00",
       end_date: formData.end_date + "T23:59:59",
-      target_countries: countriesInput ? countriesInput.split(",").map((c) => c.trim().toUpperCase()).filter(c => c) : [],
-      target_cities: citiesInput ? citiesInput.split(",").map((c) => c.trim()).filter(c => c) : [],
-      target_states: statesInput ? statesInput.split(",").map((s) => s.trim()).filter(s => s) : [],
+      priority: formData.priority,
+      impression_budget: formData.impression_budget,
+      target_countries: targetCountries,
+      target_cities: targetCities,
+      target_states: targetStates,
     };
-    // Only include status when editing (create always uses draft)
     if (campaign && formData.status) {
       submitData.status = formData.status;
-    } else if (!campaign) {
-      delete submitData.status;
     }
     
     try {
