@@ -212,10 +212,11 @@ export default function CampaignsPage() {
                         onClick={() =>
                           toggleStatusMutation.mutate({ id: campaign.id, action: "activate" })
                         }
-                        className="text-green-600 hover:text-green-800"
-                        title="Activate"
+                        disabled={toggleStatusMutation.isPending}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
+                        title="Activate campaign to start serving ads"
                       >
-                        ▶️
+                        ▶️ Activate
                       </button>
                     ) : campaign.status === "active" ? (
                       <button
@@ -292,6 +293,11 @@ export default function CampaignsPage() {
                   )}
                 </div>
 
+                {campaign.status === "draft" && (
+                  <p className="mt-4 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded">
+                    Activate this campaign to show ads in the radio app banner.
+                  </p>
+                )}
                 <div className="mt-6 flex space-x-2">
                   <button
                     onClick={() => setEditingCampaign(campaign)}
