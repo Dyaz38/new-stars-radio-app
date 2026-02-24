@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_, or_
 import logging
+import random
 
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.ad_creative import AdCreative, CreativeStatus
@@ -188,16 +189,24 @@ class AdSelectionService:
             Campaign.last_served_at.asc().nullsfirst()
         )
         
-        # Get the first eligible campaign
-        campaign = query.first()
-        
+        # Get all eligible campaigns (for rotation among multiple ads)
+        all_eligible = query.all()
+        if not all_eligible:
+            return None
+
+        # Among campaigns with the same top priority, pick randomly for rotation
+        # This ensures FNB, Toyota, etc. all get shown when they have similar priority
+        top_priority = all_eligible[0].priority
+        same_priority = [c for c in all_eligible if c.priority == top_priority]
+        campaign = random.choice(same_priority)
         return campaign
     
     def _select_creative(self, campaign: Campaign) -> Optional[AdCreative]:
         """
         Select an active creative from the campaign.
         
-        Uses simple rotation - could be enhanced with performance-based selection.
+        Random choice among active creatives for fair rotation when a campaign
+        has multiple ads (e.g. FNB and Toyota in same campaign).
         """
         # Get active creatives
         active_creatives = [
@@ -208,9 +217,7 @@ class AdSelectionService:
         if not active_creatives:
             return None
         
-        # Simple rotation: just return the first one
-        # TODO: Could enhance with round-robin or performance-based selection
-        return active_creatives[0]
+        return random.choice(active_creatives)
     
     def _update_campaign_served(self, campaign: Campaign) -> None:
         """
