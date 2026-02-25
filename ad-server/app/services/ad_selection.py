@@ -2,7 +2,7 @@
 Ad Selection Service - Core business logic for selecting ads to serve.
 
 This service implements the ad selection algorithm with:
-- Priority-based selection
+- Priority-weighted selection (higher priority = more impressions, all ads display)
 - Geographic targeting
 - Budget management
 - Fair rotation among creatives
@@ -41,7 +41,7 @@ class AdSelectionService:
         Algorithm:
         1. Find eligible campaigns (active, within date range, has budget)
         2. Apply geographic targeting filters
-        3. Sort by priority (highest first), then by last_served_at (least recent)
+        3. Weighted random selection (priority 5 = 5x more likely than priority 1)
         4. Select active creative from chosen campaign
         5. Generate tracking tokens
         6. Update campaign metrics
@@ -121,13 +121,12 @@ class AdSelectionService:
         """
         Find an eligible campaign based on status, date range, budget, and targeting.
         
-        Returns the highest priority campaign that:
+        Returns a campaign chosen by weighted random selection. All eligible
+        campaigns can be shown; higher priority = more impressions.
         - Has status = 'active'
         - Current time is between start_date and end_date
         - Has remaining impression budget
         - Matches geographic targeting (if specified)
-        
-        Sorted by priority (desc), then last_served_at (asc) for fair rotation.
         """
         now = datetime.utcnow()
         
@@ -182,23 +181,15 @@ class AdSelectionService:
             
             query = query.filter(or_(*targeting_conditions))
         
-        # Sort by priority (highest first), then by last_served_at (least recent first)
-        # Campaigns never served (last_served_at = NULL) come first
-        query = query.order_by(
-            Campaign.priority.desc(),
-            Campaign.last_served_at.asc().nullsfirst()
-        )
-        
-        # Get all eligible campaigns (for rotation among multiple ads)
+        # Get all eligible campaigns - ALL active ads get a chance to show
         all_eligible = query.all()
         if not all_eligible:
             return None
 
-        # Among campaigns with the same top priority, pick randomly for rotation
-        # This ensures FNB, Toyota, etc. all get shown when they have similar priority
-        top_priority = all_eligible[0].priority
-        same_priority = [c for c in all_eligible if c.priority == top_priority]
-        campaign = random.choice(same_priority)
+        # Weighted selection: higher priority = more impressions, but ALL ads display
+        # Priority 5 shows ~5x more than priority 1, but priority 1 still shows
+        weights = [max(1, c.priority) for c in all_eligible]
+        campaign = random.choices(all_eligible, weights=weights, k=1)[0]
         return campaign
     
     def _select_creative(self, campaign: Campaign) -> Optional[AdCreative]:
