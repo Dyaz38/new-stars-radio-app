@@ -314,7 +314,7 @@ const RadioStreamingApp = () => {
       />
       
       {/* Advertisement Banner - Top of Screen */}
-      <div className="container mx-auto px-4 pt-4">
+      <div className="container mx-auto px-4 pt-4" style={{ minHeight: 90 }}>
         <AdBanner 
           className="max-w-4xl mx-auto"
           country="NA"  // Namibia - change or detect dynamically for other countries

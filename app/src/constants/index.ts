@@ -23,7 +23,7 @@ export const API_ENDPOINTS = {
   ITUNES: 'https://itunes.apple.com/search',
   GENIUS_SEARCH: 'https://api.genius.com/search',
   GENIUS_SONGS: 'https://api.genius.com/songs',
-  AD_SERVER: import.meta.env.VITE_AD_SERVER_URL || 'https://new-stars-radio-app-production.up.railway.app/api/v1'
+  AD_SERVER: (import.meta.env.VITE_AD_SERVER_URL || 'https://new-stars-radio-app-production.up.railway.app/api/v1').replace(/\/$/, '')
 } as const;
 
 // MusicBrainz API configuration

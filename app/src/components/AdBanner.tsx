@@ -194,10 +194,11 @@ export const AdBanner = ({
   if (loading) {
     return (
       <div 
-        className={`bg-gray-100 border-2 border-gray-300 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
-        style={{ minHeight: dimensions.height, ...style }}
+        className={`bg-gray-200/90 border-2 border-gray-400 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
+        style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
+        data-testid="ad-banner-loading"
       >
-        <div className="text-gray-500 text-xs sm:text-sm">Loading ad...</div>
+        <div className="text-gray-700 text-xs sm:text-sm font-medium">Loading ad...</div>
       </div>
     );
   }
@@ -208,9 +209,10 @@ export const AdBanner = ({
         className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
         style={{
           backgroundColor: 'rgba(250, 204, 21, 0.95)',
-          minHeight: dimensions.height,
+          minHeight: Math.max(dimensions.height, 50),
           ...style
         }}
+        data-testid="ad-banner-empty"
       >
         <div className="text-center">
           <div className="text-gray-900 font-bold text-sm sm:text-lg mb-1 sm:mb-2">🎯 ADVERTISEMENT 🎯</div>
