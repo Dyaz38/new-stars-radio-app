@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # CORS - can be string (comma-separated) or list. Set CORS_ORIGINS on Railway to override.
     CORS_ORIGINS: str | List[str] = (
         "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:8000,"
-        "https://newstarsadminpanel.vercel.app"
+        "https://newstarsadminpanel.vercel.app,https://new-stars-radio-app.vercel.app"
     )
     
     # File Upload
@@ -96,10 +96,13 @@ class Settings(BaseSettings):
             origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
         else:
             origins = []
-        # Ensure production admin panel is always allowed (avoids CORS blocking login)
-        admin_origin = "https://newstarsadminpanel.vercel.app"
-        if admin_origin not in origins:
-            origins.append(admin_origin)
+        # Ensure production URLs are always allowed
+        for origin in [
+            "https://newstarsadminpanel.vercel.app",
+            "https://new-stars-radio-app.vercel.app",
+        ]:
+            if origin not in origins:
+                origins.append(origin)
         return origins
     
     model_config = SettingsConfigDict(
