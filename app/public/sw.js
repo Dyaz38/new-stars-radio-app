@@ -41,14 +41,24 @@ self.addEventListener('activate', (event) => {
 
 // Handle fetch requests (cache-first strategy)
 self.addEventListener('fetch', (event) => {
-  // Skip service worker for Vite dev server requests (localhost in development)
   const url = new URL(event.request.url);
+  
+  // Skip service worker for API requests (ad server, metadata, etc.)
+  if (url.hostname.includes('railway.app') ||
+      url.hostname.includes('airtime.pro') ||
+      url.hostname.includes('musicbrainz.org') ||
+      url.hostname.includes('coverartarchive.org') ||
+      url.hostname.includes('itunes.apple.com') ||
+      url.hostname.includes('genius.com')) {
+    return;
+  }
+  
+  // Skip for Vite dev server (localhost in development)
   if (url.hostname === 'localhost' || 
       url.hostname === '127.0.0.1' ||
       url.pathname.startsWith('/@') ||
       url.pathname.includes('vite') ||
       url.pathname.includes('react-refresh')) {
-    // Let Vite dev server handle these requests directly
     return;
   }
 
