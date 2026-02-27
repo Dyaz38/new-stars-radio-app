@@ -142,17 +142,11 @@ class AdSelectionService:
             selectinload(Campaign.creatives)  # Eager load creatives
         )
         
-        # Apply geographic targeting
+        # Apply geographic targeting (optional - campaigns with no targeting match all)
         if country or city or state:
-            # Campaign matches if:
-            # 1. No targeting specified (all target fields are null/empty), OR
-            # 2. Country matches target_countries (if country provided), OR
-            # 3. City matches target_cities (if city provided), OR
-            # 4. State matches target_states (if state provided)
-            
             targeting_conditions = []
             
-            # No targeting specified
+            # No targeting specified - campaign matches everyone
             targeting_conditions.append(
                 and_(
                     or_(Campaign.target_countries.is_(None), Campaign.target_countries == []),
@@ -161,19 +155,17 @@ class AdSelectionService:
                 )
             )
             
-            # Country targeting (most important - if campaign targets specific countries, user must match)
+            # Country in target list (PostgreSQL JSONB: array contains element)
             if country:
                 targeting_conditions.append(
-                    Campaign.target_countries.contains([country])
+                    Campaign.target_countries.contains([country.upper()])
                 )
             
-            # City targeting
             if city:
                 targeting_conditions.append(
                     Campaign.target_cities.contains([city])
                 )
             
-            # State targeting
             if state:
                 targeting_conditions.append(
                     Campaign.target_states.contains([state])
@@ -183,7 +175,32 @@ class AdSelectionService:
         
         # Get all eligible campaigns - ALL active ads get a chance to show
         all_eligible = query.all()
+        
+        # If targeting filtered everything out, try without targeting (serve any active ad)
+        if not all_eligible and (country or city or state):
+            base_query = self.db.query(Campaign).filter(
+                and_(
+                    Campaign.status == CampaignStatus.ACTIVE,
+                    Campaign.start_date <= now,
+                    Campaign.end_date >= now,
+                    Campaign.impressions_served < Campaign.impression_budget
+                )
+            ).options(selectinload(Campaign.creatives))
+            all_eligible = base_query.all()
+        
         if not all_eligible:
+            # Log for debugging - check Railway logs if ads don't show
+            active_count = self.db.query(Campaign).filter(
+                Campaign.status == CampaignStatus.ACTIVE,
+                Campaign.start_date <= now,
+                Campaign.end_date >= now,
+                Campaign.impressions_served < Campaign.impression_budget
+            ).count()
+            logger.info(
+                "No eligible campaigns. Active campaigns with budget: %d. "
+                "Check admin: campaigns must be ACTIVE, within dates, have budget, and have active creatives.",
+                active_count
+            )
             return None
 
         # Weighted selection: higher priority = more impressions, but ALL ads display
