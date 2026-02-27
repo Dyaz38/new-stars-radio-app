@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     
     # CORS - can be string (comma-separated) or list. Set CORS_ORIGINS on Railway to override.
     CORS_ORIGINS: str | List[str] = (
-        "http://localhost:3000,http://localhost:5173,http://localhost:8000,"
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:8000,"
         "https://newstarsadminpanel.vercel.app"
     )
     

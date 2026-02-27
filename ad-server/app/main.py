@@ -49,11 +49,11 @@ class VercelCORSMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(VercelCORSMiddleware)
 
-# Add CORS middleware - allow exact origins + any *.vercel.app for preview deployments
+# Add CORS middleware - allow exact origins + *.vercel.app + localhost (any port)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins_list(),
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Preview URLs like newstarsadminpanel-xxx-xxx.vercel.app
+    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,6 +86,11 @@ def _cors_headers_for_request(origin: str | None) -> dict:
             "Access-Control-Allow-Credentials": "true",
         }
     if origin.endswith(".vercel.app"):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        }
+    if origin and ("localhost" in origin or "127.0.0.1" in origin):
         return {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
