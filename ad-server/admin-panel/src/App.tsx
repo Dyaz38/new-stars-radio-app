@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AdvertisersPage from "./pages/AdvertisersPage";
 import CampaignsPage from "./pages/CampaignsPage";
 import CreativesPage from "./pages/CreativesPage";
+import SettingsPage from "./pages/SettingsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -55,6 +56,15 @@ function App() {
         element={
           <ProtectedRoute>
             <CreativesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />

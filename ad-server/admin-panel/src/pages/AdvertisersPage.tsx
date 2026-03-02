@@ -111,6 +111,12 @@ export default function AdvertisersPage() {
                 >
                   Creatives
                 </button>
+                <button
+                  onClick={() => navigate("/settings")}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Settings
+                </button>
               </nav>
               <button
                 onClick={() => {

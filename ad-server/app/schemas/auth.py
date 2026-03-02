@@ -16,6 +16,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    """Change password request schema."""
+    current_password: str
+    new_password: str
+
+
 class UserResponse(BaseModel):
     """User response schema."""
     id: str
