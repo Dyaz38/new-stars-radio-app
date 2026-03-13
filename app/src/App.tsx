@@ -60,9 +60,6 @@ const RadioStreamingApp = () => {
   } = useDynamicTheme();
 
   const {
-    isSupported: notificationsSupported,
-    permission: notificationPermission,
-    requestPermission,
     notifyNowPlaying,
     notifyFavoriteArtist,
     notifyListenerMilestone,
@@ -458,39 +455,6 @@ const RadioStreamingApp = () => {
 
         {/* Enhanced Features */}
         <div className="mb-6 space-y-4">
-          {/* Notification Controls */}
-          {notificationsSupported && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-white font-semibold">🔔 Notifications</h3>
-                {notificationPermission === 'granted' && (
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          )}
-        </div>
-
-              {notificationPermission === 'default' && (
-            <button
-                  onClick={requestPermission}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-all mb-2"
-            >
-                  Enable Push Notifications
-            </button>
-              )}
-              
-              {notificationPermission === 'granted' && (
-                <div className="text-sm text-gray-300">
-                  ✅ You'll get notified about new songs and favorite artists
-          </div>
-              )}
-              
-              {notificationPermission === 'denied' && (
-                <div className="text-sm text-red-300">
-                  ❌ Notifications blocked. Enable in browser settings.
-            </div>
-              )}
-          </div>
-          )}
-
           {/* Favorite Artist */}
           {currentSong.artist && currentSong.artist !== 'New Stars Radio' && (
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4">
