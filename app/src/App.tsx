@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Edit3, Play, Pause, Star } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Edit3, Play, Pause } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -62,9 +62,7 @@ const RadioStreamingApp = () => {
   const {
     notifyNowPlaying,
     notifyFavoriteArtist,
-    notifyListenerMilestone,
-    toggleFavoriteArtist,
-    isFavoriteArtist
+    notifyListenerMilestone
   } = useNotifications();
 
   // UI state
@@ -370,34 +368,6 @@ const RadioStreamingApp = () => {
           onToggleLike={toggleLike}
         />
 
-
-        {/* Enhanced Features */}
-        <div className="mb-6 space-y-4">
-          {/* Favorite Artist */}
-          {currentSong.artist && currentSong.artist !== 'New Stars Radio' && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="text-white font-medium">{currentSong.artist}</h4>
-                  <p className="text-gray-300 text-sm">
-                    {isFavoriteArtist(currentSong.artist) ? 'Favorite Artist ⭐' : 'Add to favorites?'}
-                  </p>
-                </div>
-            <button 
-                  onClick={() => toggleFavoriteArtist(currentSong.artist)}
-                  className={`p-2 rounded-lg transition-all ${
-                    isFavoriteArtist(currentSong.artist)
-                      ? 'bg-yellow-500 text-white' 
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                  }`}
-                  title={isFavoriteArtist(currentSong.artist) ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                  <Star className={`w-5 h-5 ${isFavoriteArtist(currentSong.artist) ? 'fill-current' : ''}`} />
-            </button>
-          </div>
-                  </div>
-          )}
-        </div>
 
         {/* Quick Actions */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
