@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { MessageCircle, Calendar, Users, Radio, Signal, Settings, Edit3, Play, Pause, Star } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Edit3, Play, Pause, Star } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -12,7 +12,7 @@ import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
-import type { ScheduleShow, Post } from './types';
+import type { ScheduleShow } from './types';
 
 import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS } from './constants';
 
@@ -70,23 +70,11 @@ const RadioStreamingApp = () => {
   // UI state
   const [currentShow, setCurrentShow] = useState('Morning Drive');
   const [currentDJ, setCurrentDJ] = useState('Sarah Martinez');
-  const [showPostModal, setShowPostModal] = useState(false);
-  const [postContent, setPostContent] = useState('');
   const [showSchedule, setShowSchedule] = useState(false);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
   const [editingShow, setEditingShow] = useState<ScheduleShow | null>(null);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
-  const [recentPosts, setRecentPosts] = useState<Post[]>([
-    { id: 1, content: "🎵 Coming up next: Taylor Swift's latest hit! What's your favorite Taylor song?", time: "2 hours ago", likes: 47 },
-    { id: 2, content: "Beautiful morning here in the studio! ☀️ Perfect weather for some feel-good music.", time: "4 hours ago", likes: 23 }
-  ]);
-
-  // UI helper functions - memoized for performance
-  const textStation = useCallback(() => {
-    // Simulate text integration
-    alert('Text NEWSTARS to request a song!');
-  }, []);
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
@@ -97,20 +85,6 @@ const RadioStreamingApp = () => {
   const shareCurrentSong = useCallback(() => {
     alert(shareMessage);
   }, [shareMessage]);
-
-  const createPost = useCallback(() => {
-    if (postContent.trim()) {
-      const newPost: Post = {
-        id: recentPosts.length + 1,
-        content: postContent,
-        time: "Just now",
-        likes: 0
-      };
-      setRecentPosts([newPost, ...recentPosts]);
-      setPostContent('');
-      setShowPostModal(false);
-    }
-  }, [postContent, recentPosts]);
 
   // Optimized UI handlers
 
@@ -397,62 +371,6 @@ const RadioStreamingApp = () => {
         />
 
 
-        {/* Social Media Section */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Community</h3>
-              <button
-              onClick={() => setShowPostModal(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-lg text-sm transition-all"
-            >
-              Post
-              </button>
-          </div>
-          
-          {/* Recent Posts */}
-          <div className="space-y-4">
-            {recentPosts.map(post => (
-              <div key={post.id} className="bg-white/10 backdrop-blur-md rounded-xl p-4">
-                <p className="text-white text-sm mb-2">{post.content}</p>
-                <div className="flex items-center justify-between text-gray-300 text-xs">
-                  <span>{post.time}</span>
-                  <span>{post.likes} likes</span>
-                  </div>
-              </div>
-            ))}
-            </div>
-
-          {/* Post Modal */}
-          {showPostModal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-white">Share with Community</h3>
-                  <button
-                    onClick={() => setShowPostModal(false)}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    ×
-            </button>
-          </div>
-                <textarea
-                  value={postContent}
-                  onChange={(e) => setPostContent(e.target.value)}
-                  placeholder="What's on your mind about the music?"
-                  className="w-full bg-white/10 text-white placeholder-gray-400 rounded-lg p-3 mb-4 resize-none"
-                  rows={3}
-                />
-                <button
-                  onClick={createPost}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-lg transition-all"
-                >
-                  Post
-                </button>
-                  </div>
-                </div>
-          )}
-                </div>
-
         {/* Enhanced Features */}
         <div className="mb-6 space-y-4">
           {/* Favorite Artist */}
@@ -479,17 +397,6 @@ const RadioStreamingApp = () => {
           </div>
                   </div>
           )}
-        </div>
-
-        {/* Community Features */}
-        <div className="mb-6">
-          <button
-            onClick={textStation}
-            className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl p-4 flex items-center justify-center space-x-2 transition-all"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span className="font-semibold">Text Song Request</span>
-          </button>
         </div>
 
         {/* Quick Actions */}
