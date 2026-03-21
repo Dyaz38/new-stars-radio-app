@@ -256,7 +256,7 @@ const RadioStreamingApp = () => {
 
   // Listener milestone notifications
   useEffect(() => {
-    if (listeners > 0) {
+    if (typeof listeners === 'number' && listeners > 0) {
       notifyListenerMilestone(listeners);
     }
   }, [listeners, notifyListenerMilestone]);
@@ -310,7 +310,9 @@ const RadioStreamingApp = () => {
             )}
             <div className="text-right">
               <p className="text-xs text-gray-300">LIVE</p>
-              <p className="text-xs text-gray-300" data-testid="listeners">{listeners.toLocaleString()} listeners</p>
+              <p className="text-xs text-gray-300" data-testid="listeners">
+                {listeners === null ? '— listeners' : `${listeners.toLocaleString()} listeners`}
+              </p>
             </div>
           </div>
         </div>

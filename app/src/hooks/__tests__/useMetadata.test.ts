@@ -1,21 +1,31 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useMetadata } from '../useMetadata';
-import { API_ENDPOINTS, RADIO_CONFIG } from '../../constants';
+import { RADIO_CONFIG } from '../../constants';
 
 // Mock fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+function mockStreamListeners(listeners: number, ok = true) {
+  return {
+    ok,
+    json: () => Promise.resolve({ listeners }),
+  };
+}
+
 describe('useMetadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.clearAllTimers();
-    vi.useFakeTimers();
-    // Mock fetch to prevent automatic metadata fetching in useEffect
-    mockFetch.mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({})
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(42));
+      }
+      return Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({}),
+      });
     });
   });
 
@@ -26,16 +36,14 @@ describe('useMetadata', () => {
   it('should initialize with default values', async () => {
     const { result } = renderHook(() => useMetadata());
 
-    // Wait for useEffect to complete
-    await act(async () => {
-      vi.runOnlyPendingTimers();
+    await waitFor(() => {
+      expect(result.current.listeners).toBe(42);
     });
 
     expect(result.current.currentSong.title).toBe('New Stars Radio');
     expect(result.current.currentSong.artist).toBe('Live Stream');
     expect(result.current.nextSong.title).toBe('');
     expect(result.current.isLoadingMetadata).toBe(false);
-    expect(result.current.listeners).toBe(2847);
   });
 
   it('should fetch metadata successfully with current and next song', async () => {
@@ -44,34 +52,37 @@ describe('useMetadata', () => {
         name: 'Test Artist - Test Song',
         metadata: {
           artist_name: 'Test Artist',
-          track_title: 'Test Song'
-        }
+          track_title: 'Test Song',
+        },
       },
       next: {
         name: 'Next Artist - Next Song',
         metadata: {
           artist_name: 'Next Artist',
-          track_title: 'Next Song'
-        }
+          track_title: 'Next Song',
+        },
       },
-      listeners: 3000
     };
 
-    // Clear the default mock and set up specific response
-    mockFetch.mockClear();
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ results: [] }) // iTunes API response
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ results: [] }) // iTunes API response for next song
-      });
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(99));
+      }
+      if (url.includes('live-info') || url.includes('airtime')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockApiResponse),
+        });
+      }
+      if (url.includes('itunes.apple.com')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
 
     const { result } = renderHook(() => useMetadata());
 
@@ -84,7 +95,9 @@ describe('useMetadata', () => {
     expect(result.current.currentSong.time).toBe('LIVE');
     expect(result.current.nextSong.title).toBe('Next Song');
     expect(result.current.nextSong.artist).toBe('Next Artist');
-    expect(result.current.listeners).toBe(3000);
+    await waitFor(() => {
+      expect(result.current.listeners).toBe(99);
+    });
   });
 
   it('should handle API failure gracefully', async () => {
@@ -102,31 +115,27 @@ describe('useMetadata', () => {
   });
 
   it('should try multiple API endpoints on failure', async () => {
-    // Clear default mock
-    mockFetch.mockClear();
-    
-    // First endpoint fails
-    mockFetch.mockRejectedValueOnce(new Error('First API failed'));
-    
-    // Second endpoint succeeds
-    const mockApiResponse = {
-      current: {
-        metadata: {
-          artist_name: 'Second API Artist',
-          track_title: 'Second API Song'
-        }
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(1));
       }
-    };
-
-    mockFetch
-      .mockResolvedValueOnce({
+      if (url.includes('newstarsradio.airtime.pro/api/live-info') && !url.includes('live-info-v2')) {
+        return Promise.reject(new Error('First API failed'));
+      }
+      const mockApiResponse = {
+        current: {
+          metadata: {
+            artist_name: 'Second API Artist',
+            track_title: 'Second API Song',
+          },
+        },
+      };
+      return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ results: [] }) // iTunes API response
+        json: () => Promise.resolve(mockApiResponse),
       });
+    });
 
     const { result } = renderHook(() => useMetadata());
 
@@ -134,28 +143,27 @@ describe('useMetadata', () => {
       await result.current.fetchMetadata();
     });
 
-    expect(mockFetch).toHaveBeenCalledTimes(3); // 1 failed + 1 success + 1 iTunes
     expect(result.current.currentSong.title).toBe('Second API Song');
     expect(result.current.currentSong.artist).toBe('Second API Artist');
   });
 
   it('should parse combined artist-title format correctly', async () => {
-    mockFetch.mockClear();
     const mockApiResponse = {
       current: {
-        name: 'Combined Artist - Combined Song Title'
-      }
+        name: 'Combined Artist - Combined Song Title',
+      },
     };
 
-    mockFetch
-      .mockResolvedValueOnce({
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(0));
+      }
+      return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ results: [] })
+        json: () => Promise.resolve(mockApiResponse),
       });
+    });
 
     const { result } = renderHook(() => useMetadata());
 
@@ -168,25 +176,25 @@ describe('useMetadata', () => {
   });
 
   it('should decode HTML entities correctly', async () => {
-    mockFetch.mockClear();
     const mockApiResponse = {
       current: {
         metadata: {
           artist_name: 'Artist &amp; Band',
-          track_title: 'Song &#039;Title&#039; with &quot;Quotes&quot;'
-        }
-      }
+          track_title: 'Song &#039;Title&#039; with &quot;Quotes&quot;',
+        },
+      },
     };
 
-    mockFetch
-      .mockResolvedValueOnce({
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(0));
+      }
+      return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve(mockApiResponse)
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ results: [] })
+        json: () => Promise.resolve(mockApiResponse),
       });
+    });
 
     const { result } = renderHook(() => useMetadata());
 
@@ -206,15 +214,32 @@ describe('useMetadata', () => {
     expect(result.current.getGradientClass('not-gradient')).toBe('from-purple-500 to-pink-500');
   });
 
-  it('should update listener count periodically', () => {
-    const { result } = renderHook(() => useMetadata());
-    const initialListeners = result.current.listeners;
-
-    act(() => {
-      vi.advanceTimersByTime(RADIO_CONFIG.LISTENER_UPDATE_INTERVAL);
+  it('should update listener count from stream API on poll interval', async () => {
+    vi.useFakeTimers();
+    let streamCount = 100;
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        const n = streamCount;
+        streamCount += 1;
+        return Promise.resolve(mockStreamListeners(n));
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
     });
 
-    // Listener count should change (due to random simulation)
-    expect(result.current.listeners).not.toBe(initialListeners);
+    const { result } = renderHook(() => useMetadata());
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    const first = result.current.listeners;
+    expect(first).not.toBeNull();
+    expect(first).toBeGreaterThanOrEqual(100);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RADIO_CONFIG.LISTENER_POLL_INTERVAL);
+    });
+    expect(result.current.listeners).not.toBe(first);
+    expect(result.current.listeners).toBeGreaterThan(first!);
   });
 });

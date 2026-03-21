@@ -6,7 +6,8 @@ export const RADIO_CONFIG = {
   STREAM_URL: 'https://newstarsradio.out.airtime.pro/newstarsradio_a',
   DEFAULT_VOLUME: 75,
   METADATA_REFRESH_INTERVAL: 60000, // 60 seconds (reduced frequency)
-  LISTENER_UPDATE_INTERVAL: 5000,   // 5 seconds
+  /** Poll Icecast listener count (proxied by backend; avoids CORS). */
+  LISTENER_POLL_INTERVAL: 30000, // 30 seconds
   SCHEDULE_UPDATE_INTERVAL: 60000,  // 1 minute
 } as const;
 
@@ -25,6 +26,9 @@ export const API_ENDPOINTS = {
   GENIUS_SONGS: 'https://api.genius.com/songs',
   AD_SERVER: (import.meta.env.VITE_AD_SERVER_URL || 'https://new-stars-radio-app-production.up.railway.app/api/v1').replace(/\/$/, '')
 } as const;
+
+/** Real-time listener count (Icecast via ad server proxy). */
+export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/listeners`;
 
 // MusicBrainz API configuration
 export const MUSICBRAINZ_CONFIG = {

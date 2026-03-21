@@ -72,7 +72,8 @@ test.describe('New Stars Radio - Mobile Experience', () => {
   test('should show listener count', async ({ page }) => {
     const listenersElement = page.locator('[data-testid="listeners"]');
     await expect(listenersElement).toBeVisible();
-    await expect(listenersElement).toContainText(/\d+.*listeners?/i);
+    // Live count from API (digits) or placeholder while loading
+    await expect(listenersElement).toContainText(/listeners/i);
   });
 
   test('should maintain responsive design on different mobile sizes', async ({ page }) => {

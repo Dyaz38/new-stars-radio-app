@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     # Redis (for caching - optional for MVP)
     REDIS_URL: Optional[str] = None
     CACHE_TTL: int = 300  # 5 minutes
+
+    # Icecast (listener count proxy — public status page, not JSON API)
+    ICECAST_STATUS_URL: str = "http://newstarsradio.out.airtime.pro:8000/status.xsl"
+    ICECAST_MOUNT: str = "/newstarsradio_a"
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

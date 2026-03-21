@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Song, AirtimeApiResponse, MusicBrainzSearchResponse, CoverArtArchiveResponse, ArtworkResult } from '../types';
-import { API_ENDPOINTS, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG } from '../constants';
+import { API_ENDPOINTS, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
 
 export const useMetadata = () => {
   const [currentSong, setCurrentSong] = useState<Song>({
@@ -16,7 +16,8 @@ export const useMetadata = () => {
     coverArt: ''
   });
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
-  const [listeners, setListeners] = useState(2847);
+  /** Live Icecast count from ad-server proxy; null until first successful fetch. */
+  const [listeners, setListeners] = useState<number | null>(null);
   const [artworkCache, setArtworkCache] = useState<Map<string, string>>(new Map());
 
   // Decode HTML entities and fix character encoding issues
@@ -400,11 +401,6 @@ export const useMetadata = () => {
               }
             }
             
-            // Update listener count if available
-            if (data.listeners !== undefined) {
-              setListeners(parseInt(String(data.listeners)) || listeners);
-            }
-            
             if (data.current || trackInfo) {
               console.log(`🎶 Updated: "${artist}" - "${title}"`);
               return; // Success, exit loop
@@ -435,7 +431,7 @@ export const useMetadata = () => {
     } finally {
       setIsLoadingMetadata(false);
     }
-  }, [decodeHtmlEntities, getEnhancedCoverArt, listeners]);
+  }, [decodeHtmlEntities, getEnhancedCoverArt]);
 
   // Set up metadata fetching
   useEffect(() => {
@@ -448,13 +444,30 @@ export const useMetadata = () => {
     return () => clearInterval(metadataInterval);
   }, [fetchMetadata]);
 
-  // Simulate listener count updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setListeners(prev => prev + Math.floor(Math.random() * 10) - 4);
-    }, RADIO_CONFIG.LISTENER_UPDATE_INTERVAL);
-    return () => clearInterval(interval);
+  // Real-time listener count (Icecast via backend — avoids browser CORS to port 8000)
+  const fetchStreamListeners = useCallback(async () => {
+    try {
+      const url = getStreamListenersUrl();
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (typeof data.listeners === 'number' && Number.isFinite(data.listeners)) {
+        setListeners(Math.max(0, Math.floor(data.listeners)));
+      }
+    } catch {
+      // Keep last known value; UI shows "—" until first success
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStreamListeners();
+    const interval = setInterval(fetchStreamListeners, RADIO_CONFIG.LISTENER_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchStreamListeners]);
 
   // Function to refresh artwork for current song
   const refreshCurrentArtwork = useCallback(async () => {
