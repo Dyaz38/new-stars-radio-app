@@ -334,16 +334,16 @@ const RadioStreamingApp = () => {
               </div>
             </div>
 
-        {/* Now Playing */}
-        <NowPlaying
-          currentSong={currentSong}
-          nextSong={nextSong}
-          isLoadingMetadata={isLoadingMetadata}
-          onRefreshMetadata={fetchMetadata}
-          onRefreshArtwork={refreshCurrentArtwork}
-          onShareCurrentSong={shareCurrentSong}
-          getGradientClass={getGradientClass}
+        {/* Player Controls — above Now Playing */}
+        <PlayerControls
+          isPlaying={isPlaying}
+          isLoading={isLoading}
+          volume={volume}
+          isMuted={isMuted}
           isLiked={isLiked}
+          onTogglePlayPause={togglePlayPause}
+          onVolumeChange={handleVolumeChange}
+          onToggleMute={toggleMute}
           onToggleLike={toggleLike}
         />
 
@@ -357,16 +357,16 @@ const RadioStreamingApp = () => {
           />
           </div>
 
-        {/* Player Controls */}
-        <PlayerControls
-          isPlaying={isPlaying}
-          isLoading={isLoading}
-          volume={volume}
-          isMuted={isMuted}
+        {/* Now Playing */}
+        <NowPlaying
+          currentSong={currentSong}
+          nextSong={nextSong}
+          isLoadingMetadata={isLoadingMetadata}
+          onRefreshMetadata={fetchMetadata}
+          onRefreshArtwork={refreshCurrentArtwork}
+          onShareCurrentSong={shareCurrentSong}
+          getGradientClass={getGradientClass}
           isLiked={isLiked}
-          onTogglePlayPause={togglePlayPause}
-          onVolumeChange={handleVolumeChange}
-          onToggleMute={toggleMute}
           onToggleLike={toggleLike}
         />
 
