@@ -18,9 +18,11 @@ Body (JSON):
 
 The radio app sends this automatically when the user taps the heart (in addition to local `localStorage` favorites).
 
-### `GET /api/v1/likes/catalog` (admin only)
+### `GET /api/v1/likes/catalog` (authenticated Ad Manager)
 
-Requires `Authorization: Bearer <JWT>` for an admin user.
+Requires `Authorization: Bearer <JWT>` for any logged-in user (admin or sales rep).
+
+In the **Ad Manager** UI: open **Song Likes** in the top navigation (same app as Campaigns / Settings).
 
 Returns aggregated rows per song:
 

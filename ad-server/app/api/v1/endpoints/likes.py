@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import case, desc, func
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_admin
+from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.song_like import SongLikeRecord
 from app.models.user import User
@@ -71,7 +71,7 @@ async def record_song_like(
 )
 async def get_like_catalog(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin),
+    _: User = Depends(get_current_user),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):

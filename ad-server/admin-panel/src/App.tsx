@@ -6,6 +6,7 @@ import AdvertisersPage from "./pages/AdvertisersPage";
 import CampaignsPage from "./pages/CampaignsPage";
 import CreativesPage from "./pages/CreativesPage";
 import SettingsPage from "./pages/SettingsPage";
+import SongLikesPage from "./pages/SongLikesPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -65,6 +66,15 @@ function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/song-likes"
+        element={
+          <ProtectedRoute>
+            <SongLikesPage />
           </ProtectedRoute>
         }
       />
