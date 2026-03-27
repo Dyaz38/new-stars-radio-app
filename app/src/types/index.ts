@@ -5,6 +5,8 @@ export interface Song {
   artist: string;
   time: string;
   coverArt?: string;
+  /** From stream/Airtime metadata when available */
+  genre?: string;
 }
 
 export interface ScheduleShow {
@@ -30,6 +32,7 @@ export interface AirtimeApiResponse {
       artist_name?: string;
       track_title?: string;
       title?: string;
+      genre?: string;
     };
   };
   next?: {
@@ -38,6 +41,7 @@ export interface AirtimeApiResponse {
       artist_name?: string;
       track_title?: string;
       title?: string;
+      genre?: string;
     };
   };
   listeners?: number;

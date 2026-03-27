@@ -8,6 +8,8 @@ export interface SyncSongLikePayload {
   artist: string;
   title: string;
   action: SongLikeAction;
+  /** From Airtime metadata when available */
+  genre?: string;
 }
 
 /**

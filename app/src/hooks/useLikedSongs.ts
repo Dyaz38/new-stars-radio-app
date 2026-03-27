@@ -93,6 +93,9 @@ export const useLikedSongs = () => {
         artist: currentSong.artist,
         title: currentSong.title,
         action,
+        ...(currentSong.genre?.trim()
+          ? { genre: currentSong.genre.trim() }
+          : {}),
       });
 
       if (existingLikedSong) {

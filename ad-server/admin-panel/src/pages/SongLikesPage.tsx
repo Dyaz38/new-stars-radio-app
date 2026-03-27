@@ -7,6 +7,7 @@ interface SongCatalogRow {
   song_key: string;
   artist: string;
   title: string;
+  genre: string | null;
   like_events: number;
   unlike_events: number;
   net_score: number;
@@ -31,6 +32,7 @@ function downloadCsv(rows: SongCatalogRow[], filename: string) {
   const headers = [
     "Artist",
     "Title",
+    "Genre",
     "Song key",
     "Like events",
     "Unlike events",
@@ -43,6 +45,7 @@ function downloadCsv(rows: SongCatalogRow[], filename: string) {
       [
         escapeCsvCell(r.artist),
         escapeCsvCell(r.title),
+        escapeCsvCell(r.genre ?? ""),
         escapeCsvCell(r.song_key),
         String(r.like_events),
         String(r.unlike_events),
@@ -170,6 +173,9 @@ export default function SongLikesPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Title
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Genre
+                      </th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Like events
                       </th>
@@ -193,6 +199,9 @@ export default function SongLikesPage() {
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={row.title}>
                             {row.title}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 max-w-[160px] truncate" title={row.genre ?? ""}>
+                            {row.genre ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                             {row.like_events.toLocaleString()}
@@ -222,7 +231,7 @@ export default function SongLikesPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                           No likes recorded yet. When listeners tap ❤️ on the radio app (after deploy +
                           migration), counts appear here.
                         </td>

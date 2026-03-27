@@ -43,12 +43,14 @@ async def record_song_like(
 
     ua = (user_agent or "")[:2000] if user_agent else None
 
+    genre_val = body.genre[:200] if body.genre else None
     row = SongLikeRecord(
         song_key=body.song_key[:512],
         artist=body.artist[:500],
         title=body.title[:500],
         listener_id=body.listener_id[:64],
         action=body.action,
+        genre=genre_val,
         user_agent=ua,
     )
     db.add(row)
@@ -82,11 +84,15 @@ async def get_like_catalog(
         func.sum(case((SongLikeRecord.action == "unlike", 1), else_=0)), 0
     ).label("unlike_events")
 
+    # Prefer a non-null genre when the same song has multiple rows (e.g. older rows without genre)
+    genre_display = func.max(SongLikeRecord.genre).label("genre")
+
     base_q = (
         db.query(
             SongLikeRecord.song_key,
             SongLikeRecord.artist,
             SongLikeRecord.title,
+            genre_display,
             like_events,
             unlike_events,
             func.max(SongLikeRecord.created_at).label("last_event_at"),
@@ -102,6 +108,7 @@ async def get_like_catalog(
             SongLikeRecord.song_key,
             SongLikeRecord.artist,
             SongLikeRecord.title,
+            genre_display,
             like_events,
             unlike_events,
             func.max(SongLikeRecord.created_at).label("last_event_at"),
@@ -118,6 +125,7 @@ async def get_like_catalog(
             song_key=r.song_key,
             artist=r.artist,
             title=r.title,
+            genre=r.genre,
             like_events=int(r.like_events or 0),
             unlike_events=int(r.unlike_events or 0),
             net_score=int(r.like_events or 0) - int(r.unlike_events or 0),

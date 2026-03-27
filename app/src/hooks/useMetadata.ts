@@ -316,6 +316,7 @@ export const useMetadata = () => {
             let artist = 'New Stars Radio';
             let title = 'Live Stream';
             let trackInfo = null;
+            let genre: string | undefined;
             
             if (data.current) {
               // Airtime Pro live-info format
@@ -333,6 +334,9 @@ export const useMetadata = () => {
                 } else if (data.current.metadata.title) {
                   title = decodeHtmlEntities(data.current.metadata.title);
                 }
+                if (data.current.metadata.genre) {
+                  genre = decodeHtmlEntities(String(data.current.metadata.genre));
+                }
               }
               
               // If we have separate artist and title, use them
@@ -342,7 +346,8 @@ export const useMetadata = () => {
                   title: title,
                   artist: artist,
                   time: 'LIVE',
-                  coverArt
+                  coverArt,
+                  ...(genre ? { genre } : {}),
                 });
               } else if (trackInfo) {
                 // Parse combined format "Artist - Title"
@@ -355,7 +360,8 @@ export const useMetadata = () => {
                   title: parsedTitle || 'Live Stream',
                   artist: parsedArtist || 'New Stars Radio',
                   time: 'LIVE',
-                  coverArt
+                  coverArt,
+                  ...(genre ? { genre } : {}),
                 });
               }
               
@@ -363,11 +369,15 @@ export const useMetadata = () => {
               if (data.next) {
                 let nextArtist = 'New Stars Radio';
                 let nextTitle = '';
+                let nextGenre: string | undefined;
                 
                 // First priority: use metadata fields (most reliable)
                 if (data.next.metadata && data.next.metadata.artist_name && data.next.metadata.track_title) {
                   nextArtist = decodeHtmlEntities(data.next.metadata.artist_name);
                   nextTitle = decodeHtmlEntities(data.next.metadata.track_title);
+                  if (data.next.metadata.genre) {
+                    nextGenre = decodeHtmlEntities(String(data.next.metadata.genre));
+                  }
                   console.log(`🎵 Next song from metadata: "${nextArtist}" - "${nextTitle}"`);
                 }
                 // Fallback: parse the name field
@@ -378,6 +388,9 @@ export const useMetadata = () => {
                     : ['New Stars Radio', nextTrackInfo];
                   nextArtist = artist;
                   nextTitle = title;
+                  if (data.next.metadata?.genre) {
+                    nextGenre = decodeHtmlEntities(String(data.next.metadata.genre));
+                  }
                   console.log(`🎵 Next song from name: "${nextArtist}" - "${nextTitle}"`);
                 }
                 
@@ -388,7 +401,8 @@ export const useMetadata = () => {
                     title: nextTitle,
                     artist: nextArtist,
                     time: 'UP NEXT',
-                    coverArt: nextCoverArt
+                    coverArt: nextCoverArt,
+                    ...(nextGenre ? { genre: nextGenre } : {}),
                   });
                   console.log(`✅ Next song set: "${nextArtist}" - "${nextTitle}"`);
                 } else {

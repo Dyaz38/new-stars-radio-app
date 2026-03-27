@@ -26,6 +26,8 @@ class SongLikeRecord(Base):
     # Anonymous per-browser id (UUID from client localStorage)
     listener_id = Column(String(64), nullable=False, index=True)
     action = Column(String(16), nullable=False)  # "like" | "unlike"
+    # From Airtime/stream metadata when available (e.g. Hip-Hop, Pop)
+    genre = Column(String(200), nullable=True)
     # Optional client metadata for analytics
     user_agent = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
