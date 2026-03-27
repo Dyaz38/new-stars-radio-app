@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Song, AirtimeApiResponse, MusicBrainzSearchResponse, CoverArtArchiveResponse, ArtworkResult } from '../types';
 import { API_ENDPOINTS, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
+import { normalizeAirtimeLiveInfo } from '../api/airtimeLiveInfo';
 
 export const useMetadata = () => {
   const [currentSong, setCurrentSong] = useState<Song>({
@@ -311,6 +312,9 @@ export const useMetadata = () => {
           if (response.ok) {
             const data: AirtimeApiResponse = await response.json();
             console.log('📡 Metadata response:', data);
+
+            // v1: root `current` / `next`; v2: `tracks.current` / `tracks.next`
+            const { current: currentTrack, next: nextTrack } = normalizeAirtimeLiveInfo(data);
             
             // Handle Airtime Pro API response formats
             let artist = 'New Stars Radio';
@@ -318,24 +322,24 @@ export const useMetadata = () => {
             let trackInfo = null;
             let genre: string | undefined;
             
-            if (data.current) {
+            if (currentTrack) {
               // Airtime Pro live-info format
-              if (data.current.name) {
-                trackInfo = decodeHtmlEntities(data.current.name);
+              if (currentTrack.name) {
+                trackInfo = decodeHtmlEntities(currentTrack.name);
               }
               
               // Check for separate artist and title fields
-              if (data.current.metadata) {
-                if (data.current.metadata.artist_name) {
-                  artist = decodeHtmlEntities(data.current.metadata.artist_name);
+              if (currentTrack.metadata) {
+                if (currentTrack.metadata.artist_name) {
+                  artist = decodeHtmlEntities(currentTrack.metadata.artist_name);
                 }
-                if (data.current.metadata.track_title) {
-                  title = decodeHtmlEntities(data.current.metadata.track_title);
-                } else if (data.current.metadata.title) {
-                  title = decodeHtmlEntities(data.current.metadata.title);
+                if (currentTrack.metadata.track_title) {
+                  title = decodeHtmlEntities(currentTrack.metadata.track_title);
+                } else if (currentTrack.metadata.title) {
+                  title = decodeHtmlEntities(currentTrack.metadata.title);
                 }
-                if (data.current.metadata.genre) {
-                  genre = decodeHtmlEntities(String(data.current.metadata.genre));
+                if (currentTrack.metadata.genre) {
+                  genre = decodeHtmlEntities(String(currentTrack.metadata.genre));
                 }
               }
               
@@ -366,30 +370,30 @@ export const useMetadata = () => {
               }
               
               // Handle next song if available
-              if (data.next) {
+              if (nextTrack) {
                 let nextArtist = 'New Stars Radio';
                 let nextTitle = '';
                 let nextGenre: string | undefined;
                 
                 // First priority: use metadata fields (most reliable)
-                if (data.next.metadata && data.next.metadata.artist_name && data.next.metadata.track_title) {
-                  nextArtist = decodeHtmlEntities(data.next.metadata.artist_name);
-                  nextTitle = decodeHtmlEntities(data.next.metadata.track_title);
-                  if (data.next.metadata.genre) {
-                    nextGenre = decodeHtmlEntities(String(data.next.metadata.genre));
+                if (nextTrack.metadata && nextTrack.metadata.artist_name && nextTrack.metadata.track_title) {
+                  nextArtist = decodeHtmlEntities(nextTrack.metadata.artist_name);
+                  nextTitle = decodeHtmlEntities(nextTrack.metadata.track_title);
+                  if (nextTrack.metadata.genre) {
+                    nextGenre = decodeHtmlEntities(String(nextTrack.metadata.genre));
                   }
                   console.log(`🎵 Next song from metadata: "${nextArtist}" - "${nextTitle}"`);
                 }
                 // Fallback: parse the name field
-                else if (data.next.name) {
-                  const nextTrackInfo = decodeHtmlEntities(data.next.name);
+                else if (nextTrack.name) {
+                  const nextTrackInfo = decodeHtmlEntities(nextTrack.name);
                   const [artist, title] = nextTrackInfo.includes(' - ') 
                     ? nextTrackInfo.split(' - ', 2)
                     : ['New Stars Radio', nextTrackInfo];
                   nextArtist = artist;
                   nextTitle = title;
-                  if (data.next.metadata?.genre) {
-                    nextGenre = decodeHtmlEntities(String(data.next.metadata.genre));
+                  if (nextTrack.metadata?.genre) {
+                    nextGenre = decodeHtmlEntities(String(nextTrack.metadata.genre));
                   }
                   console.log(`🎵 Next song from name: "${nextArtist}" - "${nextTitle}"`);
                 }
@@ -415,7 +419,7 @@ export const useMetadata = () => {
               }
             }
             
-            if (data.current || trackInfo) {
+            if (currentTrack || trackInfo) {
               console.log(`🎶 Updated: "${artist}" - "${title}"`);
               return; // Success, exit loop
             }

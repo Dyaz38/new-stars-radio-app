@@ -100,6 +100,50 @@ describe('useMetadata', () => {
     });
   });
 
+  it('should parse live-info-v2 shape (tracks.current) including genre', async () => {
+    const mockApiResponse = {
+      tracks: {
+        current: {
+          metadata: {
+            artist_name: 'V2 Artist',
+            track_title: 'V2 Song',
+            genre: 'Hip-Hop',
+          },
+        },
+      },
+    };
+
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String(input);
+      if (url.includes('/stream/listeners')) {
+        return Promise.resolve(mockStreamListeners(0));
+      }
+      if (url.includes('live-info') || url.includes('airtime')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockApiResponse),
+        });
+      }
+      if (url.includes('itunes.apple.com')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+    });
+
+    const { result } = renderHook(() => useMetadata());
+
+    await act(async () => {
+      await result.current.fetchMetadata();
+    });
+
+    expect(result.current.currentSong.artist).toBe('V2 Artist');
+    expect(result.current.currentSong.title).toBe('V2 Song');
+    expect(result.current.currentSong.genre).toBe('Hip-Hop');
+  });
+
   it('should handle API failure gracefully', async () => {
     mockFetch.mockRejectedValue(new Error('API Error'));
 

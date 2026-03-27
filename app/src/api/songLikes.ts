@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '../constants';
 import { getOrCreateListenerId } from '../utils/listenerId';
+import { fetchGenreForCurrentTrackIfMatch } from './airtimeLiveInfo';
 
 export type SongLikeAction = 'like' | 'unlike';
 
@@ -18,8 +19,20 @@ export interface SyncSongLikePayload {
 export async function syncSongLikeToServer(payload: SyncSongLikePayload): Promise<void> {
   const base = API_ENDPOINTS.AD_SERVER.replace(/\/$/, '');
   const url = `${base}/likes/`;
+
+  let genre = payload.genre?.trim();
+  if (!genre) {
+    try {
+      const fromAirtime = await fetchGenreForCurrentTrackIfMatch(payload.artist, payload.title);
+      if (fromAirtime) genre = fromAirtime;
+    } catch {
+      // ignore; send without genre
+    }
+  }
+
   const body = {
     ...payload,
+    ...(genre ? { genre } : {}),
     listener_id: getOrCreateListenerId(),
   };
 
