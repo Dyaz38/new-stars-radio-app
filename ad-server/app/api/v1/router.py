@@ -4,7 +4,7 @@ API v1 router that combines all endpoint routers.
 from fastapi import APIRouter
 
 # Import endpoint routers
-from app.api.v1.endpoints import ads, auth, advertisers, campaigns, creatives, reports, stream_stats
+from app.api.v1.endpoints import ads, auth, advertisers, campaigns, creatives, reports, stream_stats, likes
 
 # Create main API router
 api_router = APIRouter()
@@ -17,6 +17,7 @@ api_router.include_router(campaigns.router, prefix="/campaigns", tags=["Campaign
 api_router.include_router(creatives.router, prefix="/creatives", tags=["Creatives"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(stream_stats.router, prefix="/stream", tags=["Stream"])
+api_router.include_router(likes.router, prefix="/likes", tags=["Song likes"])
 
 # Health check endpoint
 @api_router.get("/health")

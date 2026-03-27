@@ -22,6 +22,7 @@ RATE_LIMITS = {
     "/api/v1/ads/request": (100, 60),  # 100 requests per 60 seconds
     "/api/v1/ads/tracking/impression": (200, 60),  # 200 requests per 60 seconds
     "/api/v1/ads/tracking/click": (200, 60),  # 200 requests per 60 seconds
+    "/api/v1/likes": (120, 60),  # radio app like/unlike sync
 }
 
 # Default rate limit for unspecified endpoints
@@ -46,6 +47,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         # Skip rate limiting for health check and docs
         if request.url.path in ["/health", "/docs", "/redoc", "/openapi.json"]:
+            return await call_next(request)
+        if request.method == "OPTIONS":
             return await call_next(request)
         
         # Get client IP

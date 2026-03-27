@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Song, LikedSong, LikeData } from '../types';
 import { STORAGE_KEYS } from '../constants';
+import { syncSongLikeToServer } from '../api/songLikes';
 
 export const useLikedSongs = () => {
   const [likedSongs, setLikedSongs] = useState<LikeData>({});
@@ -85,7 +86,15 @@ export const useLikedSongs = () => {
     
     setLikedSongs(prev => {
       const existingLikedSong = prev[songId];
-      
+      const action = existingLikedSong ? 'unlike' : 'like';
+
+      void syncSongLikeToServer({
+        song_key: songId,
+        artist: currentSong.artist,
+        title: currentSong.title,
+        action,
+      });
+
       if (existingLikedSong) {
         // Song is already liked, remove it (unlike)
         stopTrackingPlaytime();

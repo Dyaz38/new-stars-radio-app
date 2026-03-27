@@ -21,7 +21,8 @@ from app.models import (
     Campaign,
     AdCreative,
     Impression,
-    Click
+    Click,
+    SongLikeRecord,
 )
 
 # this is the Alembic Config object, which provides

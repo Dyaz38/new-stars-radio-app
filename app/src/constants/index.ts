@@ -50,6 +50,8 @@ export const STORAGE_KEYS = {
   SCHEDULE: 'newstarsradio-schedule',
   USER_PREFERENCES: 'newstarsradio-preferences',
   LIKED_SONGS: 'newstarsradio-liked-songs',
+  /** Anonymous per-device id for server-side like catalog */
+  LISTENER_ID: 'newstarsradio-listener-id',
 } as const;
 
 export const GRADIENT_CLASSES = [
