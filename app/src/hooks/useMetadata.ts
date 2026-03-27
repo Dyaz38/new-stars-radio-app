@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Song, AirtimeApiResponse, MusicBrainzSearchResponse, CoverArtArchiveResponse, ArtworkResult } from '../types';
 import { API_ENDPOINTS, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
 import { normalizeAirtimeLiveInfo } from '../api/airtimeLiveInfo';
+import { decodeHtmlEntities } from '../utils/decodeHtmlEntities';
 
 export const useMetadata = () => {
   const [currentSong, setCurrentSong] = useState<Song>({
@@ -20,49 +21,6 @@ export const useMetadata = () => {
   /** Live Icecast count from ad-server proxy; null until first successful fetch. */
   const [listeners, setListeners] = useState<number | null>(null);
   const [artworkCache, setArtworkCache] = useState<Map<string, string>>(new Map());
-
-  // Decode HTML entities and fix character encoding issues
-  const decodeHtmlEntities = useCallback((text: string): string => {
-    if (!text) return text;
-    
-    // Handle HTML entities
-    let decoded = text
-      .replace(/&amp;/g, '&')
-      .replace(/&#39;/g, "'")
-      .replace(/&#039;/g, "'")
-      .replace(/&#x27;/g, "'")
-      .replace(/&apos;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&#34;/g, '"')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&#160;/g, ' ');
-
-    // Handle Unicode entities
-    decoded = decoded
-      .replace(/&#8217;/g, "'")
-      .replace(/&#8216;/g, "'")
-      .replace(/&#8220;/g, '"')
-      .replace(/&#8221;/g, '"')
-      .replace(/&#8211;/g, '–')
-      .replace(/&#8212;/g, '—')
-      .replace(/&#8230;/g, '...')
-      .replace(/&#169;/g, '©')
-      .replace(/&#174;/g, '®')
-      .replace(/&#8482;/g, '™');
-
-    // Browser native decoding for remaining entities
-    try {
-      const textArea = document.createElement('textarea');
-      textArea.innerHTML = decoded;
-      decoded = textArea.value;
-    } catch (e) {
-      console.warn('Browser decoding failed, using manual replacements only');
-    }
-    
-    return decoded.trim();
-  }, []);
 
   // Rate limiter for MusicBrainz API (1 call per second max)
   const [lastMusicBrainzCall, setLastMusicBrainzCall] = useState<number>(0);
@@ -449,7 +407,7 @@ export const useMetadata = () => {
     } finally {
       setIsLoadingMetadata(false);
     }
-  }, [decodeHtmlEntities, getEnhancedCoverArt]);
+  }, [getEnhancedCoverArt]);
 
   // Set up metadata fetching
   useEffect(() => {

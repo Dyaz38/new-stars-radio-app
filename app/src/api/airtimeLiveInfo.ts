@@ -1,9 +1,10 @@
 /**
- * Airtime Pro live-info (v1) exposes current/next at the root.
+ * Airtime Pro live-info (v1) exposes current/next/previous at the root.
  * live-info-v2 nests the same under `tracks`. Normalize so both work everywhere.
  */
 
 import { API_ENDPOINTS } from '../constants';
+import { decodeHtmlEntities } from '../utils/decodeHtmlEntities';
 
 export type AirtimeTrackBlock = {
   name?: string;
@@ -18,6 +19,7 @@ export type AirtimeTrackBlock = {
 export interface NormalizedAirtimeLiveInfo {
   current?: AirtimeTrackBlock;
   next?: AirtimeTrackBlock;
+  previous?: AirtimeTrackBlock;
 }
 
 export function normalizeAirtimeLiveInfo(data: unknown): NormalizedAirtimeLiveInfo {
@@ -28,6 +30,7 @@ export function normalizeAirtimeLiveInfo(data: unknown): NormalizedAirtimeLiveIn
     return {
       current: d.current as AirtimeTrackBlock,
       next: d.next as AirtimeTrackBlock | undefined,
+      previous: d.previous as AirtimeTrackBlock | undefined,
     };
   }
 
@@ -37,6 +40,7 @@ export function normalizeAirtimeLiveInfo(data: unknown): NormalizedAirtimeLiveIn
     return {
       current: t.current as AirtimeTrackBlock | undefined,
       next: t.next as AirtimeTrackBlock | undefined,
+      previous: t.previous as AirtimeTrackBlock | undefined,
     };
   }
 
@@ -56,14 +60,20 @@ const LIVE_INFO_URLS = API_ENDPOINTS.METADATA.filter((u) => u.includes('/api/liv
 
 /**
  * When the UI state has no genre, fetch live-info and return genre only if
- * the now-playing track matches the liked song (artist + title).
+ * we find a matching track. We check current, then previous, then next — the
+ * scheduler often advances between "now playing" in the UI and this request,
+ * so the liked song may appear under `previous` while `current` is already
+ * the next track.
+ *
+ * Airtime often returns HTML entities in strings (e.g. Boo&#039;d Up); we decode
+ * before matching so keys align with the decoded UI strings.
  */
 export async function fetchGenreForCurrentTrackIfMatch(
   artist: string,
   title: string
 ): Promise<string | undefined> {
-  const wantA = normKey(artist);
-  const wantT = normKey(title);
+  const wantA = normKey(decodeHtmlEntities(artist));
+  const wantT = normKey(decodeHtmlEntities(title));
   if (!wantA || !wantT) return undefined;
 
   for (const url of LIVE_INFO_URLS) {
@@ -75,20 +85,33 @@ export async function fetchGenreForCurrentTrackIfMatch(
       });
       if (!res.ok) continue;
       const json: unknown = await res.json();
-      const { current } = normalizeAirtimeLiveInfo(json);
-      const m = current?.metadata;
-      if (!m) continue;
+      const { current, previous, next } = normalizeAirtimeLiveInfo(json);
 
-      const a = m.artist_name ? normKey(String(m.artist_name)) : '';
-      const t = m.track_title
-        ? normKey(String(m.track_title))
-        : m.title
-          ? normKey(String(m.title))
-          : '';
-      const g = m.genre != null && String(m.genre).trim() !== '' ? String(m.genre).trim() : '';
+      /** Order: current first, then previous (common race when liking near a transition), then next */
+      const candidates: AirtimeTrackBlock[] = [current, previous, next].filter(
+        (b): b is AirtimeTrackBlock => b != null && typeof b === 'object'
+      );
 
-      if (a && t && a === wantA && t === wantT && g) {
-        return g.length > 200 ? g.slice(0, 200) : g;
+      for (const block of candidates) {
+        const m = block.metadata;
+        if (!m) continue;
+
+        const rawArtist = m.artist_name != null ? String(m.artist_name) : '';
+        const rawTitle =
+          m.track_title != null ? String(m.track_title) : m.title != null ? String(m.title) : '';
+
+        const a = rawArtist ? normKey(decodeHtmlEntities(rawArtist)) : '';
+        const t = rawTitle ? normKey(decodeHtmlEntities(rawTitle)) : '';
+        const gRaw = m.genre != null && String(m.genre).trim() !== '' ? String(m.genre).trim() : '';
+
+        if (!a || !t || !gRaw) continue;
+
+        if (a === wantA && t === wantT) {
+          const g = decodeHtmlEntities(gRaw);
+          const trimmed = g.trim();
+          if (!trimmed) continue;
+          return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+        }
       }
     } catch {
       // try next URL
