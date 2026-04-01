@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # Icecast (listener count proxy — public status page, not JSON API)
     ICECAST_STATUS_URL: str = "http://newstarsradio.out.airtime.pro:8000/status.xsl"
     ICECAST_MOUNT: str = "/newstarsradio_a"
+
+    # Airtime Pro live-info JSON (server-side genre resolution for song likes)
+    AIRTIME_LIVE_INFO_URL: str = "https://newstarsradio.airtime.pro/api/live-info"
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

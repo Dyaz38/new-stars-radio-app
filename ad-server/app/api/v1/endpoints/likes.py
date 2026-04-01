@@ -18,6 +18,7 @@ from app.schemas.song_like import (
     SongCatalogResponse,
     SongCatalogRow,
 )
+from app.integrations.airtime_genre import resolve_genre_from_airtime
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,11 @@ async def record_song_like(
     ua = (user_agent or "")[:2000] if user_agent else None
 
     genre_val = body.genre[:200] if body.genre else None
+    if not genre_val:
+        resolved = await resolve_genre_from_airtime(body.artist, body.title)
+        if resolved:
+            genre_val = resolved[:200]
+
     row = SongLikeRecord(
         song_key=body.song_key[:512],
         artist=body.artist[:500],
