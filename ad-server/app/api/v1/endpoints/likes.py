@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.song_like import (
     SongLikeCreate,
     SongLikeCreateResponse,
+    SongCatalogClearResponse,
     SongCatalogResponse,
     SongCatalogRow,
 )
@@ -146,3 +147,20 @@ async def get_like_catalog(
         offset=offset,
         limit=limit,
     )
+
+
+@router.delete(
+    "/catalog",
+    response_model=SongCatalogClearResponse,
+    summary="Delete all song like events (admin)",
+    description="Removes every row from song_like_records. The aggregated catalog becomes empty.",
+)
+async def clear_like_catalog(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Destructive: clears all listener like/unlike history. Requires admin JWT."""
+    deleted = db.query(SongLikeRecord).delete(synchronize_session=False)
+    db.commit()
+    logger.warning("song_like catalog cleared by admin: deleted_rows=%s", deleted)
+    return SongCatalogClearResponse(deleted_rows=int(deleted or 0))

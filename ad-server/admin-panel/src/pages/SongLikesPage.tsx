@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
 
@@ -19,6 +19,11 @@ interface SongCatalogResponse {
   total_songs: number;
   offset: number;
   limit: number;
+}
+
+interface SongCatalogClearResponse {
+  deleted_rows: number;
+  ok: boolean;
 }
 
 const PAGE_SIZE = 100;
@@ -64,7 +69,9 @@ function downloadCsv(rows: SongCatalogRow[], filename: string) {
 }
 
 export default function SongLikesPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
+  const [clearFeedback, setClearFeedback] = useState<string | null>(null);
 
   const offset = page * PAGE_SIZE;
 
@@ -79,6 +86,32 @@ export default function SongLikesPage() {
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total_songs / PAGE_SIZE)) : 1;
+
+  const clearCatalogMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.delete<SongCatalogClearResponse>("/likes/catalog");
+      return response.data;
+    },
+    onSuccess: (res) => {
+      setPage(0);
+      setClearFeedback(`Cleared ${res.deleted_rows.toLocaleString()} stored like/unlike events.`);
+      void queryClient.invalidateQueries({ queryKey: ["song-likes-catalog"] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setClearFeedback(e.response?.data?.detail || "Failed to clear catalog.");
+    },
+  });
+
+  const handleClearAll = () => {
+    if (!data?.total_songs) return;
+    const ok = window.confirm(
+      "Delete ALL song like data?\n\nThis removes every stored like/unlike event from the database. The Song Likes list will be empty. This cannot be undone."
+    );
+    if (!ok) return;
+    setClearFeedback(null);
+    clearCatalogMutation.mutate();
+  };
 
   const exportAll = async () => {
     const limit = 500;
@@ -131,8 +164,39 @@ export default function SongLikesPage() {
             >
               Export all (CSV)
             </button>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={
+                !data?.total_songs ||
+                clearCatalogMutation.isPending ||
+                isFetching
+              }
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {clearCatalogMutation.isPending ? "Clearing…" : "Clear all song likes"}
+            </button>
           </div>
         </div>
+
+        {clearFeedback && (
+          <div
+            className={`mb-4 p-4 rounded-lg text-sm ${
+              clearFeedback.startsWith("Cleared")
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-700"
+            }`}
+          >
+            {clearFeedback}
+            <button
+              type="button"
+              className="ml-3 underline font-medium"
+              onClick={() => setClearFeedback(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {errorMessage && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

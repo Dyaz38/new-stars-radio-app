@@ -58,3 +58,10 @@ class SongCatalogResponse(BaseModel):
     total_songs: int
     offset: int
     limit: int
+
+
+class SongCatalogClearResponse(BaseModel):
+    """Result of clearing all raw like/unlike events."""
+
+    deleted_rows: int
+    ok: bool = True
