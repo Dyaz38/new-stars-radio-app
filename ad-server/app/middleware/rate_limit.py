@@ -23,6 +23,8 @@ RATE_LIMITS = {
     "/api/v1/ads/tracking/impression": (200, 60),  # 200 requests per 60 seconds
     "/api/v1/ads/tracking/click": (200, 60),  # 200 requests per 60 seconds
     "/api/v1/likes": (120, 60),  # radio app like/unlike sync
+    "/api/v1/auth/forgot-password": (10, 300),  # limit abuse — 10 per 5 minutes per IP
+    "/api/v1/auth/reset-password": (20, 300),
 }
 
 # Default rate limit for unspecified endpoints

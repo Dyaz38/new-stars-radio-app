@@ -1,7 +1,7 @@
 """
 Authentication schemas.
 """
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class Token(BaseModel):
@@ -32,6 +32,26 @@ class UserResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request a password reset email."""
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Generic message — does not reveal whether the email exists."""
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Complete password reset using token from email link."""
+    token: str = Field(..., min_length=10)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str
 
 
 

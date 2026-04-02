@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +15,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +28,8 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+
+  const resetSuccess = (location.state as { resetSuccess?: boolean } | null)?.resetSuccess;
 
   const onSubmit = async (data: LoginFormData) => {
     try {
@@ -71,6 +74,15 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gray-900">Ad Manager</h1>
           <p className="text-gray-600 mt-2">Sign in to manage your campaigns</p>
         </div>
+
+        {/* Password reset success (from email flow) */}
+        {resetSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800 font-medium">
+              Password updated. You can sign in with your new password.
+            </p>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -167,6 +179,14 @@ export default function LoginPage() {
                 {errors.password.message}
               </p>
             )}
+            <div className="mt-2 flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           {/* Submit Button */}

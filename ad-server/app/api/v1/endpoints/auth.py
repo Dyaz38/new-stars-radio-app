@@ -1,14 +1,39 @@
 """
 Authentication endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+import secrets
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.api.dependencies import get_current_user
-from app.schemas.auth import LoginRequest, ChangePasswordRequest, Token, UserResponse
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    LoginRequest,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    UserResponse,
+)
 from app.models.user import User
+from app.services.password_reset_email import (
+    hash_password_reset_token,
+    send_password_reset_email,
+)
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+FORGOT_PASSWORD_PUBLIC_MESSAGE = (
+    "If an account exists for this email, we've sent password reset instructions. "
+    "Check your inbox and spam folder."
+)
 
 router = APIRouter()
 
@@ -95,4 +120,91 @@ async def change_password(
     db.commit()
     db.refresh(current_user)
     return {"message": "Password updated successfully"}
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    summary="Request password reset email",
+)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Sends a reset link if the email is registered (same response either way — no user enumeration).
+    """
+    email_norm = body.email.lower().strip()
+    user = (
+        db.query(User)
+        .filter(func.lower(User.email) == email_norm)
+        .first()
+    )
+
+    if user and user.is_active:
+        raw_token = secrets.token_urlsafe(32)
+        user.password_reset_token_hash = hash_password_reset_token(raw_token)
+        user.password_reset_expires_at = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+
+        base = settings.FRONTEND_ADMIN_URL.rstrip("/")
+        reset_url = f"{base}/reset-password?token={raw_token}"
+
+        def _send() -> None:
+            try:
+                send_password_reset_email(user.email, reset_url)
+            except Exception as e:
+                logger.exception("Background password reset email failed: %s", e)
+
+        background_tasks.add_task(_send)
+    else:
+        logger.info("Forgot-password request for unknown or inactive email (no email sent)")
+
+    return ForgotPasswordResponse(message=FORGOT_PASSWORD_PUBLIC_MESSAGE)
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    summary="Set new password with reset token",
+)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """Consume one-time token from email and set a new password."""
+    token_hash = hash_password_reset_token(body.token.strip())
+    now = datetime.utcnow()
+
+    user = (
+        db.query(User)
+        .filter(
+            User.password_reset_token_hash == token_hash,
+            User.password_reset_expires_at.isnot(None),
+            User.password_reset_expires_at > now,
+        )
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired. Request a new one from the login page.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is inactive. Contact an administrator.",
+        )
+
+    user.hashed_password = get_password_hash(body.new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    db.commit()
+
+    return ResetPasswordResponse(
+        message="Your password has been updated. You can sign in with your new password."
+    )
 

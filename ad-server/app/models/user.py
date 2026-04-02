@@ -28,6 +28,9 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.SALES_REP)
     is_active = Column(Boolean, default=True, nullable=False)
+    # Password reset (SHA-256 hex of token; raw token only sent by email)
+    password_reset_token_hash = Column(String(64), nullable=True)
+    password_reset_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime,

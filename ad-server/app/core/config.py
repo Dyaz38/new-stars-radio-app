@@ -80,6 +80,18 @@ class Settings(BaseSettings):
 
     # Airtime Pro live-info JSON (server-side genre resolution for song likes)
     AIRTIME_LIVE_INFO_URL: str = "https://newstarsradio.airtime.pro/api/live-info"
+
+    # Admin panel public URL (password reset links in emails)
+    FRONTEND_ADMIN_URL: str = "https://newstarsadminpanel.vercel.app"
+
+    # SMTP — optional; if unset, reset links are logged server-side (see email service)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None  # defaults to SMTP_USER
+    SMTP_USE_TLS: bool = True  # STARTTLS on port 587 (common)
+    SMTP_USE_SSL: bool = False  # If True, use SMTPS on SMTP_PORT (e.g. 465)
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
