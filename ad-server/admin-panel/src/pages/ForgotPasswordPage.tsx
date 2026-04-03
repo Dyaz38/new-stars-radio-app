@@ -40,7 +40,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="bg-white p-8 md:p-10 rounded-xl shadow-2xl w-full max-w-md">
+      <main
+        role="main"
+        className="bg-white p-8 md:p-10 rounded-xl shadow-2xl w-full max-w-md"
+        aria-labelledby="forgot-heading"
+      >
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
             <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,7 +56,9 @@ export default function ForgotPasswordPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Forgot password?</h1>
+          <h1 id="forgot-heading" className="text-2xl md:text-3xl font-bold text-gray-900">
+            Forgot password?
+          </h1>
           <p className="text-gray-600 mt-2 text-sm md:text-base leading-relaxed">
             {submitted
               ? "Follow the link we sent you to choose a new password."
@@ -126,7 +132,7 @@ export default function ForgotPasswordPage() {
             </div>
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }

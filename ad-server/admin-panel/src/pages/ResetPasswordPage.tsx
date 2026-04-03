@@ -7,8 +7,11 @@ import api from "../lib/api";
 
 const resetSchema = z
   .object({
-    newPassword: z.string().min(8, "Use at least 8 characters"),
-    confirmPassword: z.string().min(8, "Confirm your password"),
+    newPassword: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .max(128, "At most 128 characters"),
+    confirmPassword: z.string().min(8, "Confirm your password").max(128),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords don’t match",
@@ -52,12 +55,13 @@ export default function ResetPasswordPage() {
         state: { resetSuccess: true },
       });
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setError(
-        typeof e.response?.data?.detail === "string"
-          ? e.response.data.detail
-          : "Could not reset password. Request a new link."
-      );
+      const e = err as { response?: { data?: { detail?: unknown } } };
+      const detail = e.response?.data?.detail;
+      let msg = "Could not reset password. Request a new link.";
+      if (typeof detail === "string") msg = detail;
+      else if (Array.isArray(detail))
+        msg = detail.map((x: { msg?: string }) => x.msg || "").filter(Boolean).join(" ");
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +71,11 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="bg-white p-8 md:p-10 rounded-xl shadow-2xl w-full max-w-md">
+      <main
+        role="main"
+        className="bg-white p-8 md:p-10 rounded-xl shadow-2xl w-full max-w-md"
+        aria-labelledby="reset-password-heading"
+      >
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
             <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,9 +87,11 @@ export default function ResetPasswordPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create new password</h1>
+          <h1 id="reset-password-heading" className="text-2xl md:text-3xl font-bold text-gray-900">
+            Create new password
+          </h1>
           <p className="text-gray-600 mt-2 text-sm md:text-base">
-            Choose a strong password you haven’t used elsewhere.
+            Use at least 8 characters. Avoid common words like “password” or your old password.
           </p>
         </div>
 
@@ -100,7 +110,15 @@ export default function ResetPasswordPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5"
+          aria-describedby="password-requirements"
+        >
+          <p id="password-requirements" className="text-xs text-gray-500 leading-relaxed">
+            Passwords are checked against common breached patterns. Maximum length 128 characters. You can use
+            letters, numbers, and symbols.
+          </p>
           <div>
             <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
               New password
@@ -180,7 +198,7 @@ export default function ResetPasswordPage() {
             ← Back to sign in
           </Link>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

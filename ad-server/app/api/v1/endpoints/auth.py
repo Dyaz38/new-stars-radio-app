@@ -1,15 +1,19 @@
 """
 Authentication endpoints.
 """
+import asyncio
 import logging
+import random
 import secrets
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.password_policy import validate_new_password
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.api.dependencies import get_current_user
 from app.schemas.auth import (
@@ -34,6 +38,12 @@ FORGOT_PASSWORD_PUBLIC_MESSAGE = (
     "If an account exists for this email, we've sent password reset instructions. "
     "Check your inbox and spam folder."
 )
+
+_NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    "Pragma": "no-cache",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+}
 
 router = APIRouter()
 
@@ -111,20 +121,27 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
-    if len(data.new_password) < 8:
+    try:
+        new_pw = validate_new_password(
+            data.new_password,
+            current_hash=current_user.hashed_password,
+        )
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters"
+            detail=str(e),
         )
-    current_user.hashed_password = get_password_hash(data.new_password)
+    current_user.hashed_password = get_password_hash(new_pw)
     db.commit()
     db.refresh(current_user)
-    return {"message": "Password updated successfully"}
+    return JSONResponse(
+        content={"message": "Password updated successfully"},
+        headers=_NO_STORE_HEADERS,
+    )
 
 
 @router.post(
     "/forgot-password",
-    response_model=ForgotPasswordResponse,
     summary="Request password reset email",
 )
 async def forgot_password(
@@ -149,6 +166,11 @@ async def forgot_password(
         db.commit()
 
         base = settings.FRONTEND_ADMIN_URL.rstrip("/")
+        if not base.startswith("https://") and settings.ENVIRONMENT == "production":
+            logger.warning(
+                "FRONTEND_ADMIN_URL should use https in production (got: %s)",
+                base[:32],
+            )
         reset_url = f"{base}/reset-password?token={raw_token}"
 
         def _send() -> None:
@@ -161,12 +183,17 @@ async def forgot_password(
     else:
         logger.info("Forgot-password request for unknown or inactive email (no email sent)")
 
-    return ForgotPasswordResponse(message=FORGOT_PASSWORD_PUBLIC_MESSAGE)
+    # Mitigate timing side-channels between hit / miss (OWASP ASVS 2.2.x)
+    await asyncio.sleep(random.uniform(0.08, 0.18))
+
+    return JSONResponse(
+        content=ForgotPasswordResponse(message=FORGOT_PASSWORD_PUBLIC_MESSAGE).model_dump(),
+        headers=_NO_STORE_HEADERS,
+    )
 
 
 @router.post(
     "/reset-password",
-    response_model=ResetPasswordResponse,
     summary="Set new password with reset token",
 )
 async def reset_password(
@@ -188,6 +215,7 @@ async def reset_password(
     )
 
     if not user:
+        await asyncio.sleep(random.uniform(0.1, 0.2))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This reset link is invalid or has expired. Request a new one from the login page.",
@@ -199,12 +227,25 @@ async def reset_password(
             detail="This account is inactive. Contact an administrator.",
         )
 
-    user.hashed_password = get_password_hash(body.new_password)
+    try:
+        new_pw = validate_new_password(
+            body.new_password,
+            current_hash=user.hashed_password,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    user.hashed_password = get_password_hash(new_pw)
     user.password_reset_token_hash = None
     user.password_reset_expires_at = None
     db.commit()
 
-    return ResetPasswordResponse(
-        message="Your password has been updated. You can sign in with your new password."
+    return JSONResponse(
+        content=ResetPasswordResponse(
+            message="Your password has been updated. You can sign in with your new password."
+        ).model_dump(),
+        headers=_NO_STORE_HEADERS,
     )
-

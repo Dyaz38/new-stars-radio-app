@@ -183,6 +183,7 @@ export default function LoginPage() {
               <Link
                 to="/forgot-password"
                 className="text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline"
+                aria-label="Forgot password — open password recovery"
               >
                 Forgot password?
               </Link>
