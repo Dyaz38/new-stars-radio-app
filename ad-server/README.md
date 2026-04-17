@@ -109,6 +109,14 @@ Password: changeme123
 
 **⚠️ CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION!**
 
+### Password reset email (Railway / production)
+
+Forgot-password emails are sent only if the API has **Resend** (`RESEND_API_KEY`) or **SMTP** configured. Otherwise reset links appear only in server logs.
+
+- **Full guide:** [`docs/PASSWORD_RESET_EMAIL.md`](docs/PASSWORD_RESET_EMAIL.md)
+- **Verify delivery mode:** `GET /health` or `GET /api/v1/health` returns `password_reset_email_delivery`: `resend`, `smtp`, or `none`.
+- **Admin panel (Vercel):** set `VITE_API_BASE_URL` to your Railway API base, e.g. `https://YOUR-SERVICE.up.railway.app/api/v1` (see `admin-panel/.env.example`).
+
 ## 📁 Project Structure
 
 ```

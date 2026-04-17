@@ -18,6 +18,7 @@ from app.core.database import engine
 from app.api.v1.router import api_router
 from app.middleware import RateLimitMiddleware
 from app.db.seed import create_initial_admin
+from app.services.password_reset_email import password_reset_delivery_mode
 
 # Configure logging
 logging.basicConfig(
@@ -145,6 +146,15 @@ async def startup_event():
     except Exception as e:
         logger.warning("Admin user seed check failed (may already exist): %s", e)
 
+    mode = password_reset_delivery_mode()
+    if mode == "none":
+        logger.warning(
+            "Password reset emails are NOT delivered (no RESEND_API_KEY or SMTP). "
+            "Reset links only appear in logs. See ad-server/docs/PASSWORD_RESET_EMAIL.md"
+        )
+    else:
+        logger.info("Password reset email delivery: %s", mode)
+
     logger.info("Startup complete")
 
 
@@ -184,4 +194,5 @@ async def health_check():
         "status": "healthy",
         "database": "ok",
         "version": settings.VERSION,
+        "password_reset_email_delivery": password_reset_delivery_mode(),
     }

@@ -48,7 +48,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Process request and apply rate limiting."""
         
         # Skip rate limiting for health check and docs
-        if request.url.path in ["/health", "/docs", "/redoc", "/openapi.json"]:
+        if request.url.path in [
+            "/health",
+            "/api/v1/health",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ]:
             return await call_next(request)
         if request.method == "OPTIONS":
             return await call_next(request)

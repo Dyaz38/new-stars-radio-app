@@ -1,6 +1,6 @@
 """
-Send password reset emails via SMTP (optional). If SMTP is not configured, logs the link.
-RFC 5322–aligned headers (Date, Message-ID), UTF-8 content.
+Send password reset emails via Resend API (preferred on Railway) or SMTP.
+If neither is configured, logs the reset URL for operators (no email sent).
 """
 from __future__ import annotations
 
@@ -10,9 +10,23 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
+import httpx
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def password_reset_delivery_mode() -> str:
+    """
+    How password-reset emails will be sent (for health checks / ops).
+    Returns: 'resend' | 'smtp' | 'none'
+    """
+    if settings.RESEND_API_KEY:
+        return "resend"
+    if settings.SMTP_HOST and settings.SMTP_USER:
+        return "smtp"
+    return "none"
 
 
 def hash_password_reset_token(raw_token: str) -> str:
@@ -30,9 +44,67 @@ def _mask_email_for_logs(email: str) -> str:
     return f"{local[0]}***@{domain}"
 
 
+def _send_via_resend(to_email: str, subject: str, text_body: str, html_body: str) -> None:
+    """Transactional email via Resend HTTPS API (simple on Railway — one API key)."""
+    from_addr = settings.RESEND_FROM
+    response = httpx.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": from_addr,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+            "text": text_body,
+        },
+        timeout=30.0,
+    )
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        body = (e.response.text or "")[:2000]
+        logger.error(
+            "Resend HTTP %s for %s: %s",
+            e.response.status_code,
+            _mask_email_for_logs(to_email),
+            body,
+        )
+        raise
+    logger.info("Password reset email sent via Resend to %s", _mask_email_for_logs(to_email))
+
+
+def _send_via_smtp(to_email: str, subject: str, text_body: str, html_body: str) -> None:
+    from_addr = settings.SMTP_FROM or settings.SMTP_USER
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="newstarsradio.com")
+    msg["MIME-Version"] = "1.0"
+    msg["Content-Language"] = "en"
+    msg.set_content(text_body, charset="utf-8")
+    msg.add_alternative(html_body, subtype="html")
+
+    if settings.SMTP_USE_SSL:
+        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+            smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
+            if settings.SMTP_USE_TLS:
+                smtp.starttls()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+            smtp.send_message(msg)
+    logger.info("Password reset email sent via SMTP to %s", _mask_email_for_logs(to_email))
+
+
 def send_password_reset_email(to_email: str, reset_url: str) -> None:
     """
-    Send HTML + plain text email. If SMTP is not configured, logs the URL (ops must deliver manually).
+    Priority: Resend API → SMTP → log only (no inbox delivery).
     """
     subject = "Reset your Ad Manager password"
     text_body = (
@@ -51,38 +123,27 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
   <p style="font-size: 12px; color: #9ca3af;">— New Stars Radio</p>
 </body></html>"""
 
-    if not settings.SMTP_HOST or not settings.SMTP_USER:
-        logger.warning(
-            "SMTP not configured — password reset for %s. Reset URL (deliver manually or set SMTP_* env): %s",
-            _mask_email_for_logs(to_email),
-            reset_url,
-        )
-        return
+    # 1) Resend (recommended for Railway — add RESEND_API_KEY in dashboard)
+    if settings.RESEND_API_KEY:
+        try:
+            _send_via_resend(to_email, subject, text_body, html_body)
+            return
+        except Exception:
+            logger.exception("Resend failed for %s; trying SMTP if configured", _mask_email_for_logs(to_email))
 
-    from_addr = settings.SMTP_FROM or settings.SMTP_USER
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = from_addr
-    msg["To"] = to_email
-    msg["Date"] = formatdate(localtime=True)
-    msg["Message-ID"] = make_msgid(domain="newstarsradio.com")
-    msg["MIME-Version"] = "1.0"
-    msg["Content-Language"] = "en"
-    msg.set_content(text_body, charset="utf-8")
-    msg.add_alternative(html_body, subtype="html")
+    # 2) SMTP (Gmail, etc.)
+    if settings.SMTP_HOST and settings.SMTP_USER:
+        try:
+            _send_via_smtp(to_email, subject, text_body, html_body)
+            return
+        except Exception:
+            logger.exception("SMTP failed for %s", _mask_email_for_logs(to_email))
+            raise
 
-    try:
-        if settings.SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
-                smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
-                smtp.send_message(msg)
-        else:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
-                if settings.SMTP_USE_TLS:
-                    smtp.starttls()
-                smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
-                smtp.send_message(msg)
-        logger.info("Password reset email sent to %s", _mask_email_for_logs(to_email))
-    except Exception as e:
-        logger.exception("Failed to send password reset email to %s: %s", _mask_email_for_logs(to_email), e)
-        raise
+    # 3) No delivery — ops must read logs or configure Resend/SMTP
+    logger.error(
+        "PASSWORD RESET: no email delivery configured. Set RESEND_API_KEY or SMTP_* on the server. "
+        "Reset URL for %s: %s",
+        _mask_email_for_logs(to_email),
+        reset_url,
+    )

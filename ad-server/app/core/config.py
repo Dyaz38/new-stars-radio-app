@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     # Airtime Pro live-info JSON (server-side genre resolution for song likes)
     AIRTIME_LIVE_INFO_URL: str = "https://newstarsradio.airtime.pro/api/live-info"
 
+    # Schedule persistence for radio programming (used by app + admin panel)
+    SCHEDULE_STORAGE_PATH: str = "data/radio_schedule.json"
+
     # Admin panel public URL (password reset links in emails)
     FRONTEND_ADMIN_URL: str = "https://newstarsadminpanel.vercel.app"
 
@@ -92,6 +95,10 @@ class Settings(BaseSettings):
     SMTP_FROM: Optional[str] = None  # defaults to SMTP_USER
     SMTP_USE_TLS: bool = True  # STARTTLS on port 587 (common)
     SMTP_USE_SSL: bool = False  # If True, use SMTPS on SMTP_PORT (e.g. 465)
+
+    # Resend.com — optional; easiest way to get password-reset email on Railway (HTTPS API, one API key)
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM: str = "New Stars Radio <onboarding@resend.dev>"
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

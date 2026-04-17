@@ -84,6 +84,33 @@ export default function ForgotPasswordPage() {
                 a different email.
               </p>
             </div>
+
+            <details className="rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-left text-sm text-amber-950">
+              <summary className="cursor-pointer font-semibold text-amber-900">
+                Not receiving the email? (common causes)
+              </summary>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-amber-900/90">
+                <li>
+                  <strong>Wrong email:</strong> Use the <em>exact</em> address of your Ad Manager account (the one you
+                  sign in with). If that address isn’t in our database, we don’t send mail — but we still show this
+                  screen for security.
+                </li>
+                <li>
+                  <strong>Server email not set up:</strong> The hosting backend must have{" "}
+                  <strong>Resend</strong> or <strong>SMTP</strong> configured (e.g. in Railway variables). Until then,
+                  nothing is delivered to Gmail — the reset link may only appear in server logs.
+                </li>
+                <li>
+                  <strong>Gmail:</strong> Use an <strong>App Password</strong> if you choose SMTP with Google — not your
+                  normal login password.
+                </li>
+              </ul>
+              <p className="mt-3 text-xs text-amber-800/90">
+                Operators: see <code className="rounded bg-amber-100 px-1">ad-server/docs/PASSWORD_RESET_EMAIL.md</code>{" "}
+                in the repo for Resend, Gmail SMTP, and Railway steps.
+              </p>
+            </details>
+
             <Link
               to="/login"
               className="flex w-full items-center justify-center rounded-lg bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"

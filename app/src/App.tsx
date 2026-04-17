@@ -14,7 +14,7 @@ import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
 import type { ScheduleShow } from './types';
 
-import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS } from './constants';
+import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS, getScheduleUrl } from './constants';
 
 const RadioStreamingApp = () => {
   // Custom hooks for clean separation of concerns
@@ -90,26 +90,26 @@ const RadioStreamingApp = () => {
   const loadSchedule = useCallback(async () => {
     setIsLoadingSchedule(true);
     try {
-      // Option 1: Load from localStorage (for persistence)
+      const response = await fetch(getScheduleUrl());
+      if (response.ok) {
+        const payload = await response.json() as { items?: ScheduleShow[] };
+        if (Array.isArray(payload.items) && payload.items.length > 0) {
+          setSchedule(payload.items);
+          console.log('📅 Schedule loaded from ad server');
+          return;
+        }
+      }
+
+      // Fallback for offline/dev mode
       const savedSchedule = localStorage.getItem(STORAGE_KEYS.SCHEDULE);
       if (savedSchedule) {
         const parsedSchedule: ScheduleShow[] = JSON.parse(savedSchedule);
         setSchedule(parsedSchedule);
-        console.log('📅 Schedule loaded from localStorage');
+        console.log('📅 Schedule fallback loaded from localStorage');
         return;
       }
 
-      // Option 2: Load from external API (replace with your actual API)
-      // const response = await fetch('https://your-api.com/schedule');
-      // const scheduleData = await response.json();
-      // setSchedule(scheduleData);
-
-      // Option 3: Load from JSON file in public folder
-      // const response = await fetch('/schedule.json');
-      // const scheduleData = await response.json();
-      // setSchedule(scheduleData);
-
-      console.log('📅 Using default schedule');
+      console.log('📅 Schedule fallback using defaults');
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
     } finally {
@@ -131,12 +131,7 @@ const RadioStreamingApp = () => {
         setCurrentDJ(currentShowData.dj);
       }
       
-      // Option: Sync to external API
-      // await fetch('https://your-api.com/schedule', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newSchedule)
-      // });
+      // Note: schedule publishing now lives in Ad Manager (admin-authenticated API).
 
       console.log('📅 Schedule saved successfully and display updated');
         } catch (error) {
