@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "../lib/api";
+import axios from "axios";
+import api, { normalizeApiBaseUrl } from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
 
 interface ScheduleShow {
@@ -12,6 +13,18 @@ interface ScheduleShow {
   current: boolean;
 }
 
+/** Same defaults as the ad-server schedule endpoint (first save seeds the file). */
+const DEFAULT_SCHEDULE_TEMPLATE: ScheduleShow[] = [
+  { id: 1, time: "5:00 AM - 6:00 AM", show: "Early Bird Music", dj: "Auto DJ", description: "Wake up with your favorite hits", current: false },
+  { id: 2, time: "6:00 AM - 10:00 AM", show: "Morning Drive", dj: "Sarah Martinez", description: "Start your day right with Sarah! News, traffic, and the hottest pop hits", current: true },
+  { id: 3, time: "10:00 AM - 2:00 PM", show: "Mid-Morning Mix", dj: "Jake Thompson", description: "Non-stop music to keep your energy up", current: false },
+  { id: 4, time: "2:00 PM - 6:00 PM", show: "Afternoon Groove", dj: "Maria Lopez", description: "The perfect soundtrack for your afternoon", current: false },
+  { id: 5, time: "6:00 PM - 8:00 PM", show: "Drive Time Hits", dj: "Alex Chen", description: "Beating traffic with the biggest hits", current: false },
+  { id: 6, time: "8:00 PM - 10:00 PM", show: "Pop Tonight", dj: "Emma Wilson", description: "Tonight's biggest pop anthems and new releases", current: false },
+  { id: 7, time: "10:00 PM - 12:00 AM", show: "Late Night Vibes", dj: "Ryan Brooks", description: "Chill out with smooth pop and indie favorites", current: false },
+  { id: 8, time: "12:00 AM - 5:00 AM", show: "Overnight Mix", dj: "Auto DJ", description: "Continuous music through the night", current: false },
+];
+
 interface ScheduleResponse {
   items: ScheduleShow[];
 }
@@ -20,6 +33,24 @@ interface ScheduleUpdateResponse {
   ok: boolean;
   updated_items: number;
   items: ScheduleShow[];
+}
+
+function formatScheduleLoadError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    if (err.response?.data && typeof err.response.data === "object" && "detail" in err.response.data) {
+      const d = (err.response.data as { detail: unknown }).detail;
+      if (typeof d === "string") return d;
+    }
+    if (err.response?.status) {
+      return `Server returned ${err.response.status}. Check that Railway is running the latest API with /api/v1/schedule.`;
+    }
+    if (err.code === "ERR_NETWORK") {
+      return "Network error (no response). Often this is a wrong API URL in Vercel or CORS. Set VITE_API_BASE_URL to your Railway API root including /api/v1 (see admin-panel/.env.example), redeploy the admin panel, and redeploy the ad-server after pulling the schedule feature.";
+    }
+    return err.message || "Request failed.";
+  }
+  if (err instanceof Error) return err.message;
+  return "Request failed.";
 }
 
 export default function SchedulePage() {
@@ -55,8 +86,7 @@ export default function SchedulePage() {
 
   const errorMessage = useMemo(() => {
     if (!error) return null;
-    const e = error as { response?: { data?: { detail?: string }; status?: number } };
-    return e.response?.data?.detail || `Request failed (${e.response?.status || "error"})`;
+    return formatScheduleLoadError(error);
   }, [error]);
 
   const updateRow = (id: number, patch: Partial<ScheduleShow>) => {
@@ -78,10 +108,49 @@ export default function SchedulePage() {
     setFeedback(null);
   };
 
+  const startFromTemplate = () => {
+    setEditorRows(DEFAULT_SCHEDULE_TEMPLATE.map((row) => ({ ...row })));
+    setFeedback("Template: Loaded the default day template. Edit as needed, then click Save schedule.");
+  };
+
+  const addRow = () => {
+    setEditorRows((prev) => {
+      const base = prev.length > 0 ? prev : data?.items ?? [];
+      const nextId = base.length === 0 ? 1 : Math.max(...base.map((r) => r.id)) + 1;
+      const hasCurrent = base.some((r) => r.current);
+      return [
+        ...base.map((r) => ({ ...r })),
+        {
+          id: nextId,
+          time: "12:00 PM - 1:00 PM",
+          show: "New show",
+          dj: "DJ name",
+          description: "Description",
+          current: !hasCurrent && base.length === 0,
+        },
+      ];
+    });
+  };
+
+  const removeRow = (id: number) => {
+    setEditorRows((prev) => {
+      const base = prev.length > 0 ? prev : data?.items ?? [];
+      const filtered = base.filter((r) => r.id !== id);
+      if (filtered.length === 0) return [];
+      const removedCurrent = base.find((r) => r.id === id)?.current;
+      if (removedCurrent && !filtered.some((r) => r.current)) {
+        return filtered.map((r, i) => (i === 0 ? { ...r, current: true } : { ...r, current: false }));
+      }
+      return filtered.map((r) => ({ ...r }));
+    });
+  };
+
   const saveAll = () => {
     setFeedback(null);
     saveMutation.mutate(rows);
   };
+
+  const apiBaseHint = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,6 +176,22 @@ export default function SchedulePage() {
             </button>
             <button
               type="button"
+              onClick={startFromTemplate}
+              disabled={saveMutation.isPending}
+              className="px-4 py-2 text-sm font-medium text-indigo-800 bg-indigo-100 border border-indigo-200 rounded-lg hover:bg-indigo-200 disabled:opacity-50"
+            >
+              Start from template
+            </button>
+            <button
+              type="button"
+              onClick={addRow}
+              disabled={saveMutation.isPending}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Add row
+            </button>
+            <button
+              type="button"
               onClick={resetEdits}
               disabled={isLoading || saveMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
@@ -129,6 +214,8 @@ export default function SchedulePage() {
             className={`mb-4 p-4 rounded-lg text-sm ${
               feedback.startsWith("Saved")
                 ? "bg-green-50 border border-green-200 text-green-800"
+                : feedback.startsWith("Template:")
+                ? "bg-blue-50 border border-blue-200 text-blue-900"
                 : "bg-red-50 border border-red-200 text-red-700"
             }`}
           >
@@ -137,8 +224,16 @@ export default function SchedulePage() {
         )}
 
         {errorMessage && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {errorMessage}
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-2">
+            <p className="font-medium">{errorMessage}</p>
+            <p className="text-red-800/90">
+              This admin panel loads schedule from: <code className="rounded bg-red-100 px-1 py-0.5 text-xs">{apiBaseHint}</code>
+            </p>
+            <ul className="list-disc pl-5 text-red-800/90">
+              <li>Redeploy the ad-server on Railway after the schedule API was added.</li>
+              <li>In Vercel project settings, set <code className="rounded bg-red-100 px-1">VITE_API_BASE_URL</code> to your Railway API (must end with <code className="rounded bg-red-100 px-1">/api/v1</code>), then redeploy the admin panel.</li>
+              <li>While the API is down, use <strong>Start from template</strong> below to build rows locally, then <strong>Save schedule</strong> once the API responds.</li>
+            </ul>
           </div>
         )}
 
@@ -170,9 +265,38 @@ export default function SchedulePage() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      Remove
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-600">
+                        <p className="mb-3">No rows yet. The list fills when the schedule API loads successfully.</p>
+                        <p className="mb-4 text-sm">
+                          To <strong>create</strong> a schedule here: click <strong>Start from template</strong> for a full day outline, or <strong>Add row</strong> for a single blank slot. Edit the fields, pick which slot is <strong>Live</strong>, then click <strong>Save schedule</strong>.
+                        </p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={startFromTemplate}
+                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                          >
+                            Start from template
+                          </button>
+                          <button
+                            type="button"
+                            onClick={addRow}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                          >
+                            Add row
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {rows.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -213,8 +337,17 @@ export default function SchedulePage() {
                           value={row.description}
                           onChange={(e) => updateRow(row.id, { description: e.target.value })}
                           rows={2}
-                          className="w-96 rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
+                          className="w-96 max-w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-y"
                         />
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(row.id)}
+                          className="text-sm text-red-600 hover:text-red-800 underline"
+                        >
+                          Remove
+                        </button>
                       </td>
                     </tr>
                   ))}

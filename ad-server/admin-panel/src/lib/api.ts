@@ -1,7 +1,14 @@
 import axios from 'axios'
 
+/** Vite env sometimes picks up stray newlines from hosting dashboards — breaks every request. */
+export function normalizeApiBaseUrl(raw: string | undefined): string {
+  const fallback = 'http://localhost:8000/api/v1'
+  if (!raw || !String(raw).trim()) return fallback
+  return String(raw).trim().replace(/[\r\n]+/g, '').replace(/\/+$/, '')
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined),
   headers: {
     'Content-Type': 'application/json',
   },
