@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Copy, Trash2 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -69,6 +69,15 @@ const RadioStreamingApp = () => {
   const [currentShow, setCurrentShow] = useState('Morning Drive');
   const [currentDJ, setCurrentDJ] = useState('Sarah Martinez');
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.REDUCE_MOTION) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [copyStreamHint, setCopyStreamHint] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
 
   // Memoized expensive computations
@@ -109,6 +118,38 @@ const RadioStreamingApp = () => {
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
     }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (reduceMotion) {
+        localStorage.setItem(STORAGE_KEYS.REDUCE_MOTION, '1');
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.REDUCE_MOTION);
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [reduceMotion]);
+
+  const clearScheduleCache = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.SCHEDULE);
+    } catch {
+      /* ignore */
+    }
+    void loadSchedule();
+  }, [loadSchedule]);
+
+  const copyStreamUrl = useCallback(async () => {
+    const url = RADIO_CONFIG.STREAM_URL;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyStreamHint('Copied to clipboard');
+    } catch {
+      setCopyStreamHint('Select and copy from the box below');
+    }
+    window.setTimeout(() => setCopyStreamHint(null), 2500);
   }, []);
 
   // Mark current show based on time
@@ -311,6 +352,7 @@ const RadioStreamingApp = () => {
           <AudioVisualizer
             isPlaying={isPlaying}
             audioElement={audioRef.current}
+            reducedMotion={reduceMotion}
             className="h-24 bg-gradient-to-r from-purple-900/20 to-pink-900/20 backdrop-blur-sm"
             style={{ position: 'relative', zIndex: 1 }}
           />
@@ -347,10 +389,14 @@ const RadioStreamingApp = () => {
               <span className="text-sm">Events</span>
             </button>
             
-            <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all">
+            <button
+              type="button"
+              onClick={() => setShowSettings(true)}
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
+            >
               <Settings className="w-6 h-6" />
               <span className="text-sm">Settings</span>
-        </button>
+            </button>
           </div>
         </div>
       </div>
@@ -400,6 +446,110 @@ const RadioStreamingApp = () => {
               <p className="text-sm text-gray-300 text-center">
                 🎵 All times are local. Schedule subject to change for special events and breaking news.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto border border-white/10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Settings className="w-6 h-6" />
+                Settings
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-white text-xl leading-none"
+                aria-label="Close settings"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <section className="bg-white/5 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-pink-300 mb-2">About</h4>
+                <p className="text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
+                <p className="text-gray-400 text-sm mt-1">{RADIO_CONFIG.TAGLINE}</p>
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
+                  <Volume2 className="w-4 h-4" />
+                  Volume
+                </h4>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  className="w-full accent-pink-500"
+                />
+                <p className="text-xs text-gray-500 mt-2">Same level as the player above. Saved for this session.</p>
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={reduceMotion}
+                    onChange={(e) => setReduceMotion(e.target.checked)}
+                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500"
+                  />
+                  <span>
+                    <span className="font-medium block">Reduce visualizer motion</span>
+                    <span className="text-sm text-gray-400">Shows a static bar display instead of animated waves while you listen.</span>
+                  </span>
+                </label>
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-pink-300 mb-2">Stream link</h4>
+                <p className="text-xs text-gray-400 mb-2">Use in another player or for troubleshooting.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <code className="flex-1 text-xs bg-black/40 rounded-lg p-2 break-all text-gray-300 border border-white/10">
+                    {RADIO_CONFIG.STREAM_URL}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => void copyStreamUrl()}
+                    className="shrink-0 flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 rounded-lg px-3 py-2 text-sm font-medium"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </button>
+                </div>
+                {copyStreamHint && (
+                  <p className="text-xs text-green-400 mt-2">{copyStreamHint}</p>
+                )}
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-pink-300 mb-2">Cached schedule</h4>
+                <p className="text-xs text-gray-400 mb-3">
+                  If the timetable looks wrong after an update, clear the saved copy and reload from the server.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearScheduleCache}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear schedule cache
+                </button>
+              </section>
+
+              <section className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-amber-200 mb-2">Playback</h4>
+                <p className="text-sm text-gray-300">
+                  Some browsers block sound until you press play. If you do not hear audio, tap the main play button once.
+                </p>
+              </section>
             </div>
           </div>
         </div>

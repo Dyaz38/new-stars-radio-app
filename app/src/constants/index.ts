@@ -49,6 +49,8 @@ export const GENIUS_CONFIG = {
 
 export const STORAGE_KEYS = {
   SCHEDULE: 'newstarsradio-schedule',
+  /** `'1'` when the listener chose calmer / less motion UI (visualizer). */
+  REDUCE_MOTION: 'newstarsradio-reduce-motion',
   USER_PREFERENCES: 'newstarsradio-preferences',
   LIKED_SONGS: 'newstarsradio-liked-songs',
   /** Anonymous per-device id for server-side like catalog */

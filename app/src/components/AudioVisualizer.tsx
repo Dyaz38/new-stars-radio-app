@@ -5,13 +5,16 @@ interface AudioVisualizerProps {
   audioElement?: HTMLAudioElement | null;
   className?: string;
   style?: React.CSSProperties;
+  /** When true, draws a single static frame instead of animating bars. */
+  reducedMotion?: boolean;
 }
 
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ 
   isPlaying, 
   audioElement, 
   className = '',
-  style = {}
+  style = {},
+  reducedMotion = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -57,7 +60,11 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     let frequencyData: Uint8Array;
     let numBars: number;
 
-    if (useRealAudio && analyserRef.current && dataArrayRef.current) {
+    if (reducedMotion) {
+      numBars = 40;
+      frequencyData = new Uint8Array(numBars);
+      frequencyData.fill(100);
+    } else if (useRealAudio && analyserRef.current && dataArrayRef.current) {
       // 🎵 REAL AUDIO ANALYSIS - Synced to actual music!
       analyserRef.current.getByteFrequencyData(dataArrayRef.current);
       frequencyData = dataArrayRef.current;
@@ -120,11 +127,11 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       x += barWidth;
     }
 
-    // Continue animation if playing
-    if (isPlaying) {
+    // Continue animation if playing (skip loop when reduced motion — one frame only)
+    if (isPlaying && !reducedMotion) {
       animationRef.current = requestAnimationFrame(animate);
     }
-  }, [isPlaying, useRealAudio]);
+  }, [isPlaying, useRealAudio, reducedMotion]);
 
   // Reset attempts when audio element changes
   useEffect(() => {
@@ -156,6 +163,9 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   // Start/stop animation based on play state
   useEffect(() => {
     if (isPlaying && isInitialized) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
       animate();
     } else {
       if (animationRef.current) {
@@ -168,7 +178,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, isInitialized, animate]);
+  }, [isPlaying, isInitialized, reducedMotion, animate]);
 
   // Handle canvas resize
   useEffect(() => {
