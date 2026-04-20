@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Edit3, Play, Pause } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -69,10 +69,7 @@ const RadioStreamingApp = () => {
   const [currentShow, setCurrentShow] = useState('Morning Drive');
   const [currentDJ, setCurrentDJ] = useState('Sarah Martinez');
   const [showSchedule, setShowSchedule] = useState(false);
-  const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
-  const [editingShow, setEditingShow] = useState<ScheduleShow | null>(null);
-  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
@@ -88,7 +85,6 @@ const RadioStreamingApp = () => {
 
   // Load schedule from external source (API, JSON file, or local storage)
   const loadSchedule = useCallback(async () => {
-    setIsLoadingSchedule(true);
     try {
       const response = await fetch(getScheduleUrl());
       if (response.ok) {
@@ -112,40 +108,8 @@ const RadioStreamingApp = () => {
       console.log('📅 Schedule fallback using defaults');
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
-    } finally {
-      setIsLoadingSchedule(false);
     }
-  }, []); // No dependencies needed as it doesn't depend on state
-
-  // Save schedule to localStorage and optionally sync to external API
-  const saveSchedule = useCallback(async (newSchedule: ScheduleShow[]) => {
-    try {
-      // Save locally
-      localStorage.setItem(STORAGE_KEYS.SCHEDULE, JSON.stringify(newSchedule));
-      setSchedule(newSchedule);
-      
-      // Immediately update main display with current show
-      const currentShowData = newSchedule.find(show => show.current);
-      if (currentShowData) {
-        setCurrentShow(currentShowData.show);
-        setCurrentDJ(currentShowData.dj);
-      }
-      
-      // Note: schedule publishing now lives in Ad Manager (admin-authenticated API).
-
-      console.log('📅 Schedule saved successfully and display updated');
-        } catch (error) {
-      console.error('❌ Failed to save schedule:', error);
-    }
-  }, []); // No dependencies needed
-
-  // Update a specific show in the schedule
-  const updateShow = useCallback((showId: number, updatedShow: Partial<ScheduleShow>) => {
-    const newSchedule = schedule.map(show => 
-      show.id === showId ? { ...show, ...updatedShow } : show
-    );
-    saveSchedule(newSchedule);
-  }, [schedule, saveSchedule]);
+  }, []);
 
   // Mark current show based on time
   const updateCurrentShow = useCallback(() => {
@@ -369,21 +333,13 @@ const RadioStreamingApp = () => {
         {/* Quick Actions */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <button 
               onClick={() => setShowSchedule(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
             >
               <Calendar className="w-6 h-6" />
               <span className="text-sm">View Schedule</span>
-            </button>
-            
-            <button 
-              onClick={() => setShowScheduleEditor(true)}
-              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
-            >
-              <Edit3 className="w-6 h-6" />
-              <span className="text-sm">Edit Schedule</span>
             </button>
             
             <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all">
@@ -443,132 +399,6 @@ const RadioStreamingApp = () => {
             <div className="mt-6 bg-white/5 rounded-lg p-4">
               <p className="text-sm text-gray-300 text-center">
                 🎵 All times are local. Schedule subject to change for special events and breaking news.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* Schedule Editor Modal */}
-      {showScheduleEditor && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">📝 Edit Schedule - New Stars Radio</h3>
-              <div className="flex items-center space-x-3">
-              <button 
-                  onClick={loadSchedule}
-                  disabled={isLoadingSchedule}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all disabled:opacity-50 flex items-center space-x-2"
-                >
-                  <span>🔄</span>
-                  <span className="text-sm">Reload</span>
-                </button>
-                <button 
-                  onClick={() => setShowScheduleEditor(false)}
-                  className="text-gray-400 hover:text-white text-xl"
-              >
-                ✕
-              </button>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {schedule.map((show) => (
-                <div 
-                  key={show.id} 
-                  className={`${show.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'} rounded-lg p-4`}
-                >
-                  {editingShow?.id === show.id ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          value={editingShow.time}
-                          onChange={(e) => setEditingShow({...editingShow, time: e.target.value})}
-                          className="bg-white/10 rounded-lg p-2 text-white placeholder-gray-400"
-                          placeholder="Time (e.g., 6:00 AM - 10:00 AM)"
-                        />
-                        <input
-                          type="text"
-                          value={editingShow.show}
-                          onChange={(e) => setEditingShow({...editingShow, show: e.target.value})}
-                          className="bg-white/10 rounded-lg p-2 text-white placeholder-gray-400"
-                          placeholder="Show Name"
-                        />
-    </div>
-                      <input
-                        type="text"
-                        value={editingShow.dj}
-                        onChange={(e) => setEditingShow({...editingShow, dj: e.target.value})}
-                        className="w-full bg-white/10 rounded-lg p-2 text-white placeholder-gray-400"
-                        placeholder="DJ Name"
-                      />
-            <textarea
-                        value={editingShow.description}
-                        onChange={(e) => setEditingShow({...editingShow, description: e.target.value})}
-                        className="w-full bg-white/10 rounded-lg p-2 text-white placeholder-gray-400 resize-none"
-                        placeholder="Show Description"
-                        rows={2}
-                      />
-              <div className="flex space-x-2">
-                <button 
-                          onClick={() => {
-                            updateShow(show.id, editingShow);
-                            setEditingShow(null);
-                            // Force immediate display update
-                            if (editingShow.current) {
-                              setCurrentShow(editingShow.show);
-                              setCurrentDJ(editingShow.dj);
-                            }
-                          }}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-all text-sm"
-                        >
-                          Save
-                        </button>
-                        <button 
-                          onClick={() => setEditingShow(null)}
-                          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-all text-sm"
-                >
-                  Cancel
-                </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-bold text-lg">{show.show}</h4>
-                          {show.current && (
-                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
-                              ON AIR
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-pink-300 font-semibold text-sm">with {show.dj}</p>
-                        <p className="text-gray-300 text-sm mt-1">{show.description}</p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="text-right">
-                          <p className="text-gray-400 text-sm font-mono">{show.time}</p>
-                        </div>
-                <button 
-                          onClick={() => setEditingShow(show)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all text-sm"
-                >
-                          Edit
-                </button>
-              </div>
-            </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-6 bg-white/5 rounded-lg p-4">
-              <p className="text-sm text-gray-300 text-center">
-                📅 Changes are saved automatically to browser storage. Set up API sync for multi-device editing.
               </p>
             </div>
           </div>
