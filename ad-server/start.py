@@ -29,7 +29,12 @@ cmd = [
     "uvicorn",
     "app.main:app",
     "--host", "0.0.0.0",
-    "--port", str(port)
+    "--port", str(port),
+    # Railway terminates TLS at the edge; without this, redirects use http:// and HTTPS
+    # frontends (e.g. Vercel admin) fail with mixed-content / ERR_NETWORK on trailing-slash redirects.
+    "--proxy-headers",
+    "--forwarded-allow-ips",
+    "*",
 ]
 
 sys.exit(subprocess.run(cmd).returncode)

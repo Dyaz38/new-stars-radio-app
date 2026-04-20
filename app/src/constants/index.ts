@@ -29,7 +29,7 @@ export const API_ENDPOINTS = {
 
 /** Real-time listener count (Icecast via ad server proxy). */
 export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/listeners`;
-export const getScheduleUrl = () => `${API_ENDPOINTS.AD_SERVER}/schedule`;
+export const getScheduleUrl = () => `${API_ENDPOINTS.AD_SERVER}/schedule/`;
 
 // MusicBrainz API configuration
 export const MUSICBRAINZ_CONFIG = {

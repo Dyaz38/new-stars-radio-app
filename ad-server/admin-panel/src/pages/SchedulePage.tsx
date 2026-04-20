@@ -61,14 +61,14 @@ export default function SchedulePage() {
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["radio-schedule"],
     queryFn: async () => {
-      const response = await api.get<ScheduleResponse>("/schedule");
+      const response = await api.get<ScheduleResponse>("/schedule/");
       return response.data;
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: async (items: ScheduleShow[]) => {
-      const response = await api.put<ScheduleUpdateResponse>("/schedule", { items });
+      const response = await api.put<ScheduleUpdateResponse>("/schedule/", { items });
       return response.data;
     },
     onSuccess: (res) => {
