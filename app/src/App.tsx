@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Copy, Trash2 } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2 } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -77,7 +77,6 @@ const RadioStreamingApp = () => {
       return false;
     }
   });
-  const [copyStreamHint, setCopyStreamHint] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
 
   // Memoized expensive computations
@@ -140,17 +139,6 @@ const RadioStreamingApp = () => {
     }
     void loadSchedule();
   }, [loadSchedule]);
-
-  const copyStreamUrl = useCallback(async () => {
-    const url = RADIO_CONFIG.STREAM_URL;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopyStreamHint('Copied to clipboard');
-    } catch {
-      setCopyStreamHint('Select and copy from the box below');
-    }
-    window.setTimeout(() => setCopyStreamHint(null), 2500);
-  }, []);
 
   // Mark current show based on time
   const updateCurrentShow = useCallback(() => {
@@ -506,27 +494,6 @@ const RadioStreamingApp = () => {
                     <span className="text-sm text-gray-400">Shows a static bar display instead of animated waves while you listen.</span>
                   </span>
                 </label>
-              </section>
-
-              <section className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-pink-300 mb-2">Stream link</h4>
-                <p className="text-xs text-gray-400 mb-2">Use in another player or for troubleshooting.</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <code className="flex-1 text-xs bg-black/40 rounded-lg p-2 break-all text-gray-300 border border-white/10">
-                    {RADIO_CONFIG.STREAM_URL}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => void copyStreamUrl()}
-                    className="shrink-0 flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 rounded-lg px-3 py-2 text-sm font-medium"
-                  >
-                    <Copy className="w-4 h-4" />
-                    Copy
-                  </button>
-                </div>
-                {copyStreamHint && (
-                  <p className="text-xs text-green-400 mt-2">{copyStreamHint}</p>
-                )}
               </section>
 
               <section className="bg-white/5 rounded-xl p-4">
