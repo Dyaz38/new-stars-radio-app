@@ -16,6 +16,62 @@ import type { ScheduleShow } from './types';
 
 import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS, getScheduleUrl } from './constants';
 
+type EventCategory = 'all' | 'this-week' | 'online';
+
+interface StationEvent {
+  id: number;
+  title: string;
+  dateLabel: string;
+  location: string;
+  isOnline: boolean;
+  isThisWeek: boolean;
+  status: 'upcoming' | 'live' | 'past';
+  description: string;
+}
+
+const MOCK_EVENTS: StationEvent[] = [
+  {
+    id: 1,
+    title: 'New Stars Street Party',
+    dateLabel: 'Fri, Apr 24 - 7:00 PM',
+    location: 'Freedom Plaza, Windhoek',
+    isOnline: false,
+    isThisWeek: true,
+    status: 'upcoming',
+    description: 'Live DJ sets, giveaways, and interviews with rising local artists.',
+  },
+  {
+    id: 2,
+    title: 'Artist Spotlight Live',
+    dateLabel: 'Sat, Apr 25 - 4:00 PM',
+    location: 'Online Livestream',
+    isOnline: true,
+    isThisWeek: true,
+    status: 'live',
+    description: 'Interactive session with new hitmakers. Ask questions in real time.',
+  },
+  {
+    id: 3,
+    title: 'Community Talent Showcase',
+    dateLabel: 'Tue, Apr 28 - 6:30 PM',
+    location: 'National Theatre Courtyard',
+    isOnline: false,
+    isThisWeek: true,
+    status: 'upcoming',
+    description: 'Unsigned performers present original tracks and acoustic sets.',
+  },
+  {
+    id: 4,
+    title: 'Late Night Mix Replay',
+    dateLabel: 'Sun, May 3 - 9:00 PM',
+    location: 'Online Replay Room',
+    isOnline: true,
+    isThisWeek: false,
+    status: 'upcoming',
+    description: 'Catch the most requested mixes from last month in one stream.',
+  },
+];
+
 const RadioStreamingApp = () => {
   // Custom hooks for clean separation of concerns
   const {
@@ -69,7 +125,9 @@ const RadioStreamingApp = () => {
   const [currentShow, setCurrentShow] = useState('Morning Drive');
   const [currentDJ, setCurrentDJ] = useState('Sarah Martinez');
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [eventFilter, setEventFilter] = useState<EventCategory>('all');
   const [reduceMotion, setReduceMotion] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.REDUCE_MOTION) === '1';
@@ -83,6 +141,11 @@ const RadioStreamingApp = () => {
   const shareMessage = useMemo(() => {
     return `🎵 Currently listening to "${currentSong.title}" by ${currentSong.artist} on ${RADIO_CONFIG.STATION_NAME}! 📻`;
   }, [currentSong.title, currentSong.artist]);
+  const filteredEvents = useMemo(() => {
+    if (eventFilter === 'this-week') return MOCK_EVENTS.filter((event) => event.isThisWeek);
+    if (eventFilter === 'online') return MOCK_EVENTS.filter((event) => event.isOnline);
+    return MOCK_EVENTS;
+  }, [eventFilter]);
 
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
@@ -364,7 +427,8 @@ const RadioStreamingApp = () => {
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
           <div className="grid grid-cols-3 gap-4">
-            <button 
+            <button
+              type="button"
               onClick={() => setShowSchedule(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
             >
@@ -372,7 +436,11 @@ const RadioStreamingApp = () => {
               <span className="text-sm">View Schedule</span>
             </button>
             
-            <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all">
+            <button
+              type="button"
+              onClick={() => setShowEvents(true)}
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
+            >
               <Users className="w-6 h-6" />
               <span className="text-sm">Events</span>
             </button>
@@ -391,7 +459,7 @@ const RadioStreamingApp = () => {
 
       {/* Schedule Modal */}
       {showSchedule && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold">📻 New Stars Radio Schedule</h3>
@@ -439,9 +507,89 @@ const RadioStreamingApp = () => {
         </div>
       )}
 
+      {/* Events Modal */}
+      {showEvents && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto border border-white/10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Users className="w-6 h-6" />
+                Station Events
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEvents(false)}
+                className="text-gray-400 hover:text-white text-xl leading-none"
+                aria-label="Close events"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-5">
+              <button
+                type="button"
+                onClick={() => setEventFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'all' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventFilter('this-week')}
+                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'this-week' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+              >
+                This Week
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventFilter('online')}
+                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'online' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+              >
+                Online
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {filteredEvents.map((event) => (
+                <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <div>
+                      <h4 className="font-semibold text-lg">{event.title}</h4>
+                      <p className="text-sm text-gray-400">{event.dateLabel}</p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        event.status === 'live'
+                          ? 'bg-red-500/90 text-white animate-pulse'
+                          : event.status === 'upcoming'
+                            ? 'bg-emerald-500/80 text-white'
+                            : 'bg-gray-600 text-gray-200'
+                      }`}
+                    >
+                      {event.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-pink-300 mb-2">{event.location}</p>
+                  <p className="text-sm text-gray-300">{event.description}</p>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                    >
+                      Set Reminder
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto border border-white/10">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
