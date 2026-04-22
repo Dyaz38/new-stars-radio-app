@@ -18,6 +18,19 @@ export interface ScheduleShow {
   current: boolean;
 }
 
+export type StationEventStatus = "upcoming" | "live" | "past";
+
+export interface StationEvent {
+  id: number;
+  title: string;
+  dateLabel: string;
+  location: string;
+  isOnline: boolean;
+  isThisWeek: boolean;
+  status: StationEventStatus;
+  description: string;
+}
+
 export interface Post {
   id: number;
   content: string;

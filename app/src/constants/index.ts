@@ -1,3 +1,5 @@
+import type { StationEvent } from "../types";
+
 // Configuration constants for better maintainability
 
 export const RADIO_CONFIG = {
@@ -30,6 +32,7 @@ export const API_ENDPOINTS = {
 /** Real-time listener count (Icecast via ad server proxy). */
 export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/listeners`;
 export const getScheduleUrl = () => `${API_ENDPOINTS.AD_SERVER}/schedule/`;
+export const getEventsUrl = () => `${API_ENDPOINTS.AD_SERVER}/events/`;
 
 // MusicBrainz API configuration
 export const MUSICBRAINZ_CONFIG = {
@@ -49,6 +52,7 @@ export const GENIUS_CONFIG = {
 
 export const STORAGE_KEYS = {
   SCHEDULE: 'newstarsradio-schedule',
+  EVENTS: 'newstarsradio-events',
   /** `'1'` when the listener chose calmer / less motion UI (visualizer). */
   REDUCE_MOTION: 'newstarsradio-reduce-motion',
   USER_PREFERENCES: 'newstarsradio-preferences',
@@ -75,4 +79,48 @@ export const DEFAULT_SCHEDULE = [
   { id: 6, time: "8:00 PM - 10:00 PM", show: "Pop Tonight", dj: "Emma Wilson", description: "Tonight's biggest pop anthems and new releases", current: false },
   { id: 7, time: "10:00 PM - 12:00 AM", show: "Late Night Vibes", dj: "Ryan Brooks", description: "Chill out with smooth pop and indie favorites", current: false },
   { id: 8, time: "12:00 AM - 5:00 AM", show: "Overnight Mix", dj: "Auto DJ", description: "Continuous music through the night", current: false }
+];
+
+/** Fallback when the events API is unavailable (same shape as API + UI). */
+export const DEFAULT_EVENTS: StationEvent[] = [
+  {
+    id: 1,
+    title: "New Stars Street Party",
+    dateLabel: "Fri, Apr 24 - 7:00 PM",
+    location: "Freedom Plaza, Windhoek",
+    isOnline: false,
+    isThisWeek: true,
+    status: "upcoming",
+    description: "Live DJ sets, giveaways, and interviews with rising local artists.",
+  },
+  {
+    id: 2,
+    title: "Artist Spotlight Live",
+    dateLabel: "Sat, Apr 25 - 4:00 PM",
+    location: "Online Livestream",
+    isOnline: true,
+    isThisWeek: true,
+    status: "live",
+    description: "Interactive session with new hitmakers. Ask questions in real time.",
+  },
+  {
+    id: 3,
+    title: "Community Talent Showcase",
+    dateLabel: "Tue, Apr 28 - 6:30 PM",
+    location: "National Theatre Courtyard",
+    isOnline: false,
+    isThisWeek: true,
+    status: "upcoming",
+    description: "Unsigned performers present original tracks and acoustic sets.",
+  },
+  {
+    id: 4,
+    title: "Late Night Mix Replay",
+    dateLabel: "Sun, May 3 - 9:00 PM",
+    location: "Online Replay Room",
+    isOnline: true,
+    isThisWeek: false,
+    status: "upcoming",
+    description: "Catch the most requested mixes from last month in one stream.",
+  },
 ];

@@ -12,65 +12,42 @@ import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
-import type { ScheduleShow } from './types';
+import type { ScheduleShow, StationEvent } from './types';
 
-import { RADIO_CONFIG, DEFAULT_SCHEDULE, STORAGE_KEYS, getScheduleUrl } from './constants';
+import {
+  RADIO_CONFIG,
+  DEFAULT_SCHEDULE,
+  DEFAULT_EVENTS,
+  STORAGE_KEYS,
+  getScheduleUrl,
+  getEventsUrl,
+} from './constants';
 
 type EventCategory = 'all' | 'this-week' | 'online';
 
-interface StationEvent {
+type EventApiRow = {
   id: number;
   title: string;
-  dateLabel: string;
+  date_label: string;
   location: string;
-  isOnline: boolean;
-  isThisWeek: boolean;
+  is_online: boolean;
+  is_this_week: boolean;
   status: 'upcoming' | 'live' | 'past';
-  description: string;
-}
+  description?: string;
+};
 
-const MOCK_EVENTS: StationEvent[] = [
-  {
-    id: 1,
-    title: 'New Stars Street Party',
-    dateLabel: 'Fri, Apr 24 - 7:00 PM',
-    location: 'Freedom Plaza, Windhoek',
-    isOnline: false,
-    isThisWeek: true,
-    status: 'upcoming',
-    description: 'Live DJ sets, giveaways, and interviews with rising local artists.',
-  },
-  {
-    id: 2,
-    title: 'Artist Spotlight Live',
-    dateLabel: 'Sat, Apr 25 - 4:00 PM',
-    location: 'Online Livestream',
-    isOnline: true,
-    isThisWeek: true,
-    status: 'live',
-    description: 'Interactive session with new hitmakers. Ask questions in real time.',
-  },
-  {
-    id: 3,
-    title: 'Community Talent Showcase',
-    dateLabel: 'Tue, Apr 28 - 6:30 PM',
-    location: 'National Theatre Courtyard',
-    isOnline: false,
-    isThisWeek: true,
-    status: 'upcoming',
-    description: 'Unsigned performers present original tracks and acoustic sets.',
-  },
-  {
-    id: 4,
-    title: 'Late Night Mix Replay',
-    dateLabel: 'Sun, May 3 - 9:00 PM',
-    location: 'Online Replay Room',
-    isOnline: true,
-    isThisWeek: false,
-    status: 'upcoming',
-    description: 'Catch the most requested mixes from last month in one stream.',
-  },
-];
+function mapEventFromApi(row: EventApiRow): StationEvent {
+  return {
+    id: row.id,
+    title: row.title,
+    dateLabel: row.date_label,
+    location: row.location,
+    isOnline: row.is_online,
+    isThisWeek: row.is_this_week,
+    status: row.status,
+    description: row.description ?? '',
+  };
+}
 
 const RadioStreamingApp = () => {
   // Custom hooks for clean separation of concerns
@@ -136,16 +113,17 @@ const RadioStreamingApp = () => {
     }
   });
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
+  const [eventsList, setEventsList] = useState<StationEvent[]>([]);
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
     return `🎵 Currently listening to "${currentSong.title}" by ${currentSong.artist} on ${RADIO_CONFIG.STATION_NAME}! 📻`;
   }, [currentSong.title, currentSong.artist]);
   const filteredEvents = useMemo(() => {
-    if (eventFilter === 'this-week') return MOCK_EVENTS.filter((event) => event.isThisWeek);
-    if (eventFilter === 'online') return MOCK_EVENTS.filter((event) => event.isOnline);
-    return MOCK_EVENTS;
-  }, [eventFilter]);
+    if (eventFilter === 'this-week') return eventsList.filter((event) => event.isThisWeek);
+    if (eventFilter === 'online') return eventsList.filter((event) => event.isOnline);
+    return eventsList;
+  }, [eventFilter, eventsList]);
 
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
@@ -179,6 +157,54 @@ const RadioStreamingApp = () => {
       console.log('📅 Schedule fallback using defaults');
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
+    }
+  }, []);
+
+  const loadEvents = useCallback(async () => {
+    try {
+      const response = await fetch(getEventsUrl());
+      if (response.ok) {
+        const payload = await response.json() as { items?: EventApiRow[] };
+        if (Array.isArray(payload.items)) {
+          const mapped = payload.items.map(mapEventFromApi);
+          setEventsList(mapped);
+          try {
+            localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
+          } catch {
+            /* ignore */
+          }
+          console.log('📆 Events loaded from ad server');
+          return;
+        }
+      }
+
+      const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
+      if (saved) {
+        const parsed = JSON.parse(saved) as StationEvent[];
+        if (Array.isArray(parsed)) {
+          setEventsList(parsed);
+          console.log('📆 Events fallback loaded from localStorage');
+          return;
+        }
+      }
+
+      setEventsList([...DEFAULT_EVENTS]);
+      console.log('📆 Events fallback using defaults');
+    } catch (error) {
+      console.error('❌ Failed to load events:', error);
+      try {
+        const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
+        if (saved) {
+          const parsed = JSON.parse(saved) as StationEvent[];
+          if (Array.isArray(parsed)) {
+            setEventsList(parsed);
+            return;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      setEventsList([...DEFAULT_EVENTS]);
     }
   }, []);
 
@@ -249,6 +275,7 @@ const RadioStreamingApp = () => {
         setCurrentDJ(currentShowData.dj);
       }
     });
+    void loadEvents();
   }, []);
 
   // Update current show every minute and sync with main display

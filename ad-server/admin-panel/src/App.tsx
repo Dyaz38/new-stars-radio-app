@@ -10,6 +10,7 @@ import CreativesPage from "./pages/CreativesPage";
 import SettingsPage from "./pages/SettingsPage";
 import SongLikesPage from "./pages/SongLikesPage";
 import SchedulePage from "./pages/SchedulePage";
+import EventsPage from "./pages/EventsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -89,6 +90,15 @@ function App() {
         element={
           <ProtectedRoute>
             <SchedulePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
           </ProtectedRoute>
         }
       />

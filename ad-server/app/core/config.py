@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # Schedule persistence for radio programming (used by app + admin panel)
     SCHEDULE_STORAGE_PATH: str = "data/radio_schedule.json"
 
+    # Station events (listener app + admin panel)
+    EVENTS_STORAGE_PATH: str = "data/station_events.json"
+
     # Admin panel public URL (password reset links in emails)
     FRONTEND_ADMIN_URL: str = "https://newstarsadminpanel.vercel.app"
 

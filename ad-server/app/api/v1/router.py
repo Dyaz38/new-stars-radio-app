@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     advertisers,
     campaigns,
     creatives,
+    events,
     reports,
     stream_stats,
     likes,
@@ -30,6 +31,7 @@ api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(stream_stats.router, prefix="/stream", tags=["Stream"])
 api_router.include_router(likes.router, prefix="/likes", tags=["Song likes"])
 api_router.include_router(schedule.router, prefix="/schedule", tags=["Schedule"])
+api_router.include_router(events.router, prefix="/events", tags=["Events"])
 
 # Health check endpoint
 @api_router.get("/health")
