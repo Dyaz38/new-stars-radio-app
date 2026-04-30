@@ -637,7 +637,8 @@ const RadioStreamingApp = () => {
               <section className="bg-white/5 rounded-xl p-4">
                 <h4 className="text-sm font-semibold text-pink-300 mb-2">About</h4>
                 <p className="text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
-                <p className="text-gray-400 text-sm mt-1">
+                <p className="text-sm text-gray-300 mt-1">{RADIO_CONFIG.TAGLINE}</p>
+                <p className="text-gray-400 text-sm mt-2">
                   New Stars Radio is your #1 stop for up and coming artists in Hip-Hop, R&apos;n&apos;B and Smooth Jazz. We are commited to finding great unknown artists and bringing them to your eardrums.
                 </p>
               </section>
