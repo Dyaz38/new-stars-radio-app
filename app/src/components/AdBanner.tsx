@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { API_ENDPOINTS } from '../constants';
+import { AdSenseFallback, isAdSenseFallbackConfigured } from './AdSenseFallback';
 
 interface AdData {
   ad_id: string;
@@ -102,6 +103,7 @@ export const AdBanner = ({
         );
         
         if (!response.ok) {
+          setAdData(null);
           if (response.status === 404) {
             setError('No ads available');
           } else {
@@ -114,13 +116,16 @@ export const AdBanner = ({
         
         // Check if it's a fallback response
         if ('fallback' in data) {
+          setAdData(null);
           setError('No ads available');
           return;
         }
         
         setAdData(data as AdData);
+        setError(null);
       } catch (err) {
         console.error('Error fetching ad:', err);
+        setAdData(null);
         setError(err instanceof Error ? err.message : 'Failed to load ad');
       } finally {
         setLoading(false);
@@ -204,6 +209,17 @@ export const AdBanner = ({
   }
 
   if (error || !adData) {
+    if (isAdSenseFallbackConfigured()) {
+      return (
+        <AdSenseFallback
+          className={className}
+          style={style}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+      );
+    }
+
     return (
       <div 
         className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
@@ -272,6 +288,7 @@ export const AdBanner = ({
           }}
           onError={() => {
             console.error('Failed to load ad image:', imageUrl);
+            setAdData(null);
             setError('Failed to load ad image');
           }}
         />
