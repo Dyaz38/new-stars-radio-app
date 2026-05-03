@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { API_ENDPOINTS } from '../constants';
-import { AdSenseFallback, isAdSenseFallbackConfigured } from './AdSenseFallback';
 
 interface AdData {
   ad_id: string;
@@ -209,17 +208,6 @@ export const AdBanner = ({
   }
 
   if (error || !adData) {
-    if (isAdSenseFallbackConfigured()) {
-      return (
-        <AdSenseFallback
-          className={className}
-          style={style}
-          width={dimensions.width}
-          height={dimensions.height}
-        />
-      );
-    }
-
     return (
       <div 
         className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
