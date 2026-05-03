@@ -49,6 +49,28 @@ function mapEventFromApi(row: EventApiRow): StationEvent {
   };
 }
 
+function readEventReminderIds(): Set<number> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.EVENT_REMINDERS);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(
+      parsed.filter((id): id is number => typeof id === 'number' && Number.isFinite(id)),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function writeEventReminderIds(ids: Set<number>) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.EVENT_REMINDERS, JSON.stringify([...ids]));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 const RadioStreamingApp = () => {
   // Custom hooks for clean separation of concerns
   const {
@@ -114,6 +136,7 @@ const RadioStreamingApp = () => {
   });
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
   const [eventsList, setEventsList] = useState<StationEvent[]>([]);
+  const [eventReminderIds, setEventReminderIds] = useState<Set<number>>(() => readEventReminderIds());
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
@@ -134,6 +157,25 @@ const RadioStreamingApp = () => {
   const shareCurrentSong = useCallback(() => {
     alert(shareMessage);
   }, [shareMessage]);
+
+  const toggleEventReminder = useCallback((eventId: number) => {
+    setEventReminderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+      writeEventReminderIds(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (showEvents) {
+      setEventReminderIds(readEventReminderIds());
+    }
+  }, [showEvents]);
 
   // Optimized UI handlers
 
@@ -584,6 +626,10 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
+            <p className="text-xs text-gray-500 mb-3">
+              Reminders are saved on this device only (no notifications yet).
+            </p>
+
             <div className="space-y-4">
               {filteredEvents.map((event) => (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -609,9 +655,15 @@ const RadioStreamingApp = () => {
                   <div className="mt-3">
                     <button
                       type="button"
-                      className="bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                      onClick={() => toggleEventReminder(event.id)}
+                      aria-pressed={eventReminderIds.has(event.id)}
+                      className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                        eventReminderIds.has(event.id)
+                          ? 'bg-emerald-600/25 border border-emerald-500/40 text-emerald-200'
+                          : 'bg-white/10 hover:bg-white/20 text-white'
+                      }`}
                     >
-                      Set Reminder
+                      {eventReminderIds.has(event.id) ? 'Reminder saved' : 'Set reminder'}
                     </button>
                   </div>
                 </article>

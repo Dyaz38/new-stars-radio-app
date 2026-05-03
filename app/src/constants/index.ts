@@ -53,6 +53,8 @@ export const GENIUS_CONFIG = {
 export const STORAGE_KEYS = {
   SCHEDULE: 'newstarsradio-schedule',
   EVENTS: 'newstarsradio-events',
+  /** JSON array of event `id` numbers the user marked for reminder (this device only). */
+  EVENT_REMINDERS: 'newstarsradio-event-reminders',
   /** `'1'` when the listener chose calmer / less motion UI (visualizer). */
   REDUCE_MOTION: 'newstarsradio-reduce-motion',
   USER_PREFERENCES: 'newstarsradio-preferences',
