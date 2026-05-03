@@ -125,6 +125,11 @@ const RadioStreamingApp = () => {
     return eventsList;
   }, [eventFilter, eventsList]);
 
+  const currentScheduleSlot = useMemo(
+    () => schedule.find((slot) => slot.current),
+    [schedule],
+  );
+
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
     alert(shareMessage);
@@ -407,7 +412,9 @@ const RadioStreamingApp = () => {
             <div>
               <h2 className="text-xl font-bold">{currentShow}</h2>
               <p className="text-gray-300">with {currentDJ}</p>
-              <p className="text-sm text-gray-400">6:00 AM - 10:00 AM</p>
+              <p className="text-sm text-gray-400">
+                {currentScheduleSlot?.time ?? '—'}
+              </p>
             </div>
               </div>
             </div>
@@ -639,7 +646,7 @@ const RadioStreamingApp = () => {
                 <p className="text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
                 <p className="text-sm text-gray-300 mt-1">{RADIO_CONFIG.TAGLINE}</p>
                 <p className="text-gray-400 text-sm mt-2">
-                  New Stars Radio is your #1 stop for up and coming artists in Hip-Hop, R&apos;n&apos;B and Smooth Jazz. We are commited to finding great unknown artists and bringing them to your eardrums.
+                  New Stars Radio is your #1 stop for up and coming artists in Hip-Hop, R&apos;n&apos;B and Smooth Jazz. We are committed to finding great unknown artists and bringing them to your eardrums.
                 </p>
               </section>
 
