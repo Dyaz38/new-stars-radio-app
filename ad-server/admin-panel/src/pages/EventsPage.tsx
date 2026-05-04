@@ -13,6 +13,9 @@ interface StationEvent {
   is_this_week: boolean;
   status: "upcoming" | "live" | "past";
   description: string;
+  /** ISO 8601 — calendar export in the listener app */
+  starts_at?: string | null;
+  ends_at?: string | null;
 }
 
 interface EventsResponse {
@@ -34,7 +37,25 @@ const EMPTY_TEMPLATE: StationEvent = {
   is_this_week: true,
   status: "upcoming",
   description: "Short description for the app.",
+  starts_at: null,
+  ends_at: null,
 };
+
+function isoToDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function datetimeLocalToIso(local: string): string | null {
+  const t = local.trim();
+  if (!t) return null;
+  const d = new Date(t);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
 
 function formatEventsLoadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -207,6 +228,12 @@ export default function EventsPage() {
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">When (label)</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                      Start (calendar)
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                      End (optional)
+                    </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Online</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">This week</th>
@@ -218,7 +245,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-6 py-10 text-center text-gray-600">
+                      <td colSpan={10} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-4">No events yet. Click <strong>Add event</strong>, fill in the fields, then <strong>Save events</strong>.</p>
                         <button
                           type="button"
@@ -246,6 +273,28 @@ export default function EventsPage() {
                           value={row.date_label}
                           onChange={(e) => updateRow(row.id, { date_label: e.target.value })}
                           className="w-48 min-w-[12rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <input
+                          type="datetime-local"
+                          value={isoToDatetimeLocal(row.starts_at)}
+                          onChange={(e) =>
+                            updateRow(row.id, { starts_at: datetimeLocalToIso(e.target.value) })
+                          }
+                          className="min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          title="Used for Google Calendar and .ics in the listener app"
+                        />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <input
+                          type="datetime-local"
+                          value={isoToDatetimeLocal(row.ends_at)}
+                          onChange={(e) =>
+                            updateRow(row.id, { ends_at: datetimeLocalToIso(e.target.value) })
+                          }
+                          className="min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          title="Leave empty for a 2-hour default length"
                         />
                       </td>
                       <td className="px-3 py-3">

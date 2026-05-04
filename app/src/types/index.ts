@@ -29,6 +29,10 @@ export interface StationEvent {
   isThisWeek: boolean;
   status: StationEventStatus;
   description: string;
+  /** ISO 8601 from API — required for Add to calendar in the app */
+  startsAt?: string | null;
+  /** ISO 8601 from API */
+  endsAt?: string | null;
 }
 
 export interface Post {

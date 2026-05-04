@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2 } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -22,6 +22,12 @@ import {
   getScheduleUrl,
   getEventsUrl,
 } from './constants';
+import {
+  buildGoogleCalendarUrl,
+  buildIcsContent,
+  downloadIcsFile,
+  getEventTimeRange,
+} from './utils/eventCalendar';
 
 type EventCategory = 'all' | 'this-week' | 'online';
 
@@ -34,6 +40,8 @@ type EventApiRow = {
   is_this_week: boolean;
   status: 'upcoming' | 'live' | 'past';
   description?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
 };
 
 function mapEventFromApi(row: EventApiRow): StationEvent {
@@ -46,6 +54,8 @@ function mapEventFromApi(row: EventApiRow): StationEvent {
     isThisWeek: row.is_this_week,
     status: row.status,
     description: row.description ?? '',
+    startsAt: row.starts_at ?? null,
+    endsAt: row.ends_at ?? null,
   };
 }
 
@@ -652,6 +662,43 @@ const RadioStreamingApp = () => {
                   </div>
                   <p className="text-sm text-pink-300 mb-2">{event.location}</p>
                   <p className="text-sm text-gray-300">{event.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 items-center">
+                    {(() => {
+                      const range = getEventTimeRange(event);
+                      if (!range) {
+                        return (
+                          <p className="text-xs text-gray-500">
+                            Set start time in Ad Manager to open this event in Google Calendar or download a
+                            calendar file (.ics).
+                          </p>
+                        );
+                      }
+                      const gcalUrl = buildGoogleCalendarUrl(event, range.start, range.end);
+                      const icsBody = buildIcsContent(event, range.start, range.end);
+                      const icsName = `new-stars-radio-event-${event.id}.ics`;
+                      return (
+                        <>
+                          <a
+                            href={gcalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
+                            Google Calendar
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => downloadIcsFile(icsName, icsBody)}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                          >
+                            <Download className="w-4 h-4 shrink-0" aria-hidden />
+                            Download .ics
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <div className="mt-3">
                     <button
                       type="button"

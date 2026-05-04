@@ -31,7 +31,7 @@ def _events_file_path() -> Path:
 def _write_events(items: list[StationEvent]) -> None:
     path = _events_file_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"items": [item.model_dump() for item in items]}
+    payload = {"items": [item.model_dump(mode="json") for item in items]}
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 

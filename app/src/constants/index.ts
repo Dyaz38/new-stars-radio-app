@@ -94,6 +94,8 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     isThisWeek: true,
     status: "upcoming",
     description: "Live DJ sets, giveaways, and interviews with rising local artists.",
+    startsAt: "2026-04-24T19:00:00+02:00",
+    endsAt: "2026-04-24T22:00:00+02:00",
   },
   {
     id: 2,
@@ -104,6 +106,8 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     isThisWeek: true,
     status: "live",
     description: "Interactive session with new hitmakers. Ask questions in real time.",
+    startsAt: "2026-04-25T16:00:00+02:00",
+    endsAt: "2026-04-25T18:00:00+02:00",
   },
   {
     id: 3,
@@ -114,6 +118,8 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     isThisWeek: true,
     status: "upcoming",
     description: "Unsigned performers present original tracks and acoustic sets.",
+    startsAt: "2026-04-28T18:30:00+02:00",
+    endsAt: "2026-04-28T21:00:00+02:00",
   },
   {
     id: 4,
@@ -124,5 +130,7 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     isThisWeek: false,
     status: "upcoming",
     description: "Catch the most requested mixes from last month in one stream.",
+    startsAt: "2026-05-03T21:00:00+02:00",
+    endsAt: "2026-05-04T00:00:00+02:00",
   },
 ];

@@ -1,6 +1,7 @@
 """Pydantic schemas for station events API."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -17,6 +18,9 @@ class StationEvent(BaseModel):
     is_this_week: bool = False
     status: Literal["upcoming", "live", "past"] = "upcoming"
     description: str = Field(default="", max_length=1000)
+    # ISO 8601 — used for Add to calendar in the listener app (optional for legacy rows)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
 
     @field_validator("title", "date_label", "location", "description")
     @classmethod
