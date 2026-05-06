@@ -27,9 +27,10 @@ import {
   buildIcsContent,
   downloadIcsFile,
   getEventTimeRange,
+  getThisWeekSegment,
 } from './utils/eventCalendar';
 
-type EventCategory = 'all' | 'this-week' | 'online';
+type EventCategory = 'all' | 'mon-thu' | 'weekend' | 'online';
 
 type EventApiRow = {
   id: number;
@@ -153,7 +154,10 @@ const RadioStreamingApp = () => {
     return `🎵 Currently listening to "${currentSong.title}" by ${currentSong.artist} on ${RADIO_CONFIG.STATION_NAME}! 📻`;
   }, [currentSong.title, currentSong.artist]);
   const filteredEvents = useMemo(() => {
-    if (eventFilter === 'this-week') return eventsList.filter((event) => event.isThisWeek);
+    if (eventFilter === 'mon-thu')
+      return eventsList.filter((event) => getThisWeekSegment(event) === 'mon-thu');
+    if (eventFilter === 'weekend')
+      return eventsList.filter((event) => getThisWeekSegment(event) === 'weekend');
     if (eventFilter === 'online') return eventsList.filter((event) => event.isOnline);
     return eventsList;
   }, [eventFilter, eventsList]);
@@ -612,7 +616,7 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
-            <div className="flex gap-2 mb-5">
+            <div className="flex flex-wrap gap-2 mb-5">
               <button
                 type="button"
                 onClick={() => setEventFilter('all')}
@@ -622,10 +626,17 @@ const RadioStreamingApp = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setEventFilter('this-week')}
-                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'this-week' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                onClick={() => setEventFilter('mon-thu')}
+                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'mon-thu' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
               >
-                This Week
+                Mon–Thu
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventFilter('weekend')}
+                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'weekend' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+              >
+                Weekend
               </button>
               <button
                 type="button"
@@ -636,6 +647,9 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
+            <p className="text-xs text-gray-500 mb-1">
+              Mon–Thu and Weekend filter by each event&apos;s start time within this calendar week (Mon–Sun, local).
+            </p>
             <p className="text-xs text-gray-500 mb-3">
               Reminders are saved on this device only (no notifications yet).
             </p>
