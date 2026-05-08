@@ -21,6 +21,7 @@ import {
   STORAGE_KEYS,
   getScheduleUrl,
   getEventsUrl,
+  resolveStationEventImageUrl,
 } from './constants';
 import {
   buildGoogleCalendarUrl,
@@ -43,6 +44,7 @@ type EventApiRow = {
   description?: string;
   starts_at?: string | null;
   ends_at?: string | null;
+  image_url?: string | null;
 };
 
 function mapEventFromApi(row: EventApiRow): StationEvent {
@@ -57,6 +59,7 @@ function mapEventFromApi(row: EventApiRow): StationEvent {
     description: row.description ?? '',
     startsAt: row.starts_at ?? null,
     endsAt: row.ends_at ?? null,
+    imageUrl: row.image_url ?? null,
   };
 }
 
@@ -655,8 +658,19 @@ const RadioStreamingApp = () => {
             </p>
 
             <div className="space-y-4">
-              {filteredEvents.map((event) => (
+              {filteredEvents.map((event) => {
+                const eventImageSrc = resolveStationEventImageUrl(event.imageUrl);
+                return (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  {eventImageSrc ? (
+                    <img
+                      src={eventImageSrc}
+                      alt={event.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full max-h-48 object-cover rounded-lg mb-3 border border-white/10"
+                    />
+                  ) : null}
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>
                       <h4 className="font-semibold text-lg">{event.title}</h4>
@@ -728,7 +742,8 @@ const RadioStreamingApp = () => {
                     </button>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

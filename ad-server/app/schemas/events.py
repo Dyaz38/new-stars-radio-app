@@ -21,11 +21,21 @@ class StationEvent(BaseModel):
     # ISO 8601 — used for Add to calendar in the listener app (optional for legacy rows)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
+    # Absolute https URL or relative path e.g. /static/events/... (listener resolves against API origin)
+    image_url: str | None = Field(default=None, max_length=2000)
 
     @field_validator("title", "date_label", "location", "description")
     @classmethod
     def strip_text_fields(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("image_url")
+    @classmethod
+    def normalize_image_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        s = value.strip()
+        return s or None
 
 
 class EventsResponse(BaseModel):
@@ -48,3 +58,7 @@ class EventsUpdateResponse(BaseModel):
     ok: bool = True
     updated_items: int
     items: list[StationEvent]
+
+
+class EventImageUploadResponse(BaseModel):
+    image_url: str

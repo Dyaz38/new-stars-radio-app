@@ -5,7 +5,7 @@ Supports local disk (dev) and Cloudflare R2 (production).
 import logging
 from pathlib import Path
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 
@@ -111,3 +111,41 @@ def _upload_to_local(file: UploadFile, campaign_id: UUID, effective_filename: st
         raise
 
     return f"/static/ads/{filename}"
+
+
+def upload_station_event_image(file: UploadFile, effective_filename: str) -> str:
+    """
+    Upload a station event banner/image; returns URL for JSON storage.
+    R2: full public URL. Local: path /static/events/...
+    """
+    uid = uuid4().hex[:16]
+    safe_name = f"{uid}_{effective_filename}"
+
+    if settings.r2_enabled:
+        object_key = f"events/{safe_name}"
+        return _upload_to_r2(file, object_key)
+
+    return _upload_event_to_local(file, safe_name)
+
+
+def _upload_event_to_local(file: UploadFile, filename: str) -> str:
+    """Save under static/events/ and return /static/events/... path."""
+    import shutil
+
+    events_dir = Path("static") / "events"
+    events_dir.mkdir(parents=True, exist_ok=True)
+    file_path = events_dir / filename
+
+    file_body = file.file
+    if file_body is None:
+        raise ValueError("Upload file has no body")
+
+    try:
+        file_body.seek(0)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file_body, buffer)
+    except OSError as e:
+        logger.warning("Event image local save failed: %s", e, exc_info=True)
+        raise
+
+    return f"/static/events/{filename}"

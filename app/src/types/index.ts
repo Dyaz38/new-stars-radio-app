@@ -33,6 +33,8 @@ export interface StationEvent {
   startsAt?: string | null;
   /** ISO 8601 from API */
   endsAt?: string | null;
+  /** Image URL or relative /static/events/... from API */
+  imageUrl?: string | null;
 }
 
 export interface Post {

@@ -16,6 +16,7 @@ interface StationEvent {
   /** ISO 8601 — calendar export in the listener app */
   starts_at?: string | null;
   ends_at?: string | null;
+  image_url?: string | null;
 }
 
 interface EventsResponse {
@@ -39,6 +40,7 @@ const EMPTY_TEMPLATE: StationEvent = {
   description: "Short description for the app.",
   starts_at: null,
   ends_at: null,
+  image_url: null,
 };
 
 function isoToDatetimeLocal(iso: string | null | undefined): string {
@@ -55,6 +57,22 @@ function datetimeLocalToIso(local: string): string | null {
   const d = new Date(t);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
+}
+
+function adServerOriginFromEnv(): string {
+  return normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined).replace(
+    /\/api\/v1\/?$/i,
+    "",
+  );
+}
+
+function resolveEventImagePreview(url: string | null | undefined): string | null {
+  if (!url?.trim()) return null;
+  const u = url.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  const origin = adServerOriginFromEnv();
+  const path = u.startsWith("/") ? u : `/${u}`;
+  return `${origin}${path}`;
 }
 
 function formatEventsLoadError(err: unknown): string {
@@ -79,6 +97,7 @@ export default function EventsPage() {
   const queryClient = useQueryClient();
   const [editorRows, setEditorRows] = useState<StationEvent[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["station-events"],
@@ -227,6 +246,9 @@ export default function EventsPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[12rem]">
+                      Image
+                    </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">When (label)</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                       Start (calendar)
@@ -245,7 +267,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-6 py-10 text-center text-gray-600">
+                      <td colSpan={11} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-4">No events yet. Click <strong>Add event</strong>, fill in the fields, then <strong>Save events</strong>.</p>
                         <button
                           type="button"
@@ -266,6 +288,68 @@ export default function EventsPage() {
                           onChange={(e) => updateRow(row.id, { title: e.target.value })}
                           className="w-44 min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
                         />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <div className="flex flex-col gap-2 min-w-[12rem]">
+                          <input
+                            type="url"
+                            placeholder="https://… or upload"
+                            value={row.image_url ?? ""}
+                            onChange={(e) =>
+                              updateRow(row.id, { image_url: e.target.value.trim() || null })
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          />
+                          <label className="text-xs text-gray-600">
+                            <span className="sr-only">Upload image file</span>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                              disabled={uploadingImageId === row.id || saveMutation.isPending}
+                              className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-sm"
+                              onChange={async (e) => {
+                                const input = e.target;
+                                const file = input.files?.[0];
+                                input.value = "";
+                                if (!file) return;
+                                setUploadingImageId(row.id);
+                                setFeedback(null);
+                                try {
+                                  const fd = new FormData();
+                                  fd.append("image_file", file);
+                                  const { data } = await api.post<{ image_url: string }>(
+                                    "/events/upload-image",
+                                    fd,
+                                  );
+                                  updateRow(row.id, { image_url: data.image_url });
+                                  setFeedback("Image uploaded — click Save events to publish.");
+                                } catch (err: unknown) {
+                                  if (axios.isAxiosError(err) && err.response?.data?.detail) {
+                                    setFeedback(
+                                      typeof err.response.data.detail === "string"
+                                        ? err.response.data.detail
+                                        : "Upload failed.",
+                                    );
+                                  } else {
+                                    setFeedback("Upload failed.");
+                                  }
+                                } finally {
+                                  setUploadingImageId(null);
+                                }
+                              }}
+                            />
+                          </label>
+                          {uploadingImageId === row.id ? (
+                            <span className="text-xs text-indigo-600">Uploading…</span>
+                          ) : null}
+                          {resolveEventImagePreview(row.image_url) ? (
+                            <img
+                              src={resolveEventImagePreview(row.image_url) ?? undefined}
+                              alt=""
+                              className="w-full max-h-24 object-cover rounded border border-gray-200"
+                            />
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3">
                         <input

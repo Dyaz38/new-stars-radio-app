@@ -34,6 +34,24 @@ export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/li
 export const getScheduleUrl = () => `${API_ENDPOINTS.AD_SERVER}/schedule/`;
 export const getEventsUrl = () => `${API_ENDPOINTS.AD_SERVER}/events/`;
 
+/** Origin for resolving relative image paths from the ad server (no /api/v1). */
+export function getAdServerOrigin(): string {
+  const raw =
+    (import.meta.env.VITE_AD_SERVER_URL as string | undefined)?.trim() ||
+    "https://new-stars-radio-app-production.up.railway.app/api/v1";
+  return raw.replace(/[\r\n]+/g, "").replace(/\/+$/, "").replace(/\/api\/v1\/?$/i, "");
+}
+
+/** Full URL for station event images (https, or relative from API host). */
+export function resolveStationEventImageUrl(url: string | null | undefined): string | null {
+  if (!url?.trim()) return null;
+  const u = url.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  const origin = getAdServerOrigin();
+  const path = u.startsWith("/") ? u : `/${u}`;
+  return `${origin}${path}`;
+}
+
 // MusicBrainz API configuration
 export const MUSICBRAINZ_CONFIG = {
   USER_AGENT: 'NewStarsRadio/1.0.0 (https://localhost:5173)',
@@ -96,6 +114,7 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     description: "Live DJ sets, giveaways, and interviews with rising local artists.",
     startsAt: "2026-04-24T19:00:00+02:00",
     endsAt: "2026-04-24T22:00:00+02:00",
+    imageUrl: "https://picsum.photos/seed/newstars-street-party/800/450",
   },
   {
     id: 2,
