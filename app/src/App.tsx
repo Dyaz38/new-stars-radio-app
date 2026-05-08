@@ -663,13 +663,15 @@ const RadioStreamingApp = () => {
                 return (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
                   {eventImageSrc ? (
-                    <img
-                      src={eventImageSrc}
-                      alt={event.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full max-h-48 object-cover rounded-lg mb-3 border border-white/10"
-                    />
+                    <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-2">
+                      <img
+                        src={eventImageSrc}
+                        alt={event.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full max-w-sm mx-auto aspect-[2/3] object-contain rounded-md"
+                      />
+                    </div>
                   ) : null}
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>

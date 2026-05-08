@@ -339,6 +339,9 @@ export default function EventsPage() {
                               }}
                             />
                           </label>
+                          <p className="text-xs text-gray-500">
+                            Flyer recommendation: portrait 2:3 ratio (for example 1200x1800).
+                          </p>
                           {uploadingImageId === row.id ? (
                             <span className="text-xs text-indigo-600">Uploading…</span>
                           ) : null}
@@ -346,7 +349,7 @@ export default function EventsPage() {
                             <img
                               src={resolveEventImagePreview(row.image_url) ?? undefined}
                               alt=""
-                              className="w-full max-h-24 object-cover rounded border border-gray-200"
+                              className="w-28 mx-auto aspect-[2/3] object-contain rounded border border-gray-200 bg-gray-50"
                             />
                           ) : null}
                         </div>
