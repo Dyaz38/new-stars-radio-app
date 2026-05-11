@@ -29,6 +29,17 @@ interface EventsUpdateResponse {
   items: StationEvent[];
 }
 
+interface EventLocationsResponse {
+  places: string[];
+}
+
+interface EventLocationsUpdateResponse {
+  ok: boolean;
+  places: string[];
+}
+
+const CUSTOM_LOCATION = "__custom__";
+
 const EMPTY_TEMPLATE: StationEvent = {
   id: 1,
   title: "New event",
@@ -75,6 +86,17 @@ function resolveEventImagePreview(url: string | null | undefined): string | null
   return `${origin}${path}`;
 }
 
+function placeIsInPresetList(location: string, places: string[]): boolean {
+  return places.some((p) => p === location);
+}
+
+/** Value for the location `<select>`: preset name, empty, or Custom. */
+function locationSelectValue(location: string, places: string[]): string {
+  if (!location.trim()) return "";
+  if (placeIsInPresetList(location, places)) return location;
+  return CUSTOM_LOCATION;
+}
+
 function formatEventsLoadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
     if (err.response?.data && typeof err.response.data === "object" && "detail" in err.response.data) {
@@ -98,6 +120,7 @@ export default function EventsPage() {
   const [editorRows, setEditorRows] = useState<StationEvent[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
+  const [newPlaceInput, setNewPlaceInput] = useState("");
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["station-events"],
@@ -122,6 +145,39 @@ export default function EventsPage() {
       setFeedback(e.response?.data?.detail || "Failed to save events.");
     },
   });
+
+  const {
+    data: locationsData,
+    isLoading: locationsLoading,
+    error: locationsError,
+  } = useQuery({
+    queryKey: ["event-locations"],
+    queryFn: async () => {
+      const response = await api.get<EventLocationsResponse>("/events/locations");
+      return response.data;
+    },
+  });
+
+  const saveLocationsMutation = useMutation({
+    mutationFn: async (places: string[]) => {
+      const response = await api.put<EventLocationsUpdateResponse>("/events/locations", { places });
+      return response.data;
+    },
+    onSuccess: () => {
+      setFeedback("Saved location list.");
+      void queryClient.invalidateQueries({ queryKey: ["event-locations"] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setFeedback(e.response?.data?.detail || "Failed to save locations.");
+    },
+  });
+
+  const presetPlaces = locationsData?.places ?? [];
+  const sortedPresetPlaces = useMemo(
+    () => [...presetPlaces].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
+    [presetPlaces],
+  );
 
   const rows = editorRows.length > 0 ? editorRows : data?.items ?? [];
 
@@ -162,7 +218,31 @@ export default function EventsPage() {
     saveMutation.mutate(rows);
   };
 
+  const addPlaceAndSave = () => {
+    const next = newPlaceInput.trim();
+    if (!next) {
+      setFeedback("Enter a town or city name before adding.");
+      return;
+    }
+    if (presetPlaces.some((p) => p.toLowerCase() === next.toLowerCase())) {
+      setFeedback("That place is already in the list.");
+      return;
+    }
+    setFeedback(null);
+    saveLocationsMutation.mutate([...presetPlaces, next]);
+    setNewPlaceInput("");
+  };
+
+  const removePlace = (place: string) => {
+    setFeedback(null);
+    saveLocationsMutation.mutate(presetPlaces.filter((p) => p !== place));
+  };
+
   const apiBaseHint = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined);
+  const locationsErrorText = useMemo(() => {
+    if (!locationsError) return null;
+    return formatEventsLoadError(locationsError);
+  }, [locationsError]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -231,6 +311,77 @@ export default function EventsPage() {
             </p>
           </div>
         )}
+
+        <section className="mb-8 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">Event locations (towns &amp; cities)</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            These names power the <strong>Location</strong> dropdown for each event. Add places here, then pick
+            them when editing events (or choose Custom for a one-off venue).
+          </p>
+          {locationsErrorText ? (
+            <p className="mt-2 text-sm text-red-700">{locationsErrorText}</p>
+          ) : null}
+          {locationsLoading ? (
+            <p className="mt-3 text-sm text-gray-500">Loading locations…</p>
+          ) : (
+            <>
+              {presetPlaces.length === 0 ? (
+                <p className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  No saved places yet. Add towns or cities below so the dropdown is available for events.
+                </p>
+              ) : (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {presetPlaces.map((place) => (
+                    <li
+                      key={place}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-800"
+                    >
+                      <span>{place}</span>
+                      <button
+                        type="button"
+                        disabled={saveLocationsMutation.isPending}
+                        onClick={() => removePlace(place)}
+                        className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                        aria-label={`Remove ${place}`}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-4 flex flex-wrap items-end gap-2">
+                <div className="min-w-[12rem] flex-1">
+                  <label htmlFor="new-place" className="block text-xs font-medium text-gray-600 mb-1">
+                    Add town or city
+                  </label>
+                  <input
+                    id="new-place"
+                    type="text"
+                    value={newPlaceInput}
+                    onChange={(e) => setNewPlaceInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addPlaceAndSave();
+                      }
+                    }}
+                    placeholder="e.g. Windhoek"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addPlaceAndSave}
+                  disabled={saveLocationsMutation.isPending || locationsLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {saveLocationsMutation.isPending ? "Saving…" : "Add & save"}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
 
         {isLoading ? (
           <div className="flex justify-center py-16">
@@ -384,13 +535,51 @@ export default function EventsPage() {
                           title="Leave empty for a 2-hour default length"
                         />
                       </td>
-                      <td className="px-3 py-3">
-                        <input
-                          type="text"
-                          value={row.location}
-                          onChange={(e) => updateRow(row.id, { location: e.target.value })}
-                          className="w-40 min-w-[10rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
-                        />
+                      <td className="px-3 py-3 align-top">
+                        {(() => {
+                          const inList = placeIsInPresetList(row.location, presetPlaces);
+                          const selectValue = locationSelectValue(row.location, presetPlaces);
+                          return (
+                            <div className="flex flex-col gap-1.5 min-w-[11rem]">
+                              <select
+                                value={selectValue}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v === "") {
+                                    updateRow(row.id, { location: "" });
+                                    return;
+                                  }
+                                  if (v === CUSTOM_LOCATION) {
+                                    updateRow(row.id, {
+                                      location: inList ? "" : row.location,
+                                    });
+                                  } else {
+                                    updateRow(row.id, { location: v });
+                                  }
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                                aria-label="Event location preset"
+                              >
+                                <option value="">— Select —</option>
+                                {sortedPresetPlaces.map((p) => (
+                                  <option key={p} value={p}>
+                                    {p}
+                                  </option>
+                                ))}
+                                <option value={CUSTOM_LOCATION}>Custom…</option>
+                              </select>
+                              {selectValue === CUSTOM_LOCATION && (
+                                <input
+                                  type="text"
+                                  value={row.location}
+                                  onChange={(e) => updateRow(row.id, { location: e.target.value })}
+                                  placeholder="Venue or one-off location"
+                                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-3">
                         <input

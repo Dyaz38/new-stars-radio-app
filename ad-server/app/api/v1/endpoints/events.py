@@ -10,6 +10,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.models.user import User
+from app.schemas.event_locations import (
+    EventLocationsResponse,
+    EventLocationsUpdateRequest,
+    EventLocationsUpdateResponse,
+)
 from app.schemas.events import (
     EventImageUploadResponse,
     EventsResponse,
@@ -49,6 +54,57 @@ def _read_events() -> list[StationEvent]:
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.warning("Invalid events file detected (%s). Returning empty list.", exc)
         return []
+
+
+def _locations_file_path() -> Path:
+    path = Path(settings.EVENT_LOCATIONS_STORAGE_PATH)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path
+
+
+def _read_locations() -> list[str]:
+    path = _locations_file_path()
+    if not path.exists():
+        return []
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        parsed = EventLocationsResponse.model_validate(raw)
+        return parsed.places
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("Invalid event locations file detected (%s). Returning empty list.", exc)
+        return []
+
+
+def _write_locations(places: list[str]) -> None:
+    path = _locations_file_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = EventLocationsResponse(places=places).model_dump(mode="json")
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+@router.get(
+    "/locations",
+    response_model=EventLocationsResponse,
+    summary="Get preset event locations (towns / cities)",
+)
+async def get_event_locations():
+    return EventLocationsResponse(places=_read_locations())
+
+
+@router.put(
+    "/locations",
+    response_model=EventLocationsUpdateResponse,
+    summary="Update preset event locations (admin)",
+)
+async def update_event_locations(
+    body: EventLocationsUpdateRequest,
+    _: User = Depends(get_current_user),
+):
+    _write_locations(body.places)
+    logger.info("station event locations updated: count=%s", len(body.places))
+    return EventLocationsUpdateResponse(places=_read_locations())
 
 
 @router.get(
