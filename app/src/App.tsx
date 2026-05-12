@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink, MapPin } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -21,6 +21,7 @@ import {
   STORAGE_KEYS,
   getScheduleUrl,
   getEventsUrl,
+  getEventLocationsUrl,
   resolveStationEventImageUrl,
 } from './constants';
 import {
@@ -61,6 +62,29 @@ function mapEventFromApi(row: EventApiRow): StationEvent {
     endsAt: row.ends_at ?? null,
     imageUrl: row.image_url ?? null,
   };
+}
+
+function readEventCityFilter(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.EVENT_CITY_FILTER)?.trim() ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeEventCityFilter(value: string) {
+  try {
+    if (value.trim()) localStorage.setItem(STORAGE_KEYS.EVENT_CITY_FILTER, value.trim());
+    else localStorage.removeItem(STORAGE_KEYS.EVENT_CITY_FILTER);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Match admin preset names against full venue strings (e.g. "Plaza, Windhoek"). */
+function eventMatchesCityFilter(event: StationEvent, city: string): boolean {
+  if (!city.trim()) return true;
+  return event.location.toLowerCase().includes(city.trim().toLowerCase());
 }
 
 const RadioStreamingApp = () => {
@@ -119,6 +143,9 @@ const RadioStreamingApp = () => {
   const [showEvents, setShowEvents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventCategory>('all');
+  const [eventCityFilter, setEventCityFilter] = useState<string>(() => readEventCityFilter());
+  const [eventLocationPresets, setEventLocationPresets] = useState<string[]>([]);
+  const [eventLocationsLoading, setEventLocationsLoading] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.REDUCE_MOTION) === '1';
@@ -134,13 +161,26 @@ const RadioStreamingApp = () => {
     return `🎵 Currently listening to "${currentSong.title}" by ${currentSong.artist} on ${RADIO_CONFIG.STATION_NAME}! 📻`;
   }, [currentSong.title, currentSong.artist]);
   const filteredEvents = useMemo(() => {
+    let list = eventsList;
     if (eventFilter === 'mon-thu')
-      return eventsList.filter((event) => getThisWeekSegment(event) === 'mon-thu');
-    if (eventFilter === 'weekend')
-      return eventsList.filter((event) => getThisWeekSegment(event) === 'weekend');
-    if (eventFilter === 'online') return eventsList.filter((event) => event.isOnline);
-    return eventsList;
-  }, [eventFilter, eventsList]);
+      list = list.filter((event) => getThisWeekSegment(event) === 'mon-thu');
+    else if (eventFilter === 'weekend')
+      list = list.filter((event) => getThisWeekSegment(event) === 'weekend');
+    else if (eventFilter === 'online') list = list.filter((event) => event.isOnline);
+
+    if (eventCityFilter.trim()) {
+      list = list.filter((event) => eventMatchesCityFilter(event, eventCityFilter));
+    }
+    return list;
+  }, [eventFilter, eventsList, eventCityFilter]);
+
+  const sortedEventLocationPresets = useMemo(
+    () =>
+      [...eventLocationPresets].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' }),
+      ),
+    [eventLocationPresets],
+  );
 
   const currentScheduleSlot = useMemo(
     () => schedule.find((slot) => slot.current),
@@ -229,6 +269,34 @@ const RadioStreamingApp = () => {
       setEventsList([...DEFAULT_EVENTS]);
     }
   }, []);
+
+  useEffect(() => {
+    if (!showEvents) return;
+    let cancelled = false;
+    setEventLocationsLoading(true);
+    void fetch(getEventLocationsUrl())
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { places?: unknown };
+        if (cancelled) return;
+        if (!Array.isArray(data.places)) {
+          setEventLocationPresets([]);
+          return;
+        }
+        setEventLocationPresets(
+          data.places.filter((p): p is string => typeof p === 'string' && p.trim().length > 0),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setEventLocationPresets([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEventLocationsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showEvents]);
 
   useEffect(() => {
     try {
@@ -577,6 +645,46 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
+            <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-4">
+              <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm text-gray-200 flex items-center gap-2 shrink-0">
+                  <MapPin className="w-4 h-4 text-pink-400" aria-hidden />
+                  Show events in
+                </span>
+                <select
+                  value={eventCityFilter}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setEventCityFilter(v);
+                    writeEventCityFilter(v);
+                  }}
+                  disabled={eventLocationsLoading}
+                  aria-label="Filter events by city or area"
+                  className="w-full sm:max-w-xs rounded-lg bg-white/10 border border-white/20 px-3 py-2.5 text-sm text-white disabled:opacity-50"
+                >
+                  <option value="">All areas</option>
+                  {sortedEventLocationPresets.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {eventLocationsLoading ? (
+                <p className="mt-2 text-xs text-gray-500">Loading places…</p>
+              ) : sortedEventLocationPresets.length === 0 ? (
+                <p className="mt-2 text-xs text-gray-500">
+                  Add towns and cities in Ad Manager to list them here. Until then, use{' '}
+                  <strong className="text-gray-400">All areas</strong> to browse every event.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">
+                  Only events whose venue text includes that place are shown (same wording as in Ad Manager
+                  helps).
+                </p>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2 mb-5">
               <button
                 type="button"
@@ -609,14 +717,22 @@ const RadioStreamingApp = () => {
             </div>
 
             <p className="text-xs text-gray-500 mb-1">
-              Mon–Thu and Weekend filter by each event&apos;s start time within this calendar week (Mon–Sun, local).
+              Mon–Thu and Weekend filter by each event&apos;s start time within this calendar week (Mon–Sun,
+              local). City filter matches the event&apos;s location text.
             </p>
             <p className="text-xs text-gray-500 mb-3">
               Event times reflect your local timezone.
             </p>
 
             <div className="space-y-4">
-              {filteredEvents.map((event) => {
+              {filteredEvents.length === 0 ? (
+                <p className="text-center text-gray-400 py-10 text-sm px-2">
+                  {eventCityFilter.trim()
+                    ? 'No events match this area with the filters you chose. Try All areas, another city, or a different time filter.'
+                    : 'No events to show right now.'}
+                </p>
+              ) : (
+              filteredEvents.map((event) => {
                 const eventImageSrc = resolveStationEventImageUrl(event.imageUrl);
                 return (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -689,7 +805,8 @@ const RadioStreamingApp = () => {
                   </div>
                 </article>
                 );
-              })}
+              })
+              )}
             </div>
           </div>
         </div>
