@@ -21,7 +21,6 @@ import {
   STORAGE_KEYS,
   getScheduleUrl,
   getEventsUrl,
-  getEventLocationsUrl,
   resolveStationEventImageUrl,
 } from './constants';
 import {
@@ -81,10 +80,12 @@ function writeEventCityFilter(value: string) {
   }
 }
 
-/** Match admin preset names against full venue strings (e.g. "Plaza, Windhoek"). */
-function eventMatchesCityFilter(event: StationEvent, city: string): boolean {
-  if (!city.trim()) return true;
-  return event.location.toLowerCase().includes(city.trim().toLowerCase());
+/** Match chosen venue: exact line or substring (supports older saved filters). */
+function eventMatchesLocationFilter(event: StationEvent, selected: string): boolean {
+  if (!selected.trim()) return true;
+  const sel = selected.trim().toLowerCase();
+  const loc = event.location.trim().toLowerCase();
+  return loc === sel || loc.includes(sel);
 }
 
 const RadioStreamingApp = () => {
@@ -144,8 +145,6 @@ const RadioStreamingApp = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [eventFilter, setEventFilter] = useState<EventCategory>('all');
   const [eventCityFilter, setEventCityFilter] = useState<string>(() => readEventCityFilter());
-  const [eventLocationPresets, setEventLocationPresets] = useState<string[]>([]);
-  const [eventLocationsLoading, setEventLocationsLoading] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.REDUCE_MOTION) === '1';
@@ -169,18 +168,30 @@ const RadioStreamingApp = () => {
     else if (eventFilter === 'online') list = list.filter((event) => event.isOnline);
 
     if (eventCityFilter.trim()) {
-      list = list.filter((event) => eventMatchesCityFilter(event, eventCityFilter));
+      list = list.filter((event) => eventMatchesLocationFilter(event, eventCityFilter));
     }
     return list;
   }, [eventFilter, eventsList, eventCityFilter]);
 
-  const sortedEventLocationPresets = useMemo(
-    () =>
-      [...eventLocationPresets].sort((a, b) =>
-        a.localeCompare(b, undefined, { sensitivity: 'base' }),
-      ),
-    [eventLocationPresets],
-  );
+  /** Distinct venue strings from published events (same source as Ad Manager). */
+  const locationOptionsFromEvents = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const ev of eventsList) {
+      const t = ev.location.trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      if (!byKey.has(k)) byKey.set(k, t);
+    }
+    return [...byKey.values()].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    );
+  }, [eventsList]);
+
+  const savedLocationNotInList =
+    eventCityFilter.trim().length > 0 &&
+    !locationOptionsFromEvents.some(
+      (l) => l.toLowerCase() === eventCityFilter.trim().toLowerCase(),
+    );
 
   const currentScheduleSlot = useMemo(
     () => schedule.find((slot) => slot.current),
@@ -269,34 +280,6 @@ const RadioStreamingApp = () => {
       setEventsList([...DEFAULT_EVENTS]);
     }
   }, []);
-
-  useEffect(() => {
-    if (!showEvents) return;
-    let cancelled = false;
-    setEventLocationsLoading(true);
-    void fetch(getEventLocationsUrl())
-      .then(async (res) => {
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { places?: unknown };
-        if (cancelled) return;
-        if (!Array.isArray(data.places)) {
-          setEventLocationPresets([]);
-          return;
-        }
-        setEventLocationPresets(
-          data.places.filter((p): p is string => typeof p === 'string' && p.trim().length > 0),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setEventLocationPresets([]);
-      })
-      .finally(() => {
-        if (!cancelled) setEventLocationsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [showEvents]);
 
   useEffect(() => {
     try {
@@ -658,29 +641,29 @@ const RadioStreamingApp = () => {
                     setEventCityFilter(v);
                     writeEventCityFilter(v);
                   }}
-                  disabled={eventLocationsLoading}
-                  aria-label="Filter events by city or area"
-                  className="w-full sm:max-w-xs rounded-lg bg-white/10 border border-white/20 px-3 py-2.5 text-sm text-white disabled:opacity-50"
+                  aria-label="Filter events by venue location"
+                  className="w-full sm:max-w-xs rounded-lg bg-white/10 border border-white/20 px-3 py-2.5 text-sm text-white"
                 >
                   <option value="">All areas</option>
-                  {sortedEventLocationPresets.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
+                  {savedLocationNotInList ? (
+                    <option value={eventCityFilter}>{eventCityFilter}</option>
+                  ) : null}
+                  {locationOptionsFromEvents.map((loc) => (
+                    <option key={loc} value={loc}>
+                      {loc}
                     </option>
                   ))}
                 </select>
               </label>
-              {eventLocationsLoading ? (
-                <p className="mt-2 text-xs text-gray-500">Loading places…</p>
-              ) : sortedEventLocationPresets.length === 0 ? (
+              {locationOptionsFromEvents.length === 0 ? (
                 <p className="mt-2 text-xs text-gray-500">
-                  Add towns and cities in Ad Manager to list them here. Until then, use{' '}
-                  <strong className="text-gray-400">All areas</strong> to browse every event.
+                  No venue lines yet on published events. Use <strong className="text-gray-400">All areas</strong>{' '}
+                  to browse, or add events in Ad Manager with a location set.
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-gray-500">
-                  Only events whose venue text includes that place are shown (same wording as in Ad Manager
-                  helps).
+                  Each option is a distinct location from your events. Pick one to show only events at that
+                  venue.
                 </p>
               )}
             </div>
@@ -718,7 +701,8 @@ const RadioStreamingApp = () => {
 
             <p className="text-xs text-gray-500 mb-1">
               Mon–Thu and Weekend filter by each event&apos;s start time within this calendar week (Mon–Sun,
-              local). City filter matches the event&apos;s location text.
+              local). Location filter matches the venue line on each event (pick a listed venue or keep a saved
+              filter).
             </p>
             <p className="text-xs text-gray-500 mb-3">
               Event times reflect your local timezone.
@@ -728,7 +712,7 @@ const RadioStreamingApp = () => {
               {filteredEvents.length === 0 ? (
                 <p className="text-center text-gray-400 py-10 text-sm px-2">
                   {eventCityFilter.trim()
-                    ? 'No events match this area with the filters you chose. Try All areas, another city, or a different time filter.'
+                    ? 'No events match this venue with the filters you chose. Try All areas, another location, or a different time filter.'
                     : 'No events to show right now.'}
                 </p>
               ) : (

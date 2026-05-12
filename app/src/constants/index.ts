@@ -33,7 +33,6 @@ export const API_ENDPOINTS = {
 export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/listeners`;
 export const getScheduleUrl = () => `${API_ENDPOINTS.AD_SERVER}/schedule/`;
 export const getEventsUrl = () => `${API_ENDPOINTS.AD_SERVER}/events/`;
-export const getEventLocationsUrl = () => `${API_ENDPOINTS.AD_SERVER}/events/locations`;
 
 /** Origin for resolving relative image paths from the ad server (no /api/v1). */
 export function getAdServerOrigin(): string {
@@ -72,7 +71,7 @@ export const GENIUS_CONFIG = {
 export const STORAGE_KEYS = {
   SCHEDULE: 'newstarsradio-schedule',
   EVENTS: 'newstarsradio-events',
-  /** Last city/area chosen in the Events modal (listener app). */
+  /** Last location filter in the Events modal (listener app; may be a full venue or substring). */
   EVENT_CITY_FILTER: 'newstarsradio-event-city-filter',
   /** `'1'` when the listener chose calmer / less motion UI (visualizer). */
   REDUCE_MOTION: 'newstarsradio-reduce-motion',
