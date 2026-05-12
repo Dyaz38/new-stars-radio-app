@@ -642,7 +642,8 @@ const RadioStreamingApp = () => {
                     writeEventCityFilter(v);
                   }}
                   aria-label="Filter events by venue location"
-                  className="w-full sm:max-w-xs rounded-lg bg-white/10 border border-white/20 px-3 py-2.5 text-sm text-white"
+                  style={{ colorScheme: 'light' }}
+                  className="w-full sm:max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500/60"
                 >
                   <option value="">All areas</option>
                   {savedLocationNotInList ? (
