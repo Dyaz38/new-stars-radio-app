@@ -33,6 +33,8 @@ import {
 
 type EventCategory = 'all' | 'mon-thu' | 'weekend' | 'online';
 
+type EventImageLightbox = { src: string; alt: string };
+
 type EventApiRow = {
   id: number;
   title: string;
@@ -143,6 +145,7 @@ const RadioStreamingApp = () => {
   const [showSchedule, setShowSchedule] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [eventImageLightbox, setEventImageLightbox] = useState<EventImageLightbox | null>(null);
   const [eventFilter, setEventFilter] = useState<EventCategory>('all');
   const [eventCityFilter, setEventCityFilter] = useState<string>(() => readEventCityFilter());
   const [reduceMotion, setReduceMotion] = useState(() => {
@@ -411,6 +414,24 @@ const RadioStreamingApp = () => {
       notifyListenerMilestone(listeners);
     }
   }, [listeners, notifyListenerMilestone]);
+
+  useEffect(() => {
+    if (!showEvents) setEventImageLightbox(null);
+  }, [showEvents]);
+
+  useEffect(() => {
+    if (!eventImageLightbox) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setEventImageLightbox(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [eventImageLightbox]);
 
 
   return (
@@ -722,15 +743,21 @@ const RadioStreamingApp = () => {
                 return (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
                   {eventImageSrc ? (
-                    <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-2">
+                    <button
+                      type="button"
+                      onClick={() => setEventImageLightbox({ src: eventImageSrc, alt: event.title })}
+                      className="group mb-3 w-full rounded-lg border border-white/10 bg-black/20 p-2 text-left cursor-zoom-in transition-opacity hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                      aria-label={`View ${event.title} poster full screen`}
+                      title="Tap to view full screen"
+                    >
                       <img
                         src={eventImageSrc}
-                        alt={event.title}
+                        alt=""
                         loading="lazy"
                         decoding="async"
-                        className="w-full max-w-sm mx-auto aspect-[2/3] object-contain rounded-md"
+                        className="w-full max-w-sm mx-auto aspect-[2/3] object-contain rounded-md pointer-events-none"
                       />
-                    </div>
+                    </button>
                   ) : null}
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>
@@ -903,6 +930,34 @@ const RadioStreamingApp = () => {
         </div>
       )}
     </div>
+
+      {eventImageLightbox ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 p-4 sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full screen event image"
+          onClick={() => setEventImageLightbox(null)}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEventImageLightbox(null);
+            }}
+            className="absolute top-4 right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            aria-label="Close full screen image"
+          >
+            ✕
+          </button>
+          <img
+            src={eventImageLightbox.src}
+            alt={eventImageLightbox.alt}
+            className="max-h-[100dvh] max-w-full object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : null}
     </>
     </ErrorBoundary>
   );
