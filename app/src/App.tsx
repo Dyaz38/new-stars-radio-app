@@ -10,6 +10,7 @@ import { useLikedSongs } from './hooks/useLikedSongs';
 import { usePWA } from './hooks/usePWA';
 import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
+import { useListenerGeo } from './hooks/useListenerGeo';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
 import type { ScheduleShow, StationEvent } from './types';
@@ -138,6 +139,8 @@ const RadioStreamingApp = () => {
     notifyFavoriteArtist,
     notifyListenerMilestone
   } = useNotifications();
+
+  const listenerGeo = useListenerGeo();
 
   // UI state
   const [currentShow, setCurrentShow] = useState('Morning Drive');
@@ -456,9 +459,11 @@ const RadioStreamingApp = () => {
       
       {/* Advertisement Banner - Top of Screen */}
       <div className="container mx-auto px-4 pt-4" style={{ minHeight: 90 }}>
-        <AdBanner 
+        <AdBanner
           className="max-w-4xl mx-auto"
-          country="NA"  // Namibia - change or detect dynamically for other countries
+          country={listenerGeo.country ?? undefined}
+          city={listenerGeo.city ?? undefined}
+          state={listenerGeo.state ?? undefined}
         />
       </div>
       

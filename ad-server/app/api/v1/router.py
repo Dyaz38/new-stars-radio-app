@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     campaigns,
     creatives,
     events,
+    geo,
     reports,
     stream_stats,
     likes,
@@ -24,6 +25,7 @@ api_router = APIRouter()
 # Include all endpoint routers
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(ads.router, prefix="/ads", tags=["Ad Serving"])
+api_router.include_router(geo.router, prefix="/geo", tags=["Geo"])
 api_router.include_router(advertisers.router, prefix="/advertisers", tags=["Advertisers"])
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 api_router.include_router(creatives.router, prefix="/creatives", tags=["Creatives"])

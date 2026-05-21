@@ -1,7 +1,7 @@
 """
 API endpoints for ad serving and tracking (QS-Prompt 3).
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Union
@@ -18,6 +18,7 @@ from app.schemas.ad_serving import (
     ClickTrackingResponse
 )
 from app.services.ad_selection import AdSelectionService
+from app.services.geoip import merge_geo_with_client, resolve_request_geo
 from app.services.tracking import TrackingService
 
 logger = logging.getLogger(__name__)
@@ -75,8 +76,9 @@ router = APIRouter()
     }
 )
 async def request_ad(
-    request: AdRequest,
-    db: Session = Depends(get_db)
+    body: AdRequest,
+    http_request: Request,
+    db: Session = Depends(get_db),
 ) -> Union[AdResponse, NoAdResponse]:
     """
     Request an ad to display.
@@ -85,33 +87,44 @@ async def request_ad(
     or a fallback instruction (e.g., for AdSense).
     """
     try:
-        # Extract location data if provided
-        country = request.location.country if request.location else None
-        city = request.location.city if request.location else None
-        state = request.location.state if request.location else None
+        server_geo = await resolve_request_geo(http_request)
+        client_country = body.location.country if body.location else None
+        client_city = body.location.city if body.location else None
+        client_state = body.location.state if body.location else None
+        country, city, state = merge_geo_with_client(
+            server_geo, client_country, client_city, client_state
+        )
         
         # Use AdSelectionService to select an ad
         ad_service = AdSelectionService(db)
         ad_data = ad_service.select_ad(
-            user_id=request.user_id,
-            placement=request.placement,
+            user_id=body.user_id,
+            placement=body.placement,
             country=country,
             city=city,
-            state=state
+            state=state,
         )
         
         # If no ad available, return fallback instruction
         if ad_data is None:
             logger.info(
-                f"No ad available for user={request.user_id}, "
-                f"placement={request.placement}, location={country}/{city}/{state}"
+                "No ad available for user=%s, placement=%s, geo=%s/%s/%s (source=%s)",
+                body.user_id,
+                body.placement,
+                country,
+                city,
+                state,
+                server_geo.source,
             )
             return NoAdResponse()
         
         # Return ad data
         logger.info(
-            f"Serving ad: ad_id={ad_data['ad_id']}, "
-            f"campaign_id={ad_data['campaign_id']}, user={request.user_id}"
+            "Serving ad: ad_id=%s, campaign_id=%s, user=%s, country=%s",
+            ad_data["ad_id"],
+            ad_data["campaign_id"],
+            body.user_id,
+            country,
         )
         return AdResponse(**ad_data)
         

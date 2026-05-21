@@ -142,52 +142,40 @@ class AdSelectionService:
             selectinload(Campaign.creatives)  # Eager load creatives
         )
         
-        # Apply geographic targeting (optional - campaigns with no targeting match all)
+        no_geo_targeting = and_(
+            or_(Campaign.target_countries.is_(None), Campaign.target_countries == []),
+            or_(Campaign.target_cities.is_(None), Campaign.target_cities == []),
+            or_(Campaign.target_states.is_(None), Campaign.target_states == []),
+        )
+
+        # Apply geographic targeting
         if country or city or state:
-            targeting_conditions = []
-            
-            # No targeting specified - campaign matches everyone
-            targeting_conditions.append(
-                and_(
-                    or_(Campaign.target_countries.is_(None), Campaign.target_countries == []),
-                    or_(Campaign.target_cities.is_(None), Campaign.target_cities == []),
-                    or_(Campaign.target_states.is_(None), Campaign.target_states == [])
-                )
-            )
-            
-            # Country in target list (PostgreSQL JSONB: array contains element)
+            targeting_conditions = [no_geo_targeting]
+
             if country:
                 targeting_conditions.append(
                     Campaign.target_countries.contains([country.upper()])
                 )
-            
+
             if city:
                 targeting_conditions.append(
                     Campaign.target_cities.contains([city])
                 )
-            
+
             if state:
                 targeting_conditions.append(
                     Campaign.target_states.contains([state])
                 )
-            
+
             query = query.filter(or_(*targeting_conditions))
+        else:
+            # Unknown country: only worldwide campaigns (never country-specific inventory)
+            query = query.filter(no_geo_targeting)
         
         # Get all eligible campaigns - ALL active ads get a chance to show
         all_eligible = query.all()
-        
-        # If targeting filtered everything out, try without targeting (serve any active ad)
-        if not all_eligible and (country or city or state):
-            base_query = self.db.query(Campaign).filter(
-                and_(
-                    Campaign.status == CampaignStatus.ACTIVE,
-                    Campaign.start_date <= now,
-                    Campaign.end_date >= now,
-                    Campaign.impressions_served < Campaign.impression_budget
-                )
-            ).options(selectinload(Campaign.creatives))
-            all_eligible = base_query.all()
-        
+
+        # Do not fall back to other countries' campaigns when geo targeting yields no match.
         if not all_eligible:
             # Log for debugging - check Railway logs if ads don't show
             active_count = self.db.query(Campaign).filter(

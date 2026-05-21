@@ -136,7 +136,7 @@ export const AdBanner = ({
     // Refresh ad every 30 seconds (optional)
     const interval = setInterval(fetchAd, 30000);
     return () => clearInterval(interval);
-  }, [dimensions.width, dimensions.height, city, state]);
+  }, [dimensions.width, dimensions.height, country, city, state]);
 
   // Track impression when ad is loaded
   useEffect(() => {
@@ -155,7 +155,7 @@ export const AdBanner = ({
             user_id: getUserId(),
             tracking_token: adData.impression_tracking_token,
             timestamp: new Date().toISOString(),
-            location: (city || state) ? { city, state } : undefined
+            location: country || city || state ? { country, city, state } : undefined
           }),
         });
         setImpressionTracked(true);
