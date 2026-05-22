@@ -35,6 +35,8 @@ export interface StationEvent {
   endsAt?: string | null;
   /** Image URL or relative /static/events/... from API */
   imageUrl?: string | null;
+  /** ISO 3166-1 alpha-2; empty = worldwide */
+  countryCode?: string | null;
 }
 
 export interface Post {

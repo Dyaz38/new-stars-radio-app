@@ -115,6 +115,7 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     startsAt: "2026-04-24T19:00:00+02:00",
     endsAt: "2026-04-24T22:00:00+02:00",
     imageUrl: "https://picsum.photos/seed/newstars-street-party/800/450",
+    countryCode: "NA",
   },
   {
     id: 2,
@@ -139,6 +140,7 @@ export const DEFAULT_EVENTS: StationEvent[] = [
     description: "Unsigned performers present original tracks and acoustic sets.",
     startsAt: "2026-04-28T18:30:00+02:00",
     endsAt: "2026-04-28T21:00:00+02:00",
+    countryCode: "NA",
   },
   {
     id: 4,

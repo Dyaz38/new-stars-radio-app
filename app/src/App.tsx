@@ -31,6 +31,7 @@ import {
   getEventTimeRange,
   getThisWeekSegment,
 } from './utils/eventCalendar';
+import { filterEventsForCountry } from './utils/eventGeo';
 
 type EventCategory = 'all' | 'mon-thu' | 'weekend' | 'online';
 
@@ -48,6 +49,7 @@ type EventApiRow = {
   starts_at?: string | null;
   ends_at?: string | null;
   image_url?: string | null;
+  country_code?: string | null;
 };
 
 function mapEventFromApi(row: EventApiRow): StationEvent {
@@ -63,6 +65,7 @@ function mapEventFromApi(row: EventApiRow): StationEvent {
     startsAt: row.starts_at ?? null,
     endsAt: row.ends_at ?? null,
     imageUrl: row.image_url ?? null,
+    countryCode: row.country_code ?? null,
   };
 }
 
@@ -160,6 +163,7 @@ const RadioStreamingApp = () => {
   });
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
   const [eventsList, setEventsList] = useState<StationEvent[]>([]);
+  const [eventsListenerCountry, setEventsListenerCountry] = useState<string | null>(null);
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
@@ -198,6 +202,8 @@ const RadioStreamingApp = () => {
     !locationOptionsFromEvents.some(
       (l) => l.toLowerCase() === eventCityFilter.trim().toLowerCase(),
     );
+
+  const effectiveEventsCountry = eventsListenerCountry ?? listenerGeo.country;
 
   const currentScheduleSlot = useMemo(
     () => schedule.find((slot) => slot.current),
@@ -240,12 +246,17 @@ const RadioStreamingApp = () => {
   }, []);
 
   const loadEvents = useCallback(async () => {
+    const geoCountry = listenerGeo.country;
     try {
       const response = await fetch(getEventsUrl());
       if (response.ok) {
-        const payload = await response.json() as { items?: EventApiRow[] };
+        const payload = await response.json() as {
+          items?: EventApiRow[];
+          listener_country?: string | null;
+        };
         if (Array.isArray(payload.items)) {
           const mapped = payload.items.map(mapEventFromApi);
+          setEventsListenerCountry(payload.listener_country ?? geoCountry ?? null);
           setEventsList(mapped);
           try {
             localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
@@ -261,13 +272,15 @@ const RadioStreamingApp = () => {
       if (saved) {
         const parsed = JSON.parse(saved) as StationEvent[];
         if (Array.isArray(parsed)) {
-          setEventsList(parsed);
+          setEventsListenerCountry(geoCountry ?? null);
+          setEventsList(filterEventsForCountry(parsed, geoCountry));
           console.log('📆 Events fallback loaded from localStorage');
           return;
         }
       }
 
-      setEventsList([...DEFAULT_EVENTS]);
+      setEventsListenerCountry(geoCountry ?? null);
+      setEventsList(filterEventsForCountry([...DEFAULT_EVENTS], geoCountry));
       console.log('📆 Events fallback using defaults');
     } catch (error) {
       console.error('❌ Failed to load events:', error);
@@ -276,16 +289,18 @@ const RadioStreamingApp = () => {
         if (saved) {
           const parsed = JSON.parse(saved) as StationEvent[];
           if (Array.isArray(parsed)) {
-            setEventsList(parsed);
+            setEventsListenerCountry(geoCountry ?? null);
+            setEventsList(filterEventsForCountry(parsed, geoCountry));
             return;
           }
         }
       } catch {
         /* ignore */
       }
-      setEventsList([...DEFAULT_EVENTS]);
+      setEventsListenerCountry(geoCountry ?? null);
+      setEventsList(filterEventsForCountry([...DEFAULT_EVENTS], geoCountry));
     }
-  }, []);
+  }, [listenerGeo.country]);
 
   useEffect(() => {
     try {
@@ -356,6 +371,13 @@ const RadioStreamingApp = () => {
     });
     void loadEvents();
   }, []);
+
+  // Reload events when IP country is detected (server filters by country)
+  useEffect(() => {
+    if (!listenerGeo.loading) {
+      void loadEvents();
+    }
+  }, [listenerGeo.country, listenerGeo.loading, loadEvents]);
 
   // Update current show every minute and sync with main display
   useEffect(() => {
@@ -693,6 +715,18 @@ const RadioStreamingApp = () => {
                   venue.
                 </p>
               )}
+              <p className="mt-2 text-xs text-gray-500">
+                {effectiveEventsCountry ? (
+                  <>
+                    Showing events for your area (<strong className="text-gray-400">{effectiveEventsCountry}</strong>
+                    ) based on your connection. Worldwide events with no country set still appear everywhere.
+                  </>
+                ) : listenerGeo.loading ? (
+                  'Detecting your country for event filtering…'
+                ) : (
+                  'Country could not be detected — only worldwide events (no country set in Ad Manager) are listed.'
+                )}
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-2 mb-5">

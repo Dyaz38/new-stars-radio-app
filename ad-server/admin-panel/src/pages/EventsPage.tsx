@@ -17,6 +17,8 @@ interface StationEvent {
   starts_at?: string | null;
   ends_at?: string | null;
   image_url?: string | null;
+  /** ISO 3166-1 alpha-2 — empty = worldwide; else listeners must match by IP */
+  country_code?: string | null;
 }
 
 interface EventsResponse {
@@ -39,6 +41,17 @@ interface EventLocationsUpdateResponse {
 }
 
 const CUSTOM_LOCATION = "__custom__";
+const CUSTOM_COUNTRY = "__custom_country__";
+
+/** Preset ISO codes — same style as campaign targeting in Ad Manager */
+const EVENT_COUNTRY_PRESETS: { code: string; label: string }[] = [
+  { code: "NA", label: "Namibia (NA)" },
+  { code: "ZA", label: "South Africa (ZA)" },
+  { code: "US", label: "United States (US)" },
+  { code: "GB", label: "United Kingdom (GB)" },
+  { code: "DE", label: "Germany (DE)" },
+  { code: "AU", label: "Australia (AU)" },
+];
 
 const EMPTY_TEMPLATE: StationEvent = {
   id: 1,
@@ -52,6 +65,7 @@ const EMPTY_TEMPLATE: StationEvent = {
   starts_at: null,
   ends_at: null,
   image_url: null,
+  country_code: null,
 };
 
 function isoToDatetimeLocal(iso: string | null | undefined): string {
@@ -95,6 +109,13 @@ function locationSelectValue(location: string, places: string[]): string {
   if (!location.trim()) return "";
   if (placeIsInPresetList(location, places)) return location;
   return CUSTOM_LOCATION;
+}
+
+function countrySelectValue(code: string | null | undefined): string {
+  const c = code?.trim().toUpperCase() ?? "";
+  if (!c) return "";
+  if (EVENT_COUNTRY_PRESETS.some((p) => p.code === c)) return c;
+  return CUSTOM_COUNTRY;
 }
 
 function formatEventsLoadError(err: unknown): string {
@@ -254,7 +275,10 @@ export default function EventsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap gap-2 items-center justify-between">
-          <p className="text-gray-600">Published to the public events API (GET /api/v1/events/).</p>
+          <p className="text-gray-600">
+            Published to the public events API (GET /api/v1/events/). Listeners only see events for their
+            detected country (by IP) plus worldwide events with no country set.
+          </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -408,6 +432,9 @@ export default function EventsPage() {
                       End (optional)
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                      Country
+                    </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Online</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">This week</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -418,7 +445,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="px-6 py-10 text-center text-gray-600">
+                      <td colSpan={12} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-4">No events yet. Click <strong>Add event</strong>, fill in the fields, then <strong>Save events</strong>.</p>
                         <button
                           type="button"
@@ -575,6 +602,62 @@ export default function EventsPage() {
                                   onChange={(e) => updateRow(row.id, { location: e.target.value })}
                                   placeholder="Venue or one-off location"
                                   className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        {(() => {
+                          const selectValue = countrySelectValue(row.country_code);
+                          const presetCodes = new Set(EVENT_COUNTRY_PRESETS.map((p) => p.code));
+                          const customCode =
+                            row.country_code?.trim().toUpperCase() &&
+                            !presetCodes.has(row.country_code.trim().toUpperCase())
+                              ? row.country_code.trim().toUpperCase()
+                              : "";
+                          return (
+                            <div className="flex flex-col gap-1.5 min-w-[9rem]">
+                              <select
+                                value={selectValue}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v === "") {
+                                    updateRow(row.id, { country_code: null });
+                                  } else if (v === CUSTOM_COUNTRY) {
+                                    updateRow(row.id, {
+                                      country_code: customCode || null,
+                                    });
+                                  } else {
+                                    updateRow(row.id, { country_code: v });
+                                  }
+                                }}
+                                className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                                aria-label="Event country targeting"
+                                title="Global = all countries; otherwise only listeners in that ISO country (by IP)"
+                              >
+                                <option value="">Global (all countries)</option>
+                                {EVENT_COUNTRY_PRESETS.map((p) => (
+                                  <option key={p.code} value={p.code}>
+                                    {p.label}
+                                  </option>
+                                ))}
+                                <option value={CUSTOM_COUNTRY}>Other ISO code…</option>
+                              </select>
+                              {selectValue === CUSTOM_COUNTRY && (
+                                <input
+                                  type="text"
+                                  maxLength={2}
+                                  value={customCode}
+                                  onChange={(e) => {
+                                    const next = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
+                                    updateRow(row.id, {
+                                      country_code: next.length === 2 ? next : next || null,
+                                    });
+                                  }}
+                                  placeholder="e.g. BW"
+                                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm uppercase"
                                 />
                               )}
                             </div>

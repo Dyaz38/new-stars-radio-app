@@ -23,6 +23,8 @@ class StationEvent(BaseModel):
     ends_at: datetime | None = None
     # Absolute https URL or relative path e.g. /static/events/... (listener resolves against API origin)
     image_url: str | None = Field(default=None, max_length=2000)
+    # ISO 3166-1 alpha-2 — empty/null = show in all countries; else IP country must match
+    country_code: str | None = Field(default=None, max_length=2)
 
     @field_validator("title", "date_label", "location", "description")
     @classmethod
@@ -37,9 +39,25 @@ class StationEvent(BaseModel):
         s = value.strip()
         return s or None
 
+    @field_validator("country_code")
+    @classmethod
+    def normalize_country_code(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        s = value.strip().upper()
+        if not s:
+            return None
+        if len(s) != 2 or not s.isalpha():
+            raise ValueError("country_code must be a 2-letter ISO code (e.g. NA, ZA)")
+        return s
+
 
 class EventsResponse(BaseModel):
     items: list[StationEvent]
+    listener_country: str | None = Field(
+        default=None,
+        description="ISO country detected from listener IP (public API only)",
+    )
 
 
 class EventsUpdateRequest(BaseModel):

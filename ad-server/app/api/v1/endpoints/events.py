@@ -5,9 +5,9 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_optional_current_user
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.event_locations import (
@@ -23,6 +23,8 @@ from app.schemas.events import (
     StationEvent,
 )
 from app.services.storage import upload_station_event_image
+from app.services.event_geo import filter_events_for_country
+from app.services.geoip import resolve_request_geo
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -112,8 +114,16 @@ async def update_event_locations(
     response_model=EventsResponse,
     summary="Get public station events",
 )
-async def get_events():
-    return EventsResponse(items=_read_events())
+async def get_events(
+    http_request: Request,
+    current_user: User | None = Depends(get_optional_current_user),
+):
+    items = _read_events()
+    if current_user is not None:
+        return EventsResponse(items=items, listener_country=None)
+    geo = await resolve_request_geo(http_request)
+    filtered = filter_events_for_country(items, geo.country)
+    return EventsResponse(items=filtered, listener_country=geo.country)
 
 
 @router.post(

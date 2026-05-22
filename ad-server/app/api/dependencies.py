@@ -1,6 +1,8 @@
 """
 API dependencies for authentication and authorization.
 """
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from app.core.security import verify_token
 from app.models.user import User
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
@@ -34,6 +37,24 @@ async def get_current_user(
         )
     
     return user
+
+
+async def get_optional_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Return authenticated user when Bearer token is valid; otherwise None."""
+    if not credentials:
+        return None
+    try:
+        payload = verify_token(credentials.credentials)
+        user_id = payload.get("sub")
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 async def get_current_admin(
