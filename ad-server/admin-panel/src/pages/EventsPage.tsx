@@ -142,6 +142,8 @@ export default function EventsPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const [newPlaceInput, setNewPlaceInput] = useState("");
+  const [customLocationIds, setCustomLocationIds] = useState<Set<number>>(() => new Set());
+  const [customCountryIds, setCustomCountryIds] = useState<Set<number>>(() => new Set());
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["station-events"],
@@ -214,8 +216,28 @@ export default function EventsPage() {
     });
   };
 
+  const setRowCustomLocation = (id: number, enabled: boolean) => {
+    setCustomLocationIds((prev) => {
+      const next = new Set(prev);
+      if (enabled) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const setRowCustomCountry = (id: number, enabled: boolean) => {
+    setCustomCountryIds((prev) => {
+      const next = new Set(prev);
+      if (enabled) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
   const resetEdits = () => {
     setEditorRows(data?.items ? [...data.items] : []);
+    setCustomLocationIds(new Set());
+    setCustomCountryIds(new Set());
     setFeedback(null);
   };
 
@@ -232,6 +254,8 @@ export default function EventsPage() {
       const base = prev.length > 0 ? prev : data?.items ?? [];
       return base.filter((r) => r.id !== id).map((r) => ({ ...r }));
     });
+    setRowCustomLocation(id, false);
+    setRowCustomCountry(id, false);
   };
 
   const saveAll = () => {
@@ -565,7 +589,11 @@ export default function EventsPage() {
                       <td className="px-3 py-3 align-top">
                         {(() => {
                           const inList = placeIsInPresetList(row.location, presetPlaces);
-                          const selectValue = locationSelectValue(row.location, presetPlaces);
+                          const selectValue = customLocationIds.has(row.id)
+                            ? CUSTOM_LOCATION
+                            : locationSelectValue(row.location, presetPlaces);
+                          const showCustomInput =
+                            customLocationIds.has(row.id) || selectValue === CUSTOM_LOCATION;
                           return (
                             <div className="flex flex-col gap-1.5 min-w-[11rem]">
                               <select
@@ -573,16 +601,19 @@ export default function EventsPage() {
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   if (v === "") {
+                                    setRowCustomLocation(row.id, false);
                                     updateRow(row.id, { location: "" });
                                     return;
                                   }
                                   if (v === CUSTOM_LOCATION) {
+                                    setRowCustomLocation(row.id, true);
                                     updateRow(row.id, {
                                       location: inList ? "" : row.location,
                                     });
-                                  } else {
-                                    updateRow(row.id, { location: v });
+                                    return;
                                   }
+                                  setRowCustomLocation(row.id, false);
+                                  updateRow(row.id, { location: v });
                                 }}
                                 className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
                                 aria-label="Event location preset"
@@ -595,7 +626,7 @@ export default function EventsPage() {
                                 ))}
                                 <option value={CUSTOM_LOCATION}>Custom…</option>
                               </select>
-                              {selectValue === CUSTOM_LOCATION && (
+                              {showCustomInput && (
                                 <input
                                   type="text"
                                   value={row.location}
@@ -610,13 +641,17 @@ export default function EventsPage() {
                       </td>
                       <td className="px-3 py-3 align-top">
                         {(() => {
-                          const selectValue = countrySelectValue(row.country_code);
+                          const selectValue = customCountryIds.has(row.id)
+                            ? CUSTOM_COUNTRY
+                            : countrySelectValue(row.country_code);
                           const presetCodes = new Set(EVENT_COUNTRY_PRESETS.map((p) => p.code));
                           const customCode =
                             row.country_code?.trim().toUpperCase() &&
                             !presetCodes.has(row.country_code.trim().toUpperCase())
                               ? row.country_code.trim().toUpperCase()
                               : "";
+                          const showCustomInput =
+                            customCountryIds.has(row.id) || selectValue === CUSTOM_COUNTRY;
                           return (
                             <div className="flex flex-col gap-1.5 min-w-[9rem]">
                               <select
@@ -624,12 +659,15 @@ export default function EventsPage() {
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   if (v === "") {
+                                    setRowCustomCountry(row.id, false);
                                     updateRow(row.id, { country_code: null });
                                   } else if (v === CUSTOM_COUNTRY) {
+                                    setRowCustomCountry(row.id, true);
                                     updateRow(row.id, {
                                       country_code: customCode || null,
                                     });
                                   } else {
+                                    setRowCustomCountry(row.id, false);
                                     updateRow(row.id, { country_code: v });
                                   }
                                 }}
@@ -645,7 +683,7 @@ export default function EventsPage() {
                                 ))}
                                 <option value={CUSTOM_COUNTRY}>Other ISO code…</option>
                               </select>
-                              {selectValue === CUSTOM_COUNTRY && (
+                              {showCustomInput && (
                                 <input
                                   type="text"
                                   maxLength={2}
