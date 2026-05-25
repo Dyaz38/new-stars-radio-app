@@ -11,6 +11,8 @@ import SettingsPage from "./pages/SettingsPage";
 import SongLikesPage from "./pages/SongLikesPage";
 import SchedulePage from "./pages/SchedulePage";
 import EventsPage from "./pages/EventsPage";
+import ReportsPage from "./pages/ReportsPage";
+import PublicCampaignReportPage from "./pages/PublicCampaignReportPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -90,6 +92,17 @@ function App() {
         element={
           <ProtectedRoute>
             <SchedulePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/report" element={<PublicCampaignReportPage />} />
+
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <ReportsPage />
           </ProtectedRoute>
         }
       />

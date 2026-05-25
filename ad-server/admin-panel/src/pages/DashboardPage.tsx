@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const response = await api.get<DashboardStats>("/reports/campaigns/stats");
+      const response = await api.get<DashboardStats>("/reports/overview");
       return response.data;
     },
   });
@@ -188,10 +188,10 @@ export default function DashboardPage() {
             onClick={() => navigate("/advertisers")}
           />
           <QuickActionCard
-            title="Upload Creative"
-            description="Add new ad creatives to campaigns"
-            icon="🖼️"
-            onClick={() => navigate("/creatives")}
+            title="Advertiser Reports"
+            description="Export CSV and share performance with clients"
+            icon="📈"
+            onClick={() => navigate("/reports")}
           />
         </div>
       </main>

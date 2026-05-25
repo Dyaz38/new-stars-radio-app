@@ -137,10 +137,10 @@ async def upload_event_image(
 ):
     effective_filename = (image_file.filename or "").strip() or "image.jpg"
     file_ext = Path(effective_filename).suffix.lower()
-    if file_ext not in settings.ALLOWED_EXTENSIONS:
+    if file_ext not in settings.get_allowed_extensions_list():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Use one of: {', '.join(settings.ALLOWED_EXTENSIONS)}",
+            detail=f"File type not allowed. Use one of: {', '.join(settings.get_allowed_extensions_list())}",
         )
     try:
         image_url = upload_station_event_image(image_file, effective_filename)

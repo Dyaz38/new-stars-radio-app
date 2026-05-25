@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { API_ENDPOINTS } from '../constants';
+import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
 
 interface AdData {
   ad_id: string;
@@ -16,56 +17,60 @@ interface AdData {
 interface AdBannerProps {
   style?: React.CSSProperties;
   className?: string;
-  country?: string; // User's country (ISO 3166-1 alpha-2 code, e.g., 'NA' for Namibia)
-  city?: string;    // User's city for targeting
-  state?: string;   // User's state for targeting
+  placement?: AdPlacement;
+  /** Smaller slot for in-modal placements */
+  compact?: boolean;
+  /** Hide the yellow placeholder when no ad is available */
+  hideWhenEmpty?: boolean;
+  country?: string;
+  city?: string;
+  state?: string;
 }
 
-// Get responsive ad dimensions based on screen width
-const getAdDimensions = (): { width: number; height: number } => {
-  const screenWidth = window.innerWidth;
-  
-  if (screenWidth < 768) {
-    // Mobile: 320x50 (Standard Mobile Banner)
+const getAdDimensions = (compact: boolean): { width: number; height: number } => {
+  if (compact) {
     return { width: 320, height: 50 };
-  } else {
-    // Tablet & Desktop: 728x90 (Leaderboard)
-    return { width: 728, height: 90 };
   }
+  const screenWidth = window.innerWidth;
+  if (screenWidth < 768) {
+    return { width: 320, height: 50 };
+  }
+  return { width: 728, height: 90 };
 };
 
-// Generate or retrieve a unique user ID
 const getUserId = (): string => {
   const storageKey = 'ad-server-user-id';
   let userId = localStorage.getItem(storageKey);
-  
+
   if (!userId) {
-    // Generate a simple user ID (in production, use a more robust method)
     userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     localStorage.setItem(storageKey, userId);
   }
-  
+
   return userId;
 };
 
-export const AdBanner = ({ 
+export const AdBanner = ({
   style,
   className = '',
+  placement = AD_PLACEMENTS.BANNER_TOP,
+  compact = false,
+  hideWhenEmpty = false,
   country,
   city,
-  state
+  state,
 }: AdBannerProps) => {
   const [adData, setAdData] = useState<AdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [impressionTracked, setImpressionTracked] = useState(false);
-  const [dimensions, setDimensions] = useState(getAdDimensions());
+  const [dimensions, setDimensions] = useState(getAdDimensions(compact));
   const adRef = useRef<HTMLAnchorElement>(null);
 
-  // Handle window resize to update ad dimensions
   useEffect(() => {
+    if (compact) return;
     const handleResize = () => {
-      const newDimensions = getAdDimensions();
+      const newDimensions = getAdDimensions(false);
       if (newDimensions.width !== dimensions.width || newDimensions.height !== dimensions.height) {
         setDimensions(newDimensions);
       }
@@ -73,7 +78,11 @@ export const AdBanner = ({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [dimensions]);
+  }, [compact, dimensions.width, dimensions.height]);
+
+  useEffect(() => {
+    setDimensions(getAdDimensions(compact));
+  }, [compact]);
 
   useEffect(() => {
     const fetchAd = async () => {
@@ -81,26 +90,23 @@ export const AdBanner = ({
         setLoading(true);
         setError(null);
         setImpressionTracked(false);
-        
+
         const userId = getUserId();
-        
+
         const requestBody = {
           user_id: userId,
-          placement: 'banner_top',
-          location: (country || city || state) ? { country, city, state } : undefined
+          placement,
+          location: country || city || state ? { country, city, state } : undefined,
         };
-        
-        const response = await fetch(
-          `${API_ENDPOINTS.AD_SERVER}/ads/request`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody)
-          }
-        );
-        
+
+        const response = await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
         if (!response.ok) {
           setAdData(null);
           if (response.status === 404) {
@@ -110,16 +116,15 @@ export const AdBanner = ({
           }
           return;
         }
-        
+
         const data = await response.json();
-        
-        // Check if it's a fallback response
+
         if ('fallback' in data) {
           setAdData(null);
           setError('No ads available');
           return;
         }
-        
+
         setAdData(data as AdData);
         setError(null);
       } catch (err) {
@@ -131,14 +136,12 @@ export const AdBanner = ({
       }
     };
 
-    fetchAd();
-    
-    // Refresh ad every 30 seconds (optional)
+    void fetchAd();
+
     const interval = setInterval(fetchAd, 30000);
     return () => clearInterval(interval);
-  }, [dimensions.width, dimensions.height, country, city, state]);
+  }, [dimensions.width, dimensions.height, country, city, state, placement]);
 
-  // Track impression when ad is loaded
   useEffect(() => {
     const trackImpression = async () => {
       if (!adData || impressionTracked) return;
@@ -155,7 +158,7 @@ export const AdBanner = ({
             user_id: getUserId(),
             tracking_token: adData.impression_tracking_token,
             timestamp: new Date().toISOString(),
-            location: country || city || state ? { country, city, state } : undefined
+            location: country || city || state ? { country, city, state } : undefined,
           }),
         });
         setImpressionTracked(true);
@@ -164,14 +167,13 @@ export const AdBanner = ({
       }
     };
 
-    trackImpression();
-  }, [adData, impressionTracked, city, state]);
+    void trackImpression();
+  }, [adData, impressionTracked, city, state, country]);
 
   const handleClick = async () => {
     if (!adData) return;
-    
+
     try {
-      // Track click
       await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/tracking/click`, {
         method: 'POST',
         headers: {
@@ -185,19 +187,18 @@ export const AdBanner = ({
           timestamp: new Date().toISOString(),
         }),
       });
-      
-      // Open click URL in new tab
+
       window.open(adData.click_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Error tracking click:', err);
-      // Still open the URL even if tracking fails
       window.open(adData.click_url, '_blank', 'noopener,noreferrer');
     }
   };
 
   if (loading) {
+    if (hideWhenEmpty) return null;
     return (
-      <div 
+      <div
         className={`bg-gray-200/90 border-2 border-gray-400 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
         style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
         data-testid="ad-banner-loading"
@@ -208,13 +209,14 @@ export const AdBanner = ({
   }
 
   if (error || !adData) {
+    if (hideWhenEmpty) return null;
     return (
-      <div 
+      <div
         className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
         style={{
           backgroundColor: 'rgba(250, 204, 21, 0.95)',
           minHeight: Math.max(dimensions.height, 50),
-          ...style
+          ...style,
         }}
         data-testid="ad-banner-empty"
       >
@@ -223,34 +225,32 @@ export const AdBanner = ({
           <div className="text-gray-800 text-xs sm:text-sm font-semibold">
             {error || 'No ads available'}
             <br className="hidden sm:block" />
-            <span className="text-blue-900 text-xs">
-              Ad space available!
-            </span>
+            <span className="text-blue-900 text-xs">Ad space available!</span>
           </div>
         </div>
       </div>
     );
   }
 
-  // Build image URL - handle both absolute and relative URLs
-  const imageUrl = adData.image_url.startsWith('http') 
-    ? adData.image_url 
+  const imageUrl = adData.image_url.startsWith('http')
+    ? adData.image_url
     : `${API_ENDPOINTS.AD_SERVER.replace('/api/v1', '')}${adData.image_url}`;
 
   return (
-    <div 
+    <div
       className={`ad-banner-container mb-4 flex items-center justify-center ${className}`}
       style={{
         minHeight: dimensions.height,
-        ...style
+        ...style,
       }}
+      data-ad-placement={placement}
     >
       <a
         ref={adRef}
         href={adData.click_url}
         onClick={(e) => {
           e.preventDefault();
-          handleClick();
+          void handleClick();
         }}
         target="_blank"
         rel="noopener noreferrer"

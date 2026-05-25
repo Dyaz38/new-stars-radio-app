@@ -13,6 +13,7 @@ import { useNotifications } from './hooks/useNotifications';
 import { useListenerGeo } from './hooks/useListenerGeo';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
+import { AD_PLACEMENTS } from './constants/adPlacements';
 import type { ScheduleShow, StationEvent } from './types';
 
 import {
@@ -483,6 +484,7 @@ const RadioStreamingApp = () => {
       <div className="container mx-auto px-4 pt-4" style={{ minHeight: 90 }}>
         <AdBanner
           className="max-w-4xl mx-auto"
+          placement={AD_PLACEMENTS.BANNER_TOP}
           country={listenerGeo.country ?? undefined}
           city={listenerGeo.city ?? undefined}
           state={listenerGeo.state ?? undefined}
@@ -729,6 +731,16 @@ const RadioStreamingApp = () => {
               </p>
             </div>
 
+            <AdBanner
+              className="mb-5 max-w-full"
+              placement={AD_PLACEMENTS.EVENTS_MODAL}
+              compact
+              hideWhenEmpty
+              country={listenerGeo.country ?? undefined}
+              city={listenerGeo.city ?? undefined}
+              state={listenerGeo.state ?? undefined}
+            />
+
             <div className="flex flex-wrap gap-2 mb-5">
               <button
                 type="button"
@@ -948,6 +960,17 @@ const RadioStreamingApp = () => {
           </div>
         </div>
       )}
+
+      {/* Bottom advertisement */}
+      <div className={`container mx-auto px-4 pb-4 ${isPlaying ? 'mb-16' : ''}`}>
+        <AdBanner
+          className="max-w-4xl mx-auto"
+          placement={AD_PLACEMENTS.BANNER_BOTTOM}
+          country={listenerGeo.country ?? undefined}
+          city={listenerGeo.city ?? undefined}
+          state={listenerGeo.state ?? undefined}
+        />
+      </div>
 
       {/* Status Bar */}
       {isPlaying && (

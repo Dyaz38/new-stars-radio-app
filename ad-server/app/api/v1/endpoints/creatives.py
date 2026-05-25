@@ -48,11 +48,12 @@ async def create_creative(
     # Validate file (allow missing filename for some clients; use default)
     effective_filename = (image_file.filename or "").strip() or "image.jpg"
     file_ext = Path(effective_filename).suffix.lower()
-    if file_ext not in settings.ALLOWED_EXTENSIONS:
+    allowed = settings.get_allowed_extensions_list()
+    if file_ext not in allowed:
         logger.warning("Creative create 400: file type not allowed filename=%r ext=%r", image_file.filename, file_ext)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Use one of: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+            detail=f"File type not allowed. Use one of: {', '.join(allowed)}"
         )
 
     # Upload to R2 (if configured) or local disk

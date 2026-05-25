@@ -157,6 +157,44 @@ def create_tracking_token(
     )
 
 
+def create_report_share_token(campaign_id: str, days_valid: int = 30) -> str:
+    """Create a public, read-only report link token for an advertiser."""
+    expire = datetime.utcnow() + timedelta(days=days_valid)
+    to_encode = {
+        "type": "report_share",
+        "campaign_id": campaign_id,
+        "exp": expire,
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(
+        to_encode,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+
+
+def verify_report_share_token(token: str) -> Dict[str, Any]:
+    """Validate a report share token and return its payload."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report link is invalid or expired",
+        ) from exc
+
+    if payload.get("type") != "report_share" or not payload.get("campaign_id"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report link is invalid or expired",
+        )
+    return payload
+
+
 def verify_tracking_token(token: str, expected_type: str = "impression") -> Dict[str, Any]:
     """
     Verify a tracking token.

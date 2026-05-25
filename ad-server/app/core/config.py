@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # File Upload
     UPLOAD_DIR: str = "static/ads"
     MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
-    ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    ALLOWED_EXTENSIONS: str | List[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
 
     # Cloudflare R2 (S3-compatible object storage) - when set, uploads go to R2 instead of disk
     R2_ACCOUNT_ID: Optional[str] = None
@@ -119,6 +119,20 @@ class Settings(BaseSettings):
         if isinstance(v, list):
             return v
         return []
+
+    @field_validator("ALLOWED_EXTENSIONS", mode="before")
+    @classmethod
+    def parse_allowed_extensions(cls, v):
+        """Parse allowed file extensions from comma-separated string or list."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            return [ext.strip() if ext.strip().startswith(".") else f".{ext.strip()}" for ext in v.split(",") if ext.strip()]
+        if isinstance(v, list):
+            return v
+        return []
     
     def get_cors_origins_list(self) -> List[str]:
         """Get CORS origins as a list. Always includes production admin panel URL so login works."""
@@ -136,6 +150,20 @@ class Settings(BaseSettings):
             if origin not in origins:
                 origins.append(origin)
         return origins
+
+    def get_allowed_extensions_list(self) -> List[str]:
+        """Allowed upload extensions as a list."""
+        if isinstance(self.ALLOWED_EXTENSIONS, list):
+            return list(self.ALLOWED_EXTENSIONS)
+        if isinstance(self.ALLOWED_EXTENSIONS, str):
+            if not self.ALLOWED_EXTENSIONS.strip():
+                return []
+            return [
+                ext.strip() if ext.strip().startswith(".") else f".{ext.strip()}"
+                for ext in self.ALLOWED_EXTENSIONS.split(",")
+                if ext.strip()
+            ]
+        return []
     
     model_config = SettingsConfigDict(
         env_file=".env",

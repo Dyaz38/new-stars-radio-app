@@ -9,6 +9,7 @@ export type AdminNavKey =
   | "song-likes"
   | "schedule"
   | "events"
+  | "reports"
   | "settings";
 
 interface AdminHeaderProps {
@@ -58,6 +59,7 @@ export function AdminHeader({ title, subtitle, active }: AdminHeaderProps) {
               {navBtn(active, "song-likes", "Song Likes", "/song-likes", navigate)}
               {navBtn(active, "schedule", "Schedule", "/schedule", navigate)}
               {navBtn(active, "events", "Events", "/events", navigate)}
+              {navBtn(active, "reports", "Reports", "/reports", navigate)}
               {navBtn(active, "settings", "Settings", "/settings", navigate)}
             </nav>
             <button
