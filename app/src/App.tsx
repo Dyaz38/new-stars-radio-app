@@ -678,6 +678,17 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
+            <div className="sticky top-0 z-10 -mx-6 px-6 py-3 mb-4 bg-gray-900/95 backdrop-blur-sm border-b border-white/10">
+              <AdBanner
+                className="mb-0 max-w-full"
+                placement={AD_PLACEMENTS.EVENTS_MODAL}
+                compact
+                country={listenerGeo.country ?? undefined}
+                city={listenerGeo.city ?? undefined}
+                state={listenerGeo.state ?? undefined}
+              />
+            </div>
+
             <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-4">
               <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm text-gray-200 flex items-center gap-2 shrink-0">
@@ -730,16 +741,6 @@ const RadioStreamingApp = () => {
                 )}
               </p>
             </div>
-
-            <AdBanner
-              className="mb-5 max-w-full"
-              placement={AD_PLACEMENTS.EVENTS_MODAL}
-              compact
-              hideWhenEmpty
-              country={listenerGeo.country ?? undefined}
-              city={listenerGeo.city ?? undefined}
-              state={listenerGeo.state ?? undefined}
-            />
 
             <div className="flex flex-wrap gap-2 mb-5">
               <button
@@ -960,17 +961,6 @@ const RadioStreamingApp = () => {
           </div>
         </div>
       )}
-
-      {/* Bottom advertisement */}
-      <div className={`container mx-auto px-4 pb-4 ${isPlaying ? 'mb-16' : ''}`}>
-        <AdBanner
-          className="max-w-4xl mx-auto"
-          placement={AD_PLACEMENTS.BANNER_BOTTOM}
-          country={listenerGeo.country ?? undefined}
-          city={listenerGeo.city ?? undefined}
-          state={listenerGeo.state ?? undefined}
-        />
-      </div>
 
       {/* Status Bar */}
       {isPlaying && (
