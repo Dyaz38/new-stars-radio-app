@@ -58,6 +58,10 @@ class EventsResponse(BaseModel):
         default=None,
         description="ISO country detected from listener IP (public API only)",
     )
+    published_count: int | None = Field(
+        default=None,
+        description="Total published events before country filter (public API only)",
+    )
 
 
 class EventsUpdateRequest(BaseModel):

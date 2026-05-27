@@ -120,10 +120,14 @@ async def get_events(
 ):
     items = _read_events()
     if current_user is not None:
-        return EventsResponse(items=items, listener_country=None)
+        return EventsResponse(items=items, listener_country=None, published_count=None)
     geo = await resolve_request_geo(http_request)
     filtered = filter_events_for_country(items, geo.country)
-    return EventsResponse(items=filtered, listener_country=geo.country)
+    return EventsResponse(
+        items=filtered,
+        listener_country=geo.country,
+        published_count=len(items),
+    )
 
 
 @router.post(

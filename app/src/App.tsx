@@ -33,42 +33,12 @@ import {
   getThisWeekSegment,
 } from './utils/eventCalendar';
 import { filterEventsForCountry } from './utils/eventGeo';
+import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
+import { EventPosterImage } from './components/EventPosterImage';
 
 type EventCategory = 'all' | 'mon-thu' | 'weekend' | 'online';
 
 type EventImageLightbox = { src: string; alt: string };
-
-type EventApiRow = {
-  id: number;
-  title: string;
-  date_label: string;
-  location: string;
-  is_online: boolean;
-  is_this_week: boolean;
-  status: 'upcoming' | 'live' | 'past';
-  description?: string;
-  starts_at?: string | null;
-  ends_at?: string | null;
-  image_url?: string | null;
-  country_code?: string | null;
-};
-
-function mapEventFromApi(row: EventApiRow): StationEvent {
-  return {
-    id: row.id,
-    title: row.title,
-    dateLabel: row.date_label,
-    location: row.location,
-    isOnline: row.is_online,
-    isThisWeek: row.is_this_week,
-    status: row.status,
-    description: row.description ?? '',
-    startsAt: row.starts_at ?? null,
-    endsAt: row.ends_at ?? null,
-    imageUrl: row.image_url ?? null,
-    countryCode: row.country_code ?? null,
-  };
-}
 
 function readEventCityFilter(): string {
   try {
@@ -165,6 +135,7 @@ const RadioStreamingApp = () => {
   const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
   const [eventsList, setEventsList] = useState<StationEvent[]>([]);
   const [eventsListenerCountry, setEventsListenerCountry] = useState<string | null>(null);
+  const [eventsPublishedCount, setEventsPublishedCount] = useState<number | null>(null);
 
   // Memoized expensive computations
   const shareMessage = useMemo(() => {
@@ -252,17 +223,25 @@ const RadioStreamingApp = () => {
       const response = await fetch(getEventsUrl());
       if (response.ok) {
         const payload = await response.json() as {
-          items?: EventApiRow[];
+          items?: unknown[];
           listener_country?: string | null;
+          published_count?: number | null;
         };
         if (Array.isArray(payload.items)) {
-          const mapped = payload.items.map(mapEventFromApi);
+          const mapped = payload.items.map((row) =>
+            mapEventFromApi(row as Parameters<typeof mapEventFromApi>[0]),
+          );
           setEventsListenerCountry(payload.listener_country ?? geoCountry ?? null);
+          setEventsPublishedCount(
+            typeof payload.published_count === 'number' ? payload.published_count : mapped.length,
+          );
           setEventsList(mapped);
-          try {
-            localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
-          } catch {
-            /* ignore */
+          if (mapped.length > 0) {
+            try {
+              localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
+            } catch {
+              /* ignore */
+            }
           }
           console.log('📆 Events loaded from ad server');
           return;
@@ -271,9 +250,10 @@ const RadioStreamingApp = () => {
 
       const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
       if (saved) {
-        const parsed = JSON.parse(saved) as StationEvent[];
-        if (Array.isArray(parsed)) {
+        const parsed = parseStoredEvents(saved);
+        if (parsed.length > 0) {
           setEventsListenerCountry(geoCountry ?? null);
+          setEventsPublishedCount(parsed.length);
           setEventsList(filterEventsForCountry(parsed, geoCountry));
           console.log('📆 Events fallback loaded from localStorage');
           return;
@@ -288,9 +268,10 @@ const RadioStreamingApp = () => {
       try {
         const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
         if (saved) {
-          const parsed = JSON.parse(saved) as StationEvent[];
-          if (Array.isArray(parsed)) {
+          const parsed = parseStoredEvents(saved);
+          if (parsed.length > 0) {
             setEventsListenerCountry(geoCountry ?? null);
+            setEventsPublishedCount(parsed.length);
             setEventsList(filterEventsForCountry(parsed, geoCountry));
             return;
           }
@@ -787,7 +768,12 @@ const RadioStreamingApp = () => {
                 <p className="text-center text-gray-400 py-10 text-sm px-2">
                   {eventCityFilter.trim()
                     ? 'No events match this venue with the filters you chose. Try All areas, another location, or a different time filter.'
-                    : 'No events to show right now.'}
+                    : eventsPublishedCount != null &&
+                        eventsPublishedCount > 0 &&
+                        eventsList.length === 0 &&
+                        effectiveEventsCountry
+                      ? `${eventsPublishedCount} event${eventsPublishedCount === 1 ? '' : 's'} ${eventsPublishedCount === 1 ? 'is' : 'are'} published, but none are available in ${effectiveEventsCountry}. In Ad Manager, set Country to Global (all countries) or match your listeners' region.`
+                      : 'No events to show right now.'}
                 </p>
               ) : (
               filteredEvents.map((event) => {
@@ -795,21 +781,11 @@ const RadioStreamingApp = () => {
                 return (
                 <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
                   {eventImageSrc ? (
-                    <button
-                      type="button"
-                      onClick={() => setEventImageLightbox({ src: eventImageSrc, alt: event.title })}
-                      className="group mb-3 w-full rounded-lg border border-white/10 bg-black/20 p-2 text-left cursor-zoom-in transition-opacity hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-gray-900"
-                      aria-label={`View ${event.title} poster full screen`}
-                      title="Tap to view full screen"
-                    >
-                      <img
-                        src={eventImageSrc}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full max-w-sm mx-auto aspect-[2/3] object-contain rounded-md pointer-events-none"
-                      />
-                    </button>
+                    <EventPosterImage
+                      src={eventImageSrc}
+                      title={event.title}
+                      onOpenLightbox={() => setEventImageLightbox({ src: eventImageSrc, alt: event.title })}
+                    />
                   ) : null}
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>

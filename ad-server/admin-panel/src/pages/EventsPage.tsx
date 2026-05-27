@@ -301,7 +301,8 @@ export default function EventsPage() {
         <div className="mb-6 flex flex-wrap gap-2 items-center justify-between">
           <p className="text-gray-600">
             Published to the public events API (GET /api/v1/events/). Listeners only see events for their
-            detected country (by IP) plus worldwide events with no country set.
+            detected country (by IP) plus worldwide events with no country set. Use <strong>Global (all countries)</strong>{' '}
+            on each event unless it should be limited to one country (e.g. Namibia only).
           </p>
           <div className="flex flex-wrap gap-2">
             <button
