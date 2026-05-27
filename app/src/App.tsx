@@ -659,7 +659,7 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
-            <div className="sticky top-0 z-10 -mx-6 px-6 py-3 mb-4 bg-gray-900/95 backdrop-blur-sm border-b border-white/10">
+            <div className="mb-4">
               <AdBanner
                 className="mb-0 max-w-full"
                 placement={AD_PLACEMENTS.EVENTS_MODAL}
