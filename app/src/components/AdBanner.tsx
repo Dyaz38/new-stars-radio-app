@@ -52,6 +52,24 @@ const getAdDimensions = (
 const isFixedSlotPlacement = (placement: AdPlacement): boolean =>
   placement in PLACEMENT_SLOT_SIZES;
 
+const getSlotFrameStyle = (
+  placement: AdPlacement,
+  dimensions: { width: number; height: number },
+  extra?: React.CSSProperties,
+): React.CSSProperties => {
+  if (isFixedSlotPlacement(placement)) {
+    return {
+      width: dimensions.width,
+      maxWidth: '100%',
+      aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+      flexShrink: 0,
+      boxSizing: 'border-box',
+      ...extra,
+    };
+  }
+  return { minHeight: Math.max(dimensions.height, 50), ...extra };
+};
+
 const getUserId = (): string => {
   const storageKey = 'ad-server-user-id';
   let userId = localStorage.getItem(storageKey);
@@ -209,15 +227,17 @@ export const AdBanner = ({
     }
   };
 
+  const fixedSlot = isFixedSlotPlacement(placement);
+
   if (loading) {
     if (hideWhenEmpty) return null;
     return (
       <div
-        className={`bg-gray-200/90 border-2 border-gray-400 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
-        style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
+        className={`bg-gray-200/90 border border-gray-400 rounded-lg mb-4 flex items-center justify-center overflow-hidden ${fixedSlot ? 'p-2' : 'border-2 p-2'} ${className}`}
+        style={getSlotFrameStyle(placement, dimensions, style)}
         data-testid="ad-banner-loading"
       >
-        <div className="text-gray-700 text-xs sm:text-sm font-medium">Loading ad...</div>
+        <div className="text-gray-700 text-xs font-medium">Loading ad...</div>
       </div>
     );
   }
@@ -226,21 +246,38 @@ export const AdBanner = ({
     if (hideWhenEmpty) return null;
     return (
       <div
-        className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
-        style={{
-          backgroundColor: 'rgba(250, 204, 21, 0.95)',
-          minHeight: Math.max(dimensions.height, 50),
-          ...style,
-        }}
+        className={
+          fixedSlot
+            ? `mb-4 flex flex-col items-center justify-center overflow-hidden rounded-lg border border-white/20 bg-white/5 p-3 text-center ${className}`
+            : `bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`
+        }
+        style={
+          fixedSlot
+            ? getSlotFrameStyle(placement, dimensions, style)
+            : {
+                backgroundColor: 'rgba(250, 204, 21, 0.95)',
+                minHeight: Math.max(dimensions.height, 50),
+                ...style,
+              }
+        }
         data-testid="ad-banner-empty"
       >
         <div className="text-center">
-          <div className="text-gray-900 font-bold text-sm sm:text-lg mb-1 sm:mb-2">🎯 ADVERTISEMENT 🎯</div>
-          <div className="text-gray-800 text-xs sm:text-sm font-semibold">
-            {error || 'No ads available'}
-            <br className="hidden sm:block" />
-            <span className="text-blue-900 text-xs">Ad space available!</span>
-          </div>
+          {fixedSlot ? (
+            <>
+              <div className="text-gray-300 text-[10px] uppercase tracking-wider mb-1">Sponsored</div>
+              <div className="text-gray-400 text-xs">Ad space available</div>
+            </>
+          ) : (
+            <>
+              <div className="text-gray-900 font-bold text-sm sm:text-lg mb-1 sm:mb-2">🎯 ADVERTISEMENT 🎯</div>
+              <div className="text-gray-800 text-xs sm:text-sm font-semibold">
+                {error || 'No ads available'}
+                <br className="hidden sm:block" />
+                <span className="text-blue-900 text-xs">Ad space available!</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -252,11 +289,8 @@ export const AdBanner = ({
 
   return (
     <div
-      className={`ad-banner-container mb-4 flex items-center justify-center ${className}`}
-      style={{
-        minHeight: dimensions.height,
-        ...style,
-      }}
+      className={`ad-banner-container mb-4 flex items-center justify-center overflow-hidden ${className}`}
+      style={getSlotFrameStyle(placement, dimensions, style)}
       data-ad-placement={placement}
     >
       <a
@@ -268,26 +302,25 @@ export const AdBanner = ({
         }}
         target="_blank"
         rel="noopener noreferrer"
-        className="block cursor-pointer hover:opacity-90 transition-opacity"
-        style={{
-          display: 'block',
-          maxWidth: '100%',
-          margin: '0 auto',
-        }}
+        className="block h-full w-full cursor-pointer hover:opacity-90 transition-opacity"
       >
         <img
           src={imageUrl}
           alt={adData.alt_text || 'Advertisement'}
           width={adData.image_width}
           height={adData.image_height}
-          className="w-full h-auto rounded-lg shadow-md sm:shadow-lg"
-          style={{
-            maxWidth: dimensions.width,
-            maxHeight: dimensions.height,
-            width: '100%',
-            height: 'auto',
-            objectFit: 'contain',
-          }}
+          className={fixedSlot ? 'h-full w-full rounded-lg object-contain' : 'w-full h-auto rounded-lg shadow-md sm:shadow-lg'}
+          style={
+            fixedSlot
+              ? undefined
+              : {
+                  maxWidth: dimensions.width,
+                  maxHeight: dimensions.height,
+                  width: '100%',
+                  height: 'auto',
+                  objectFit: 'contain',
+                }
+          }
           onError={() => {
             console.error('Failed to load ad image:', imageUrl);
             setAdData(null);
