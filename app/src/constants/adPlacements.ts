@@ -6,3 +6,10 @@ export const AD_PLACEMENTS = {
 } as const;
 
 export type AdPlacement = (typeof AD_PLACEMENTS)[keyof typeof AD_PLACEMENTS];
+
+/** Fixed slot dimensions for placements that are not responsive */
+export const PLACEMENT_SLOT_SIZES: Partial<
+  Record<AdPlacement, { width: number; height: number }>
+> = {
+  [AD_PLACEMENTS.EVENTS_MODAL]: { width: 300, height: 250 },
+};

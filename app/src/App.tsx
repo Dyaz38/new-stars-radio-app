@@ -659,11 +659,10 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-4 flex justify-center" style={{ minHeight: 250 }}>
               <AdBanner
-                className="mb-0 max-w-full"
+                className="mb-0 w-full max-w-[300px]"
                 placement={AD_PLACEMENTS.EVENTS_MODAL}
-                compact
                 country={listenerGeo.country ?? undefined}
                 city={listenerGeo.city ?? undefined}
                 state={listenerGeo.state ?? undefined}

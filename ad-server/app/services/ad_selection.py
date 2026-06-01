@@ -16,6 +16,7 @@ import random
 
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.ad_creative import AdCreative, CreativeStatus
+from app.constants.placements import preferred_sizes_for_placement, size_matches
 from app.core.security import create_tracking_token
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class AdSelectionService:
                 return None
             
             # Step 2: Select an active creative from the campaign
-            creative = self._select_creative(eligible_campaign)
+            creative = self._select_creative(eligible_campaign, placement)
             
             if not creative:
                 logger.warning(f"No active creatives for campaign {eligible_campaign.id}")
@@ -197,22 +198,31 @@ class AdSelectionService:
         campaign = random.choices(all_eligible, weights=weights, k=1)[0]
         return campaign
     
-    def _select_creative(self, campaign: Campaign) -> Optional[AdCreative]:
+    def _select_creative(self, campaign: Campaign, placement: str) -> Optional[AdCreative]:
         """
         Select an active creative from the campaign.
-        
-        Random choice among active creatives for fair rotation when a campaign
-        has multiple ads (e.g. FNB and Toyota in same campaign).
+
+        Prefers sizes that match the placement slot (e.g. 300×250 for events_modal),
+        then falls back to any active creative in the campaign.
         """
-        # Get active creatives
         active_creatives = [
             c for c in campaign.creatives
             if c.status == CreativeStatus.ACTIVE
         ]
-        
+
         if not active_creatives:
             return None
-        
+
+        size_preferences = preferred_sizes_for_placement(placement)
+        if size_preferences:
+            for target_w, target_h in size_preferences:
+                matched = [
+                    c for c in active_creatives
+                    if size_matches(c.image_width, c.image_height, target_w, target_h)
+                ]
+                if matched:
+                    return random.choice(matched)
+
         return random.choice(active_creatives)
     
     def _update_campaign_served(self, campaign: Campaign) -> None:

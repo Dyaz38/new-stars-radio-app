@@ -30,6 +30,22 @@ interface Campaign {
   status: string;
 }
 
+const CREATIVE_SIZE_PRESETS = [
+  { id: "728x90", label: "728 × 90 — Main banner (desktop)", width: 728, height: 90 },
+  { id: "320x50", label: "320 × 50 — Main banner (mobile)", width: 320, height: 50 },
+  { id: "300x250", label: "300 × 250 — Events modal", width: 300, height: 250 },
+] as const;
+
+type CreativeSizePresetId = (typeof CREATIVE_SIZE_PRESETS)[number]["id"];
+
+function presetForCreative(creative?: Creative | null): CreativeSizePresetId {
+  if (!creative) return "728x90";
+  const match = CREATIVE_SIZE_PRESETS.find(
+    (p) => p.width === creative.image_width && p.height === creative.image_height,
+  );
+  return match?.id ?? "728x90";
+}
+
 export default function CreativesPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -229,6 +245,7 @@ function CreativeModal({
     click_url: creative?.click_url || "",
     alt_text: creative?.alt_text || "",
     image_url: "",
+    sizePreset: presetForCreative(creative),
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(
@@ -253,6 +270,10 @@ function CreativeModal({
     setError("");
 
     try {
+      const selectedSize =
+        CREATIVE_SIZE_PRESETS.find((p) => p.id === formData.sizePreset) ??
+        CREATIVE_SIZE_PRESETS[0];
+
       if (creative) {
         // Backend PUT expects JSON, not FormData
         const payload: Record<string, string | number | undefined> = {
@@ -263,8 +284,8 @@ function CreativeModal({
         const imageUrl = formData.image_url?.trim();
         if (imageUrl) {
           payload.image_url = imageUrl;
-          payload.image_width = 728;
-          payload.image_height = 90;
+          payload.image_width = selectedSize.width;
+          payload.image_height = selectedSize.height;
         }
         await api.put(`/creatives/${creative.id}`, payload);
       } else {
@@ -297,8 +318,8 @@ function CreativeModal({
             click_url: formData.click_url,
             alt_text: formData.alt_text || undefined,
             image_url: imageUrl,
-            image_width: 728,
-            image_height: 90,
+            image_width: selectedSize.width,
+            image_height: selectedSize.height,
           });
         }
       }
@@ -408,6 +429,32 @@ function CreativeModal({
               placeholder="Description for screen readers"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ad size *
+            </label>
+            <select
+              value={formData.sizePreset}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  sizePreset: e.target.value as CreativeSizePresetId,
+                })
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              {CREATIVE_SIZE_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              File uploads auto-detect dimensions. Use this preset when saving via Image URL, or to
+              label which slot the creative targets.
+            </p>
           </div>
 
           <div>

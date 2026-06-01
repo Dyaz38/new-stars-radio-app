@@ -137,7 +137,7 @@ class TestAdSelectionService:
         service = AdSelectionService(mock_db)
         
         # Act
-        result = service._select_creative(campaign)
+        result = service._select_creative(campaign, "banner_bottom")
         
         # Assert
         assert result is None
@@ -156,6 +156,35 @@ class TestAdSelectionService:
         # Assert
         mock_db.query().filter().update.assert_called_once()
         mock_db.commit.assert_called_once()
+    
+    def test_select_creative_prefers_events_modal_size(self):
+        """Events modal should prefer 300×250 creatives over leaderboard sizes."""
+        mock_db = Mock()
+        service = AdSelectionService(mock_db)
+        campaign = self._create_mock_campaign()
+
+        events_creative = MagicMock()
+        events_creative.id = uuid.uuid4()
+        events_creative.status = CreativeStatus.ACTIVE
+        events_creative.image_width = 300
+        events_creative.image_height = 250
+
+        leaderboard = campaign.creatives[0]
+        campaign.creatives = [leaderboard, events_creative]
+
+        result = service._select_creative(campaign, "events_modal")
+
+        assert result is events_creative
+
+    def test_select_creative_falls_back_when_no_size_match(self):
+        """When no preferred size exists, any active creative may serve."""
+        mock_db = Mock()
+        service = AdSelectionService(mock_db)
+        campaign = self._create_mock_campaign()
+
+        result = service._select_creative(campaign, "events_modal")
+
+        assert result is campaign.creatives[0]
     
     # Helper methods
     

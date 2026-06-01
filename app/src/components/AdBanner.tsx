@@ -1,6 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { API_ENDPOINTS } from '../constants';
-import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
+import {
+  AD_PLACEMENTS,
+  PLACEMENT_SLOT_SIZES,
+  type AdPlacement,
+} from '../constants/adPlacements';
 
 interface AdData {
   ad_id: string;
@@ -27,7 +31,14 @@ interface AdBannerProps {
   state?: string;
 }
 
-const getAdDimensions = (compact: boolean): { width: number; height: number } => {
+const getAdDimensions = (
+  placement: AdPlacement,
+  compact: boolean,
+): { width: number; height: number } => {
+  const fixedSlot = PLACEMENT_SLOT_SIZES[placement];
+  if (fixedSlot) {
+    return fixedSlot;
+  }
   if (compact) {
     return { width: 320, height: 50 };
   }
@@ -37,6 +48,9 @@ const getAdDimensions = (compact: boolean): { width: number; height: number } =>
   }
   return { width: 728, height: 90 };
 };
+
+const isFixedSlotPlacement = (placement: AdPlacement): boolean =>
+  placement in PLACEMENT_SLOT_SIZES;
 
 const getUserId = (): string => {
   const storageKey = 'ad-server-user-id';
@@ -64,13 +78,13 @@ export const AdBanner = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [impressionTracked, setImpressionTracked] = useState(false);
-  const [dimensions, setDimensions] = useState(getAdDimensions(compact));
+  const [dimensions, setDimensions] = useState(getAdDimensions(placement, compact));
   const adRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (compact) return;
+    if (compact || isFixedSlotPlacement(placement)) return;
     const handleResize = () => {
-      const newDimensions = getAdDimensions(false);
+      const newDimensions = getAdDimensions(placement, false);
       if (newDimensions.width !== dimensions.width || newDimensions.height !== dimensions.height) {
         setDimensions(newDimensions);
       }
@@ -78,11 +92,11 @@ export const AdBanner = ({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [compact, dimensions.width, dimensions.height]);
+  }, [compact, dimensions.width, dimensions.height, placement]);
 
   useEffect(() => {
-    setDimensions(getAdDimensions(compact));
-  }, [compact]);
+    setDimensions(getAdDimensions(placement, compact));
+  }, [compact, placement]);
 
   useEffect(() => {
     const fetchAd = async () => {

@@ -1,12 +1,14 @@
 """
 Ad creative management endpoints.
 """
+import io
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, status, UploadFile
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -22,6 +24,26 @@ from app.services.storage import upload_creative_image
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _read_upload_dimensions(image_file: UploadFile) -> Tuple[int, int]:
+    """Read pixel dimensions from an uploaded image."""
+    content = await image_file.read()
+    await image_file.seek(0)
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            width, height = img.size
+    except UnidentifiedImageError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not read image dimensions. Upload a valid JPEG, PNG, GIF, or WebP file.",
+        ) from e
+    if width <= 0 or height <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image dimensions.",
+        )
+    return width, height
 
 
 @router.post("", response_model=CreativeResponse, status_code=status.HTTP_201_CREATED)
@@ -71,9 +93,8 @@ async def create_creative(
             ),
         ) from e
 
-    # Get image dimensions (simplified - in production use PIL/Pillow)
-    image_width = 728
-    image_height = 90
+    # Detect image dimensions from the uploaded file
+    image_width, image_height = await _read_upload_dimensions(image_file)
 
     creative = AdCreative(
         campaign_id=campaign_id,
