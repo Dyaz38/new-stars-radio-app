@@ -461,15 +461,17 @@ const RadioStreamingApp = () => {
         style={{display: 'none'}}
       />
       
-      {/* Advertisement Banner - Top of Screen */}
-      <div className="container mx-auto px-4 pt-4" style={{ minHeight: 90 }}>
-        <AdBanner
-          className="max-w-4xl mx-auto"
-          placement={AD_PLACEMENTS.BANNER_TOP}
-          country={listenerGeo.country ?? undefined}
-          city={listenerGeo.city ?? undefined}
-          state={listenerGeo.state ?? undefined}
-        />
+      {/* Advertisement Banner - sticky at top while scrolling */}
+      <div className="sticky top-0 z-40 border-b border-white/10 bg-purple-950/95 backdrop-blur-sm shadow-md">
+        <div className="container mx-auto px-4 py-2" style={{ minHeight: 50 }}>
+          <AdBanner
+            className="max-w-4xl mx-auto !mb-0"
+            placement={AD_PLACEMENTS.BANNER_TOP}
+            country={listenerGeo.country ?? undefined}
+            city={listenerGeo.city ?? undefined}
+            state={listenerGeo.state ?? undefined}
+          />
+        </div>
       </div>
       
             {/* Header */}
