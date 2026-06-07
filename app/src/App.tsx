@@ -645,8 +645,8 @@ const RadioStreamingApp = () => {
       {/* Events Modal */}
       {showEvents && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto border border-white/10">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[85vh] border border-white/10 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Users className="w-6 h-6" />
                 Station Events
@@ -661,9 +661,9 @@ const RadioStreamingApp = () => {
               </button>
             </div>
 
-            <div className="mb-4">
+            <div className="flex-shrink-0 px-6 pb-3 border-b border-white/10 bg-gray-900">
               <AdBanner
-                className="mb-0 max-w-full"
+                className="mb-0 max-w-full !mb-0"
                 placement={AD_PLACEMENTS.EVENTS_MODAL}
                 compact
                 country={listenerGeo.country ?? undefined}
@@ -672,6 +672,7 @@ const RadioStreamingApp = () => {
               />
             </div>
 
+            <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
             <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-4">
               <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm text-gray-200 flex items-center gap-2 shrink-0">
@@ -849,6 +850,7 @@ const RadioStreamingApp = () => {
                 );
               })
               )}
+            </div>
             </div>
           </div>
         </div>
