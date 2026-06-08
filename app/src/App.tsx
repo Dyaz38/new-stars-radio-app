@@ -463,14 +463,21 @@ const RadioStreamingApp = () => {
       
       {/* Advertisement Banner - sticky at top while scrolling */}
       <div className="sticky top-0 z-40 border-b border-white/10 bg-purple-950/95 backdrop-blur-sm shadow-md">
-        <div className="container mx-auto px-4 py-2" style={{ minHeight: 50 }}>
-          <AdBanner
-            className="max-w-4xl mx-auto !mb-0"
-            placement={AD_PLACEMENTS.BANNER_TOP}
-            country={listenerGeo.country ?? undefined}
-            city={listenerGeo.city ?? undefined}
-            state={listenerGeo.state ?? undefined}
+        <div className="container mx-auto px-4 py-2 flex items-center gap-3">
+          <img
+            src={RADIO_CONFIG.STATION_LOGO_URL}
+            alt={`${RADIO_CONFIG.STATION_NAME} logo`}
+            className="h-9 sm:h-11 w-auto shrink-0 object-contain rounded-sm"
           />
+          <div className="flex-1 min-w-0" style={{ minHeight: 50 }}>
+            <AdBanner
+              className="max-w-4xl mx-auto !mb-0"
+              placement={AD_PLACEMENTS.BANNER_TOP}
+              country={listenerGeo.country ?? undefined}
+              city={listenerGeo.city ?? undefined}
+              state={listenerGeo.state ?? undefined}
+            />
+          </div>
         </div>
       </div>
       
@@ -478,9 +485,6 @@ const RadioStreamingApp = () => {
       <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
-              <Radio className="w-6 h-6" />
-            </div>
       <div>
             <h1 className="font-bold text-lg">{RADIO_CONFIG.STATION_NAME}</h1>
             <p className="text-sm text-gray-300">{RADIO_CONFIG.TAGLINE}</p>
