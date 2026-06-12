@@ -467,7 +467,7 @@ const RadioStreamingApp = () => {
           <img
             src={RADIO_CONFIG.STATION_LOGO_URL}
             alt={`${RADIO_CONFIG.STATION_NAME} logo`}
-            className="h-[72px] sm:h-[88px] w-auto shrink-0 object-contain rounded-sm"
+            className="h-[72px] sm:h-[88px] w-auto shrink-0 object-contain rounded-sm drop-shadow-md"
           />
           <div className="flex-1 min-w-0" style={{ minHeight: 50 }}>
             <AdBanner

@@ -6,6 +6,7 @@ export const RADIO_CONFIG = {
   STATION_NAME: 'NEW STARS RADIO',
   TAGLINE: "Tomorrow's Stars, Today",
   STATION_LOGO_URL: '/station-logo.png',
+  STATION_ICON_URL: '/station-icon-512.png',
   STREAM_URL: 'https://newstarsradio.out.airtime.pro/newstarsradio_a',
   DEFAULT_VOLUME: 75,
   METADATA_REFRESH_INTERVAL: 60000, // 60 seconds (reduced frequency)
