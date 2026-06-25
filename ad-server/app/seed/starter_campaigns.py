@@ -19,10 +19,11 @@ CAMPAIGN_ZA = "House Promo — South Africa (ZA)"
 CREATIVE_MOBILE = "House Banner 320×50"
 CREATIVE_DESKTOP = "House Banner 728×90"
 
-IMAGE_MOBILE = "/static/ads/newstars-house-320x50.png"
-IMAGE_DESKTOP = "/static/ads/newstars-house-728x90.png"
+from app.constants.house_ad import HOUSE_AD_CLICK_URL, HOUSE_AD_IMAGE_BY_SIZE
 
-CLICK_URL = "mailto:ads@newstarsradio.com?subject=Advertise%20on%20New%20Stars%20Radio"
+IMAGE_MOBILE = HOUSE_AD_IMAGE_BY_SIZE[(320, 50)]
+IMAGE_DESKTOP = HOUSE_AD_IMAGE_BY_SIZE[(728, 90)]
+CLICK_URL = HOUSE_AD_CLICK_URL
 
 
 def _campaign_window() -> tuple[datetime, datetime]:

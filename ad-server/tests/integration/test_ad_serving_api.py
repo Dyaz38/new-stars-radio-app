@@ -207,10 +207,11 @@ class TestAdRequestEndpoint:
         
         assert response.status_code == 200
         data = response.json()
-        
-        # Should return fallback instruction
-        assert data["fallback"] == "adsense"
-        assert "message" in data
+
+        # Empty inventory serves built-in New Stars house promo
+        assert data["is_house_ad"] is True
+        assert data["image_width"] in (320, 728)
+        assert data["image_url"].startswith("/static/ads/")
     
     def test_request_ad_invalid_user_id(self):
         """Test ad request with invalid user_id."""

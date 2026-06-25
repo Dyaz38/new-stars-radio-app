@@ -75,7 +75,11 @@ class AdResponse(BaseModel):
     alt_text: str = Field(..., description="Alt text for the image")
     impression_tracking_token: str = Field(..., description="JWT token for impression tracking")
     click_tracking_token: str = Field(..., description="JWT token for click tracking")
-    
+    is_house_ad: bool = Field(
+        default=False,
+        description="True for built-in New Stars promo when no paid ad matched",
+    )
+
     class Config:
         json_schema_extra = {
             "example": {

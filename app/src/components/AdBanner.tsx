@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../constants';
 import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
+import { getLocalHouseAd, HOUSE_AD } from '../constants/houseAd';
 
 interface AdData {
   ad_id: string;
@@ -12,6 +13,7 @@ interface AdData {
   alt_text?: string;
   impression_tracking_token: string;
   click_tracking_token: string;
+  is_house_ad?: boolean;
 }
 
 interface AdBannerProps {
@@ -20,7 +22,7 @@ interface AdBannerProps {
   placement?: AdPlacement;
   /** Smaller slot for in-modal placements */
   compact?: boolean;
-  /** Hide the yellow placeholder when no ad is available */
+  /** Hide the slot entirely when no paid ad is available (house promo still shows by default) */
   hideWhenEmpty?: boolean;
   country?: string;
   city?: string;
@@ -50,6 +52,29 @@ const getUserId = (): string => {
   return userId;
 };
 
+function buildLocalHouseAdData(compact: boolean, viewportWidth: number): AdData {
+  const asset = getLocalHouseAd(compact, viewportWidth);
+  return {
+    ad_id: 'house-local',
+    campaign_id: 'house-local',
+    image_url: asset.url,
+    image_width: asset.width,
+    image_height: asset.height,
+    click_url: HOUSE_AD.CLICK_URL,
+    alt_text: HOUSE_AD.ALT,
+    impression_tracking_token: '',
+    click_tracking_token: '',
+    is_house_ad: true,
+  };
+}
+
+function resolveAdImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('/ads/')) return imageUrl;
+  const origin = API_ENDPOINTS.AD_SERVER.replace('/api/v1', '');
+  return `${origin}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+}
+
 export const AdBanner = ({
   style,
   className = '',
@@ -62,10 +87,14 @@ export const AdBanner = ({
 }: AdBannerProps) => {
   const [adData, setAdData] = useState<AdData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [impressionTracked, setImpressionTracked] = useState(false);
   const [dimensions, setDimensions] = useState(getAdDimensions(compact));
   const adRef = useRef<HTMLAnchorElement>(null);
+
+  const applyLocalHouseAd = useCallback(() => {
+    setAdData(buildLocalHouseAdData(compact, dimensions.width));
+    setImpressionTracked(false);
+  }, [compact, dimensions.width]);
 
   useEffect(() => {
     if (compact) return;
@@ -88,7 +117,6 @@ export const AdBanner = ({
     const fetchAd = async () => {
       try {
         setLoading(true);
-        setError(null);
         setImpressionTracked(false);
 
         const userId = getUserId();
@@ -108,29 +136,21 @@ export const AdBanner = ({
         });
 
         if (!response.ok) {
-          setAdData(null);
-          if (response.status === 404) {
-            setError('No ads available');
-          } else {
-            throw new Error(`Failed to fetch ad: ${response.statusText}`);
-          }
+          applyLocalHouseAd();
           return;
         }
 
         const data = await response.json();
 
         if ('fallback' in data) {
-          setAdData(null);
-          setError('No ads available');
+          applyLocalHouseAd();
           return;
         }
 
         setAdData(data as AdData);
-        setError(null);
       } catch (err) {
         console.error('Error fetching ad:', err);
-        setAdData(null);
-        setError(err instanceof Error ? err.message : 'Failed to load ad');
+        applyLocalHouseAd();
       } finally {
         setLoading(false);
       }
@@ -140,11 +160,18 @@ export const AdBanner = ({
 
     const interval = setInterval(fetchAd, 30000);
     return () => clearInterval(interval);
-  }, [dimensions.width, dimensions.height, country, city, state, placement]);
+  }, [dimensions.width, dimensions.height, country, city, state, placement, applyLocalHouseAd]);
 
   useEffect(() => {
     const trackImpression = async () => {
-      if (!adData || impressionTracked) return;
+      if (
+        !adData ||
+        impressionTracked ||
+        adData.is_house_ad ||
+        !adData.impression_tracking_token
+      ) {
+        return;
+      }
 
       try {
         await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/tracking/impression`, {
@@ -170,8 +197,15 @@ export const AdBanner = ({
     void trackImpression();
   }, [adData, impressionTracked, city, state, country]);
 
-  const handleClick = async () => {
-    if (!adData) return;
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const activeAd = adData ?? buildLocalHouseAdData(compact, dimensions.width);
+    if (!activeAd) return;
+
+    if (activeAd.is_house_ad || !activeAd.click_tracking_token) {
+      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
 
     try {
       await fetch(`${API_ENDPOINTS.AD_SERVER}/ads/tracking/click`, {
@@ -180,18 +214,18 @@ export const AdBanner = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ad_id: adData.ad_id,
-          campaign_id: adData.campaign_id,
+          ad_id: activeAd.ad_id,
+          campaign_id: activeAd.campaign_id,
           user_id: getUserId(),
-          tracking_token: adData.click_tracking_token,
+          tracking_token: activeAd.click_tracking_token,
           timestamp: new Date().toISOString(),
         }),
       });
 
-      window.open(adData.click_url, '_blank', 'noopener,noreferrer');
+      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Error tracking click:', err);
-      window.open(adData.click_url, '_blank', 'noopener,noreferrer');
+      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -199,42 +233,22 @@ export const AdBanner = ({
     if (hideWhenEmpty) return null;
     return (
       <div
-        className={`bg-gray-200/90 border-2 border-gray-400 rounded-lg p-2 mb-4 flex items-center justify-center ${className}`}
+        className={`flex items-center justify-center ${className}`}
         style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
         data-testid="ad-banner-loading"
-      >
-        <div className="text-gray-700 text-xs sm:text-sm font-medium">Loading ad...</div>
-      </div>
+        aria-hidden
+      />
     );
   }
 
-  if (error || !adData) {
-    if (hideWhenEmpty) return null;
-    return (
-      <div
-        className={`bg-yellow-400/90 border-2 sm:border-4 border-yellow-600 rounded-lg p-2 sm:p-6 mb-4 shadow-lg sm:shadow-2xl ${className}`}
-        style={{
-          backgroundColor: 'rgba(250, 204, 21, 0.95)',
-          minHeight: Math.max(dimensions.height, 50),
-          ...style,
-        }}
-        data-testid="ad-banner-empty"
-      >
-        <div className="text-center">
-          <div className="text-gray-900 font-bold text-sm sm:text-lg mb-1 sm:mb-2">🎯 ADVERTISEMENT 🎯</div>
-          <div className="text-gray-800 text-xs sm:text-sm font-semibold">
-            {error || 'No ads available'}
-            <br className="hidden sm:block" />
-            <span className="text-blue-900 text-xs">Ad space available!</span>
-          </div>
-        </div>
-      </div>
-    );
+  const displayAd =
+    adData ?? buildLocalHouseAdData(compact, dimensions.width);
+
+  if (hideWhenEmpty && displayAd.is_house_ad) {
+    return null;
   }
 
-  const imageUrl = adData.image_url.startsWith('http')
-    ? adData.image_url
-    : `${API_ENDPOINTS.AD_SERVER.replace('/api/v1', '')}${adData.image_url}`;
+  const imageUrl = resolveAdImageUrl(displayAd.image_url);
 
   return (
     <div
@@ -244,14 +258,12 @@ export const AdBanner = ({
         ...style,
       }}
       data-ad-placement={placement}
+      data-house-ad={displayAd.is_house_ad ? 'true' : 'false'}
     >
       <a
         ref={adRef}
-        href={adData.click_url}
-        onClick={(e) => {
-          e.preventDefault();
-          void handleClick();
-        }}
+        href={displayAd.click_url}
+        onClick={handleClick}
         target="_blank"
         rel="noopener noreferrer"
         className="block cursor-pointer hover:opacity-90 transition-opacity"
@@ -263,9 +275,9 @@ export const AdBanner = ({
       >
         <img
           src={imageUrl}
-          alt={adData.alt_text || 'Advertisement'}
-          width={adData.image_width}
-          height={adData.image_height}
+          alt={displayAd.alt_text || 'Advertisement'}
+          width={displayAd.image_width}
+          height={displayAd.image_height}
           className="w-full h-auto rounded-lg shadow-md sm:shadow-lg"
           style={{
             maxWidth: dimensions.width,
@@ -276,8 +288,7 @@ export const AdBanner = ({
           }}
           onError={() => {
             console.error('Failed to load ad image:', imageUrl);
-            setAdData(null);
-            setError('Failed to load ad image');
+            applyLocalHouseAd();
           }}
         />
       </a>

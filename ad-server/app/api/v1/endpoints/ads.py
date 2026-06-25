@@ -19,6 +19,7 @@ from app.schemas.ad_serving import (
 )
 from app.services.ad_selection import AdSelectionService
 from app.services.geoip import merge_geo_with_client, resolve_request_geo
+from app.services.house_ad import get_house_ad_response
 from app.services.tracking import TrackingService
 
 logger = logging.getLogger(__name__)
@@ -105,18 +106,17 @@ async def request_ad(
             state=state,
         )
         
-        # If no ad available, return fallback instruction
+        # If no paid ad, serve built-in New Stars house promo (never empty slot)
         if ad_data is None:
             logger.info(
-                "No ad available for user=%s, placement=%s, geo=%s/%s/%s (source=%s)",
+                "No paid ad for user=%s, placement=%s, geo=%s/%s/%s — serving house promo",
                 body.user_id,
                 body.placement,
                 country,
                 city,
                 state,
-                server_geo.source,
             )
-            return NoAdResponse()
+            return get_house_ad_response(body.placement)
         
         # Return ad data
         logger.info(
