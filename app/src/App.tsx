@@ -678,14 +678,23 @@ const RadioStreamingApp = () => {
             </div>
 
             <div className="flex-shrink-0 px-6 pb-3 border-b border-white/10 bg-gray-900">
-              <AdBanner
-                className="mb-0 max-w-full !mb-0"
-                placement={AD_PLACEMENTS.EVENTS_MODAL}
-                compact
-                country={listenerGeo.country ?? undefined}
-                city={listenerGeo.city ?? undefined}
-                state={listenerGeo.state ?? undefined}
-              />
+              <div className="flex items-center gap-3">
+                <img
+                  src={RADIO_CONFIG.STATION_LOGO_URL}
+                  alt={`${RADIO_CONFIG.STATION_NAME} logo`}
+                  className="h-[50px] w-auto shrink-0 object-contain rounded-sm drop-shadow-md"
+                />
+                <div className="flex-1 min-w-0" style={{ minHeight: 50 }}>
+                  <AdBanner
+                    className="mb-0 max-w-full !mb-0"
+                    placement={AD_PLACEMENTS.EVENTS_MODAL}
+                    compact
+                    country={listenerGeo.country ?? undefined}
+                    city={listenerGeo.city ?? undefined}
+                    state={listenerGeo.state ?? undefined}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
