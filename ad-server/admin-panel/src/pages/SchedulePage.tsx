@@ -15,14 +15,13 @@ interface ScheduleShow {
 
 /** Same defaults as the ad-server schedule endpoint (first save seeds the file). */
 const DEFAULT_SCHEDULE_TEMPLATE: ScheduleShow[] = [
-  { id: 1, time: "5:00 AM - 6:00 AM", show: "Early Bird Music", dj: "Auto DJ", description: "Wake up with your favorite hits", current: false },
-  { id: 2, time: "6:00 AM - 10:00 AM", show: "Morning Drive", dj: "Sarah Martinez", description: "Start your day right with Sarah! News, traffic, and the hottest pop hits", current: true },
-  { id: 3, time: "10:00 AM - 2:00 PM", show: "Mid-Morning Mix", dj: "Jake Thompson", description: "Non-stop music to keep your energy up", current: false },
-  { id: 4, time: "2:00 PM - 6:00 PM", show: "Afternoon Groove", dj: "Maria Lopez", description: "The perfect soundtrack for your afternoon", current: false },
-  { id: 5, time: "6:00 PM - 8:00 PM", show: "Drive Time Hits", dj: "Alex Chen", description: "Beating traffic with the biggest hits", current: false },
-  { id: 6, time: "8:00 PM - 10:00 PM", show: "Pop Tonight", dj: "Emma Wilson", description: "Tonight's biggest pop anthems and new releases", current: false },
-  { id: 7, time: "10:00 PM - 12:00 AM", show: "Late Night Vibes", dj: "Ryan Brooks", description: "Chill out with smooth pop and indie favorites", current: false },
-  { id: 8, time: "12:00 AM - 5:00 AM", show: "Overnight Mix", dj: "Auto DJ", description: "Continuous music through the night", current: false },
+  { id: 1, time: "12:00 AM - 5:00 AM", show: "Overnight Stars Mix", dj: "Auto DJ", description: "Non-stop overnight rotation of rising Hip-Hop, R&B, and Smooth Jazz artists.", current: false },
+  { id: 2, time: "5:00 AM - 7:00 AM", show: "Sunrise Smooth Jazz", dj: "DJ Marcus", description: "Ease into the day with mellow jazz and soulful instrumentals.", current: false },
+  { id: 3, time: "7:00 AM - 10:00 AM", show: "Morning Hip-Hop Rise", dj: "DJ Kaya", description: "Fresh bars and beats from tomorrow's stars — news and community shout-outs.", current: false },
+  { id: 4, time: "10:00 AM - 2:00 PM", show: "Midday R&B Flow", dj: "DJ Lila", description: "Midday grooves and new voices in R&B — perfect for work or the road.", current: false },
+  { id: 5, time: "2:00 PM - 6:00 PM", show: "Afternoon Discovery", dj: "New Stars Team", description: "Deep cuts and debut tracks from unsigned artists we're breaking first.", current: false },
+  { id: 6, time: "6:00 PM - 9:00 PM", show: "Drive Time Heat", dj: "DJ Apex", description: "Peak-hour energy — Hip-Hop and R&B anthems for the commute home.", current: false },
+  { id: 7, time: "9:00 PM - 12:00 AM", show: "Late Night Lounge", dj: "DJ Nova", description: "Smooth Jazz and slow R&B to wind down the evening.", current: false },
 ];
 
 interface ScheduleResponse {

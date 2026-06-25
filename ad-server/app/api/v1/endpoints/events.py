@@ -22,12 +22,16 @@ from app.schemas.events import (
     EventsUpdateResponse,
     StationEvent,
 )
+from app.seed.station_content import NEW_STARS_EVENT_LOCATIONS, NEW_STARS_EVENTS
 from app.services.storage import upload_station_event_image
 from app.services.event_geo import filter_events_for_country
 from app.services.geoip import resolve_request_geo
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+DEFAULT_EVENTS: list[StationEvent] = NEW_STARS_EVENTS
+DEFAULT_EVENT_LOCATIONS: list[str] = NEW_STARS_EVENT_LOCATIONS
 
 
 def _events_file_path() -> Path:
@@ -47,15 +51,17 @@ def _write_events(items: list[StationEvent]) -> None:
 def _read_events() -> list[StationEvent]:
     path = _events_file_path()
     if not path.exists():
-        return []
+        _write_events(DEFAULT_EVENTS)
+        return DEFAULT_EVENTS
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         parsed = EventsResponse.model_validate(raw)
         return parsed.items
     except Exception as exc:  # pragma: no cover - defensive fallback
-        logger.warning("Invalid events file detected (%s). Returning empty list.", exc)
-        return []
+        logger.warning("Invalid events file detected (%s). Resetting to defaults.", exc)
+        _write_events(DEFAULT_EVENTS)
+        return DEFAULT_EVENTS
 
 
 def _locations_file_path() -> Path:
@@ -68,15 +74,17 @@ def _locations_file_path() -> Path:
 def _read_locations() -> list[str]:
     path = _locations_file_path()
     if not path.exists():
-        return []
+        _write_locations(DEFAULT_EVENT_LOCATIONS)
+        return DEFAULT_EVENT_LOCATIONS
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         parsed = EventLocationsResponse.model_validate(raw)
         return parsed.places
     except Exception as exc:  # pragma: no cover - defensive fallback
-        logger.warning("Invalid event locations file detected (%s). Returning empty list.", exc)
-        return []
+        logger.warning("Invalid event locations file detected (%s). Resetting to defaults.", exc)
+        _write_locations(DEFAULT_EVENT_LOCATIONS)
+        return DEFAULT_EVENT_LOCATIONS
 
 
 def _write_locations(places: list[str]) -> None:

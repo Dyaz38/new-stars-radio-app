@@ -16,76 +16,12 @@ from app.schemas.schedule import (
     ScheduleUpdateRequest,
     ScheduleUpdateResponse,
 )
+from app.seed.station_content import NEW_STARS_SCHEDULE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-DEFAULT_SCHEDULE: list[ScheduleShow] = [
-    ScheduleShow(
-        id=1,
-        time="5:00 AM - 6:00 AM",
-        show="Early Bird Music",
-        dj="Auto DJ",
-        description="Wake up with your favorite hits",
-        current=False,
-    ),
-    ScheduleShow(
-        id=2,
-        time="6:00 AM - 10:00 AM",
-        show="Morning Drive",
-        dj="Sarah Martinez",
-        description="Start your day right with Sarah! News, traffic, and the hottest pop hits",
-        current=True,
-    ),
-    ScheduleShow(
-        id=3,
-        time="10:00 AM - 2:00 PM",
-        show="Mid-Morning Mix",
-        dj="Jake Thompson",
-        description="Non-stop music to keep your energy up",
-        current=False,
-    ),
-    ScheduleShow(
-        id=4,
-        time="2:00 PM - 6:00 PM",
-        show="Afternoon Groove",
-        dj="Maria Lopez",
-        description="The perfect soundtrack for your afternoon",
-        current=False,
-    ),
-    ScheduleShow(
-        id=5,
-        time="6:00 PM - 8:00 PM",
-        show="Drive Time Hits",
-        dj="Alex Chen",
-        description="Beating traffic with the biggest hits",
-        current=False,
-    ),
-    ScheduleShow(
-        id=6,
-        time="8:00 PM - 10:00 PM",
-        show="Pop Tonight",
-        dj="Emma Wilson",
-        description="Tonight's biggest pop anthems and new releases",
-        current=False,
-    ),
-    ScheduleShow(
-        id=7,
-        time="10:00 PM - 12:00 AM",
-        show="Late Night Vibes",
-        dj="Ryan Brooks",
-        description="Chill out with smooth pop and indie favorites",
-        current=False,
-    ),
-    ScheduleShow(
-        id=8,
-        time="12:00 AM - 5:00 AM",
-        show="Overnight Mix",
-        dj="Auto DJ",
-        description="Continuous music through the night",
-        current=False,
-    ),
-]
+DEFAULT_SCHEDULE: list[ScheduleShow] = NEW_STARS_SCHEDULE
 
 
 def _schedule_file_path() -> Path:

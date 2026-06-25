@@ -117,8 +117,8 @@ const RadioStreamingApp = () => {
   const listenerGeo = useListenerGeo();
 
   // UI state
-  const [currentShow, setCurrentShow] = useState('Morning Drive');
-  const [currentDJ, setCurrentDJ] = useState('Sarah Martinez');
+  const [currentShow, setCurrentShow] = useState('Midday R&B Flow');
+  const [currentDJ, setCurrentDJ] = useState('DJ Lila');
   const [showSchedule, setShowSchedule] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -181,6 +181,18 @@ const RadioStreamingApp = () => {
     () => schedule.find((slot) => slot.current),
     [schedule],
   );
+
+  const djInitials = useMemo(() => {
+    const name = currentDJ.trim();
+    if (!name) return '?';
+    if (/^auto\s+dj$/i.test(name)) return '♪';
+    const withoutPrefix = name.replace(/^DJ\s+/i, '').trim();
+    const words = (withoutPrefix || name).split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+    }
+    return words[0].slice(0, 2).toUpperCase();
+  }, [currentDJ]);
 
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
@@ -512,7 +524,7 @@ const RadioStreamingApp = () => {
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6">
           <div className="flex items-center space-x-4 mb-4">
             <div className="w-16 h-16 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold">SM</span>
+              <span className="text-2xl font-bold">{djInitials}</span>
               </div>
             <div>
               <h2 className="text-xl font-bold">{currentShow}</h2>
