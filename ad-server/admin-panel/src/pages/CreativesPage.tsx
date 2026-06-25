@@ -31,9 +31,8 @@ interface Campaign {
 }
 
 const CREATIVE_SIZE_PRESETS = [
-  { id: "728x90", label: "728 × 90 — Main banner (desktop)", width: 728, height: 90 },
-  { id: "320x50", label: "320 × 50 — Main banner (mobile)", width: 320, height: 50 },
-  { id: "300x250", label: "300 × 250 — Events modal", width: 300, height: 250 },
+  { id: "728x90", label: "728 × 90 — Main banner (desktop)", width: 728, height: 90, placements: "banner_top, banner_bottom" },
+  { id: "320x50", label: "320 × 50 — Main banner (mobile) + Events modal", width: 320, height: 50, placements: "banner_top, banner_bottom, events_modal" },
 ] as const;
 
 type CreativeSizePresetId = (typeof CREATIVE_SIZE_PRESETS)[number]["id"];
@@ -452,8 +451,8 @@ function CreativeModal({
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              File uploads auto-detect dimensions. Use this preset when saving via Image URL, or to
-              label which slot the creative targets.
+              The ad server matches creatives to slots by size: 728×90 → main banner (desktop);
+              320×50 → main banner (mobile) and Events modal. Uploads auto-detect dimensions.
             </p>
           </div>
 

@@ -16,6 +16,7 @@ import random
 
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.ad_creative import AdCreative, CreativeStatus
+from app.constants.placements import creative_matches_placement
 from app.core.security import create_tracking_token
 
 logger = logging.getLogger(__name__)
@@ -60,14 +61,14 @@ class AdSelectionService:
         
         try:
             # Step 1: Find eligible campaigns
-            eligible_campaign = self._find_eligible_campaign(country, city, state)
+            eligible_campaign = self._find_eligible_campaign(country, city, state, placement)
             
             if not eligible_campaign:
                 logger.info("No eligible campaigns found - returning None for AdSense fallback")
                 return None
             
             # Step 2: Select an active creative from the campaign
-            creative = self._select_creative(eligible_campaign)
+            creative = self._select_creative(eligible_campaign, placement)
             
             if not creative:
                 logger.warning(f"No active creatives for campaign {eligible_campaign.id}")
@@ -116,7 +117,8 @@ class AdSelectionService:
         self,
         country: Optional[str],
         city: Optional[str],
-        state: Optional[str]
+        state: Optional[str],
+        placement: str,
     ) -> Optional[Campaign]:
         """
         Find an eligible campaign based on status, date range, budget, and targeting.
@@ -175,9 +177,15 @@ class AdSelectionService:
         # Get all eligible campaigns - ALL active ads get a chance to show
         all_eligible = query.all()
 
+        # Keep only campaigns with at least one creative sized for this placement
+        all_eligible = [
+            c
+            for c in all_eligible
+            if self._active_creatives_for_placement(c, placement)
+        ]
+
         # Do not fall back to other countries' campaigns when geo targeting yields no match.
         if not all_eligible:
-            # Log for debugging - check Railway logs if ads don't show
             active_count = self.db.query(Campaign).filter(
                 Campaign.status == CampaignStatus.ACTIVE,
                 Campaign.start_date <= now,
@@ -185,9 +193,11 @@ class AdSelectionService:
                 Campaign.impressions_served < Campaign.impression_budget
             ).count()
             logger.info(
-                "No eligible campaigns. Active campaigns with budget: %d. "
-                "Check admin: campaigns must be ACTIVE, within dates, have budget, and have active creatives.",
-                active_count
+                "No eligible campaigns for placement=%s. Active campaigns with budget: %d. "
+                "Check admin: campaigns must be ACTIVE, within dates, have budget, "
+                "and have active creatives matching placement size.",
+                placement,
+                active_count,
             )
             return None
 
@@ -197,17 +207,25 @@ class AdSelectionService:
         campaign = random.choices(all_eligible, weights=weights, k=1)[0]
         return campaign
     
-    def _select_creative(self, campaign: Campaign) -> Optional[AdCreative]:
-        """
-        Select an active creative from the campaign.
-
-        Random choice among active creatives for fair rotation when a campaign
-        has multiple ads (e.g. FNB and Toyota in same campaign).
-        """
-        active_creatives = [
-            c for c in campaign.creatives
+    def _active_creatives_for_placement(
+        self, campaign: Campaign, placement: str
+    ) -> list[AdCreative]:
+        return [
+            c
+            for c in campaign.creatives
             if c.status == CreativeStatus.ACTIVE
+            and creative_matches_placement(c.image_width, c.image_height, placement)
         ]
+
+    def _select_creative(
+        self, campaign: Campaign, placement: str
+    ) -> Optional[AdCreative]:
+        """
+        Select an active creative from the campaign that fits the placement slot.
+
+        Random choice among matching creatives for fair rotation.
+        """
+        active_creatives = self._active_creatives_for_placement(campaign, placement)
 
         if not active_creatives:
             return None

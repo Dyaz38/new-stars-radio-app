@@ -71,7 +71,7 @@ class TestAdSelectionService:
         mock_query.first.return_value = None  # No campaign found is acceptable for this test
         
         # Act - Call with location data
-        result = service._find_eligible_campaign(city="New York", state="NY")
+        result = service._find_eligible_campaign(city="New York", state="NY", placement="banner_bottom")
         
         # Assert - Just verify query was called (geo-targeting logic is applied)
         assert mock_db.query.called
@@ -137,12 +137,39 @@ class TestAdSelectionService:
         service = AdSelectionService(mock_db)
         
         # Act
-        result = service._select_creative(campaign)
+        result = service._select_creative(campaign, "banner_bottom")
         
         # Assert
         assert result is None
     
-    def test_update_campaign_served_increments_count(self):
+    def test_select_creative_filters_by_placement_size(self):
+        """events_modal must not return desktop-only creatives."""
+        mock_db = Mock()
+        service = AdSelectionService(mock_db)
+        campaign = self._create_mock_campaign()
+
+        mobile = MagicMock()
+        mobile.id = uuid.uuid4()
+        mobile.status = CreativeStatus.ACTIVE
+        mobile.image_width = 320
+        mobile.image_height = 50
+
+        desktop = MagicMock()
+        desktop.id = uuid.uuid4()
+        desktop.status = CreativeStatus.ACTIVE
+        desktop.image_width = 728
+        desktop.image_height = 90
+
+        campaign.creatives = [mobile, desktop]
+
+        events_pick = service._select_creative(campaign, "events_modal")
+        assert events_pick is not None
+        assert events_pick.image_width == 320
+        assert events_pick.image_height == 50
+
+        banner_pick = service._select_creative(campaign, "banner_top")
+        assert banner_pick is not None
+        assert banner_pick.image_width in (320, 728)
         """Test that campaign impressions_served is incremented."""
         # Arrange
         mock_db = Mock()
