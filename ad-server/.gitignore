@@ -57,9 +57,10 @@ logs/
 htmlcov/
 .tox/
 
-# Static files
+# Static files (user uploads ignored; committed house banners allowed)
 static/ads/*
 !static/ads/.gitkeep
+!static/ads/newstars-house-*.png
 
 # OS
 .DS_Store

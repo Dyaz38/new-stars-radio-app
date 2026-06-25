@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User, UserRole
+from app.seed.starter_campaigns import seed_starter_campaigns
 
 
 def create_initial_admin():
@@ -58,10 +59,28 @@ def create_initial_admin():
         db.close()
 
 
+def create_starter_campaigns():
+    """Create house ad campaigns (Global + NA + ZA) if not already present."""
+    db: Session = SessionLocal()
+    try:
+        created = seed_starter_campaigns(db)
+        if created:
+            print("✅ Created starter house ad campaigns (Global, NA, ZA)")
+        else:
+            print("✓ Starter house ad campaigns already configured")
+    except Exception as e:
+        print(f"❌ Error seeding starter campaigns: {str(e)}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     print("🌱 Seeding database...")
     try:
         create_initial_admin()
+        create_starter_campaigns()
         print("✅ Database seeding complete!")
     except Exception:
         sys.exit(1)

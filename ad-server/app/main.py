@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.api.v1.router import api_router
 from app.middleware import RateLimitMiddleware
-from app.db.seed import create_initial_admin
+from app.db.seed import create_initial_admin, create_starter_campaigns
 from app.services.password_reset_email import password_reset_delivery_mode
 
 # Configure logging
@@ -145,6 +145,12 @@ async def startup_event():
         logger.info("Admin user check complete")
     except Exception as e:
         logger.warning("Admin user seed check failed (may already exist): %s", e)
+
+    try:
+        create_starter_campaigns()
+        logger.info("Starter ad campaigns check complete")
+    except Exception as e:
+        logger.warning("Starter campaign seed failed (may already exist): %s", e)
 
     mode = password_reset_delivery_mode()
     if mode == "none":
