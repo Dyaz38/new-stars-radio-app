@@ -11,6 +11,7 @@ import { usePWA } from './hooks/usePWA';
 import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { useListenerGeo } from './hooks/useListenerGeo';
+import { useMediaSession } from './hooks/useMediaSession';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
 import { AD_PLACEMENTS } from './constants/adPlacements';
@@ -88,6 +89,23 @@ const RadioStreamingApp = () => {
     refreshCurrentArtwork,
     getGradientClass,
   } = useMetadata();
+
+  const handleMediaPlay = useCallback(() => {
+    if (!isPlaying) void togglePlayPause();
+  }, [isPlaying, togglePlayPause]);
+
+  const handleMediaPause = useCallback(() => {
+    if (isPlaying) void togglePlayPause();
+  }, [isPlaying, togglePlayPause]);
+
+  useMediaSession({
+    isPlaying,
+    title: currentSong.title,
+    artist: currentSong.artist,
+    artworkUrl: currentSong.coverArt,
+    onPlay: handleMediaPlay,
+    onPause: handleMediaPause,
+  });
 
   const {
     isLiked,
@@ -467,9 +485,10 @@ const RadioStreamingApp = () => {
       
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white" data-testid="app-loaded">
       {/* Hidden Audio Element */}
-      <audio 
-        ref={audioRef} 
-        preload="none" 
+      <audio
+        ref={audioRef}
+        preload="none"
+        playsInline
         style={{display: 'none'}}
       />
       
@@ -580,6 +599,7 @@ const RadioStreamingApp = () => {
           <div className="grid grid-cols-3 gap-4">
             <button
               type="button"
+              data-testid="open-schedule"
               onClick={() => setShowSchedule(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
             >
@@ -589,6 +609,7 @@ const RadioStreamingApp = () => {
             
             <button
               type="button"
+              data-testid="open-events"
               onClick={() => setShowEvents(true)}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
             >

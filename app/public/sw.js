@@ -1,8 +1,10 @@
-const CACHE_NAME = 'new-stars-radio-v1';
+const CACHE_NAME = 'new-stars-radio-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/vite.svg'
+  '/station-icon-192.png',
+  '/station-icon-512.png',
+  '/apple-touch-icon.png',
 ];
 
 // Install service worker and cache resources

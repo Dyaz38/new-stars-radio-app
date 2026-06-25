@@ -2,11 +2,14 @@
   "name": "New Stars Radio",
   "short_name": "NSRadio",
   "description": "Tomorrow's Stars, Today - Live streaming radio",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#3b0764",
   "theme_color": "#8b5cf6",
   "orientation": "portrait-primary",
+  "categories": ["music", "entertainment"],
   "icons": [
     {
       "src": "/station-icon-192.png",

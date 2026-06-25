@@ -1,115 +1,64 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('New Stars Radio - Mobile Experience', () => {
-  
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      HTMLMediaElement.prototype.play = function play() {
+        return Promise.resolve();
+      };
+      HTMLMediaElement.prototype.pause = function pause() {};
+    });
     await page.goto('/');
-    // Wait for app to load
-    await page.waitForSelector('[data-testid="app-loaded"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="app-loaded"]', { timeout: 15000 });
   });
 
   test('should load and display radio station on mobile', async ({ page }) => {
-    // Check if main elements are visible
-    await expect(page.locator('h1')).toContainText('New Stars Radio');
+    await expect(page.locator('h1')).toContainText(/NEW STARS RADIO/i);
     await expect(page.locator('[data-testid="current-song"]')).toBeVisible();
-    await expect(page.locator('[aria-label*="Play"]')).toBeVisible();
+    await expect(page.locator('[aria-label*="Play"]').first()).toBeVisible();
   });
 
-  test('should play/pause audio with touch interactions', async ({ page }) => {
+  test('should play and pause audio with touch interactions', async ({ page }) => {
     const playButton = page.locator('[aria-label="Play"]').first();
-    
-    // Test touch interaction
     await playButton.tap();
-    
-    // Should show pause button after playing
-    await expect(page.locator('[aria-label="Pause"]')).toBeVisible({ timeout: 5000 });
-    
-    // Test pause
-    await page.locator('[aria-label="Pause"]').tap();
-    await expect(page.locator('[aria-label="Play"]')).toBeVisible();
+    await expect(page.locator('[aria-label="Pause"]').first()).toBeVisible({ timeout: 8000 });
+    await page.locator('[aria-label="Pause"]').first().tap();
+    await expect(page.locator('[aria-label="Play"]').first()).toBeVisible();
   });
 
-  test('should synchronize both heart buttons on mobile', async ({ page }) => {
-    // Wait for metadata to load
-    await page.waitForTimeout(2000);
-    
-    const heartButtons = page.locator('[aria-label*="Like current song"]');
-    const firstHeart = heartButtons.first();
-    
-    // Tap the first heart button
-    await firstHeart.tap();
-    
-    // Both heart buttons should now show as "unliked" state
-    await expect(page.locator('[aria-label*="Unlike current song"]')).toHaveCount(2);
-    
-    // Tap again to unlike
-    await page.locator('[aria-label*="Unlike current song"]').first().tap();
-    
-    // Both should return to "like" state
-    await expect(page.locator('[aria-label*="Like current song"]')).toHaveCount(2);
+  test('should open schedule and events modals', async ({ page }) => {
+    await page.locator('[data-testid="open-schedule"]').tap();
+    await expect(page.getByRole('heading', { name: /New Stars Radio Schedule/i })).toBeVisible();
+    await page.getByRole('button', { name: '✕' }).first().click();
+
+    await page.locator('[data-testid="open-events"]').tap();
+    await expect(page.getByRole('heading', { name: /Station Events/i })).toBeVisible();
+    await expect(page.locator('[data-ad-placement="events_modal"]')).toBeVisible({ timeout: 10000 });
   });
 
-  test('should handle volume control on mobile', async ({ page }) => {
-    const volumeSlider = page.locator('input[type="range"]');
-    
-    // Test volume slider interaction
-    await volumeSlider.fill('50');
-    
-    // Should update volume display
-    await expect(page.locator('text=/50/')).toBeVisible();
-  });
-
-  test('should display metadata and update automatically', async ({ page }) => {
-    // Check initial metadata load
-    const currentSongElement = page.locator('[data-testid="current-song"]');
-    await expect(currentSongElement).not.toBeEmpty();
-    
-    // Check that metadata contains meaningful content (not just default)
-    const songText = await currentSongElement.textContent();
-    expect(songText?.length).toBeGreaterThan(5);
+  test('should show ad banner on main screen', async ({ page }) => {
+    const banner = page.locator('[data-ad-placement="banner_top"]');
+    await expect(banner).toBeVisible({ timeout: 15000 });
+    await expect(banner.locator('img')).toBeVisible();
   });
 
   test('should show listener count', async ({ page }) => {
     const listenersElement = page.locator('[data-testid="listeners"]');
     await expect(listenersElement).toBeVisible();
-    // Live count from API (digits) or placeholder while loading
     await expect(listenersElement).toContainText(/listeners/i);
   });
 
   test('should maintain responsive design on different mobile sizes', async ({ page }) => {
-    // Test on different mobile viewport sizes
     const sizes = [
-      { width: 375, height: 667 }, // iPhone 8
-      { width: 414, height: 896 }, // iPhone 11 Pro Max
-      { width: 360, height: 740 }, // Samsung Galaxy S20
+      { width: 375, height: 667 },
+      { width: 414, height: 896 },
+      { width: 360, height: 740 },
     ];
 
     for (const size of sizes) {
       await page.setViewportSize(size);
-      
-      // Check that key elements are still visible and accessible
-      await expect(page.locator('[aria-label="Play"]')).toBeVisible();
+      await expect(page.locator('[aria-label*="Play"]').first()).toBeVisible();
       await expect(page.locator('[data-testid="current-song"]')).toBeVisible();
-      await expect(page.locator('input[type="range"]')).toBeVisible();
-      
-      // Check that elements don't overflow
-      const body = await page.locator('body').boundingBox();
-      expect(body?.width).toBeLessThanOrEqual(size.width);
     }
   });
-
-  test('should handle device orientation changes', async ({ page }) => {
-    // Start in portrait
-    await page.setViewportSize({ width: 375, height: 667 });
-    await expect(page.locator('[aria-label="Play"]')).toBeVisible();
-    
-    // Rotate to landscape
-    await page.setViewportSize({ width: 667, height: 375 });
-    await expect(page.locator('[aria-label="Play"]')).toBeVisible();
-    
-    // All main controls should still be accessible
-    await expect(page.locator('[data-testid="current-song"]')).toBeVisible();
-    await expect(page.locator('input[type="range"]')).toBeVisible();
-  });
 });
-

@@ -1,5 +1,9 @@
 {
   "devDependencies": {
     "@playwright/test": "^1.55.1"
+  },
+  "scripts": {
+    "test:e2e:mobile": "npm run test:e2e:mobile --prefix app",
+    "test:e2e:launch": "npm run test:e2e --prefix app -- e2e-tests/launch-smoke.spec.ts"
   }
 }
