@@ -667,8 +667,8 @@ const RadioStreamingApp = () => {
                   key={index} 
                   className={`rounded-lg p-4 ${slot.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'}`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
                         <h4 className="font-bold text-lg">{slot.show}</h4>
                         {slot.current && (
@@ -680,49 +680,47 @@ const RadioStreamingApp = () => {
                       <p className="text-pink-300 font-semibold text-sm">with {slot.dj}</p>
                       <p className="text-gray-300 text-sm mt-1">{slot.description}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-gray-400 text-sm font-mono">{slot.time}</p>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <p className="text-gray-400 text-sm font-mono text-right">{slot.time}</p>
+                      {(() => {
+                        const reminded = isShowReminded(slot.id);
+                        return (
+                          <button
+                            type="button"
+                            data-testid={`show-reminder-${slot.id}`}
+                            onClick={() => {
+                              void toggleShowReminder(slot).then((result) => {
+                                if (result === 'added') {
+                                  setReminderFeedback(
+                                    `Reminder set for "${slot.show}" — notification 15 minutes before it starts.`,
+                                  );
+                                } else if (result === 'removed') {
+                                  setReminderFeedback(`Reminder removed for "${slot.show}".`);
+                                } else if (result === 'denied') {
+                                  setReminderFeedback(
+                                    'Allow notifications in your browser to get show reminders.',
+                                  );
+                                }
+                                window.setTimeout(() => setReminderFeedback(null), 5000);
+                              });
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap ${
+                              reminded
+                                ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
+                                : 'bg-white/10 hover:bg-white/20 text-white'
+                            }`}
+                            aria-pressed={reminded}
+                          >
+                            {reminded ? (
+                              <BellRing className="w-4 h-4 shrink-0" aria-hidden />
+                            ) : (
+                              <Bell className="w-4 h-4 shrink-0" aria-hidden />
+                            )}
+                            {reminded ? 'Reminded' : 'Set Reminder'}
+                          </button>
+                        );
+                      })()}
                     </div>
-                  </div>
-                  <div className="mt-3">
-                    {(() => {
-                      const reminded = isShowReminded(slot.id);
-                      return (
-                        <button
-                          type="button"
-                          data-testid={`show-reminder-${slot.id}`}
-                          onClick={() => {
-                            void toggleShowReminder(slot).then((result) => {
-                              if (result === 'added') {
-                                setReminderFeedback(
-                                  `Reminder set for "${slot.show}" — notification 15 minutes before it starts.`,
-                                );
-                              } else if (result === 'removed') {
-                                setReminderFeedback(`Reminder removed for "${slot.show}".`);
-                              } else if (result === 'denied') {
-                                setReminderFeedback(
-                                  'Allow notifications in your browser to get show reminders.',
-                                );
-                              }
-                              window.setTimeout(() => setReminderFeedback(null), 5000);
-                            });
-                          }}
-                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                            reminded
-                              ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
-                              : 'bg-white/10 hover:bg-white/20 text-white'
-                          }`}
-                          aria-pressed={reminded}
-                        >
-                          {reminded ? (
-                            <BellRing className="w-4 h-4 shrink-0" aria-hidden />
-                          ) : (
-                            <Bell className="w-4 h-4 shrink-0" aria-hidden />
-                          )}
-                          {reminded ? 'Reminded' : 'Set Reminder'}
-                        </button>
-                      );
-                    })()}
                   </div>
                 </div>
               ))}
