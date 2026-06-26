@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink, MapPin } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink, MapPin, Bell, BellRing } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -11,6 +11,7 @@ import { usePWA } from './hooks/usePWA';
 import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { useListenerGeo } from './hooks/useListenerGeo';
+import { useEventReminders } from './hooks/useEventReminders';
 import { useMediaSession } from './hooks/useMediaSession';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
@@ -129,10 +130,17 @@ const RadioStreamingApp = () => {
   const {
     notifyNowPlaying,
     notifyFavoriteArtist,
-    notifyListenerMilestone
+    notifyListenerMilestone,
+    preferences,
+    updatePreferences,
+    requestPermission,
+    isSupported: notificationsSupported,
+    permission: notificationPermission,
   } = useNotifications();
 
   const listenerGeo = useListenerGeo();
+  const { isEventReminded, toggleEventReminder } = useEventReminders();
+  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
 
   // UI state
   const [currentShow, setCurrentShow] = useState('Midday R&B Flow');
@@ -454,6 +462,7 @@ const RadioStreamingApp = () => {
 
   useEffect(() => {
     if (!showEvents) setEventImageLightbox(null);
+    if (!showEvents) setReminderFeedback(null);
   }, [showEvents]);
 
   useEffect(() => {
@@ -811,6 +820,11 @@ const RadioStreamingApp = () => {
             <p className="text-xs text-gray-500 mb-3">
               Event times reflect your local timezone.
             </p>
+            {reminderFeedback ? (
+              <p className="text-xs text-pink-300 mb-3 rounded-lg bg-pink-500/10 border border-pink-500/20 px-3 py-2">
+                {reminderFeedback}
+              </p>
+            ) : null}
 
             <div className="space-y-4">
               {filteredEvents.length === 0 ? (
@@ -858,36 +872,79 @@ const RadioStreamingApp = () => {
                   <div className="mt-3 flex flex-wrap gap-2 items-center">
                     {(() => {
                       const range = getEventTimeRange(event);
-                      if (!range) {
-                        return (
-                          <p className="text-xs text-gray-500">
-                            Set start time in Ad Manager to open this event in Google Calendar or download a
-                            calendar file (.ics).
-                          </p>
-                        );
-                      }
-                      const gcalUrl = buildGoogleCalendarUrl(event, range.start, range.end);
-                      const icsBody = buildIcsContent(event, range.start, range.end);
-                      const icsName = `new-stars-radio-event-${event.id}.ics`;
+                      const reminded = isEventReminded(event.id);
+                      const canRemind = Boolean(range) && event.status !== 'past';
                       return (
                         <>
-                          <a
-                            href={gcalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
-                            Google Calendar
-                          </a>
                           <button
                             type="button"
-                            onClick={() => downloadIcsFile(icsName, icsBody)}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                            data-testid={`event-reminder-${event.id}`}
+                            disabled={!canRemind}
+                            onClick={() => {
+                              void toggleEventReminder(event).then((result) => {
+                                if (result === 'added') {
+                                  setReminderFeedback(
+                                    `Reminder set for "${event.title}" — notification 15 minutes before start.`,
+                                  );
+                                } else if (result === 'removed') {
+                                  setReminderFeedback(`Reminder removed for "${event.title}".`);
+                                } else if (result === 'denied') {
+                                  setReminderFeedback(
+                                    'Allow notifications in your browser to get event reminders.',
+                                  );
+                                } else {
+                                  setReminderFeedback(
+                                    'Reminders need a start time — add one in Ad Manager.',
+                                  );
+                                }
+                                window.setTimeout(() => setReminderFeedback(null), 5000);
+                              });
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                              reminded
+                                ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
+                                : 'bg-white/10 hover:bg-white/20 text-white'
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
+                            aria-pressed={reminded}
                           >
-                            <Download className="w-4 h-4 shrink-0" aria-hidden />
-                            Download .ics
+                            {reminded ? (
+                              <BellRing className="w-4 h-4 shrink-0" aria-hidden />
+                            ) : (
+                              <Bell className="w-4 h-4 shrink-0" aria-hidden />
+                            )}
+                            {reminded ? 'Reminded' : 'Set Reminder'}
                           </button>
+                          {!range ? (
+                            <p className="text-xs text-gray-500 w-full">
+                              Set start time in Ad Manager to open this event in Google Calendar or download a
+                              calendar file (.ics).
+                            </p>
+                          ) : (
+                            <>
+                              <a
+                                href={buildGoogleCalendarUrl(event, range.start, range.end)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
+                                Google Calendar
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  downloadIcsFile(
+                                    `new-stars-radio-event-${event.id}.ics`,
+                                    buildIcsContent(event, range.start, range.end),
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                              >
+                                <Download className="w-4 h-4 shrink-0" aria-hidden />
+                                Download .ics
+                              </button>
+                            </>
+                          )}
                         </>
                       );
                     })()}
@@ -960,6 +1017,36 @@ const RadioStreamingApp = () => {
                     <span className="text-sm text-gray-400">Shows a static bar display instead of animated waves while you listen.</span>
                   </span>
                 </label>
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Event reminders
+                </h4>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={preferences.showReminders}
+                    onChange={(e) => updatePreferences({ showReminders: e.target.checked })}
+                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500"
+                  />
+                  <span>
+                    <span className="font-medium block">Notify before events</span>
+                    <span className="text-sm text-gray-400">
+                      Browser alert 15 minutes before an event you set a reminder for.
+                    </span>
+                  </span>
+                </label>
+                {notificationsSupported && notificationPermission !== 'granted' ? (
+                  <button
+                    type="button"
+                    onClick={() => void requestPermission()}
+                    className="mt-3 text-sm text-pink-300 hover:text-pink-200 underline"
+                  >
+                    Allow notifications
+                  </button>
+                ) : null}
               </section>
 
               <section className="bg-white/5 rounded-xl p-4">

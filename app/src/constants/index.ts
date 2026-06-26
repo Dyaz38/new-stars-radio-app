@@ -87,6 +87,8 @@ export const STORAGE_KEYS = {
   LIKED_SONGS: 'newstarsradio-liked-songs',
   /** Anonymous per-device id for server-side like catalog */
   LISTENER_ID: 'newstarsradio-listener-id',
+  /** Event ids the listener asked to be reminded about (local device). */
+  EVENT_REMINDERS: 'newstarsradio-event-reminders',
 } as const;
 
 export const GRADIENT_CLASSES = [
