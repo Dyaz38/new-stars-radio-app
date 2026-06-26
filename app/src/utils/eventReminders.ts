@@ -10,8 +10,9 @@ export interface StoredEventReminder {
   notifiedAt?: string | null;
 }
 
-/** Fire the browser notification this many ms before event start. */
-export const EVENT_REMINDER_LEAD_MS = 15 * 60 * 1000;
+/** Fire the browser notification this many ms before start. */
+export const REMINDER_LEAD_MS = 15 * 60 * 1000;
+export const EVENT_REMINDER_LEAD_MS = REMINDER_LEAD_MS;
 
 export function readEventReminders(): StoredEventReminder[] {
   try {
@@ -32,7 +33,7 @@ export function writeEventReminders(items: StoredEventReminder[]): void {
   }
 }
 
-export function eventRemindersEnabledInSettings(): boolean {
+export function remindersEnabledInSettings(): boolean {
   try {
     const raw = localStorage.getItem('newstarsradio-notification-preferences');
     if (!raw) return true;
@@ -41,6 +42,10 @@ export function eventRemindersEnabledInSettings(): boolean {
   } catch {
     return true;
   }
+}
+
+export function eventRemindersEnabledInSettings(): boolean {
+  return remindersEnabledInSettings();
 }
 
 export function showEventReminderNotification(reminder: StoredEventReminder): void {

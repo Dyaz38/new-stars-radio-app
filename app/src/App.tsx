@@ -12,6 +12,7 @@ import { useDynamicTheme } from './hooks/useDynamicTheme';
 import { useNotifications } from './hooks/useNotifications';
 import { useListenerGeo } from './hooks/useListenerGeo';
 import { useEventReminders } from './hooks/useEventReminders';
+import { useShowReminders } from './hooks/useShowReminders';
 import { useMediaSession } from './hooks/useMediaSession';
 import { PWAPrompt } from './components/PWAPrompt';
 import { AdBanner } from './components/AdBanner';
@@ -140,6 +141,7 @@ const RadioStreamingApp = () => {
 
   const listenerGeo = useListenerGeo();
   const { isEventReminded, toggleEventReminder } = useEventReminders();
+  const { isShowReminded, toggleShowReminder } = useShowReminders();
   const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
 
   // UI state
@@ -463,7 +465,8 @@ const RadioStreamingApp = () => {
   useEffect(() => {
     if (!showEvents) setEventImageLightbox(null);
     if (!showEvents) setReminderFeedback(null);
-  }, [showEvents]);
+    if (!showSchedule) setReminderFeedback(null);
+  }, [showEvents, showSchedule]);
 
   useEffect(() => {
     if (!eventImageLightbox) return;
@@ -652,6 +655,12 @@ const RadioStreamingApp = () => {
               </button>
             </div>
             
+            {reminderFeedback ? (
+              <p className="text-xs text-pink-300 mb-3 rounded-lg bg-pink-500/10 border border-pink-500/20 px-3 py-2">
+                {reminderFeedback}
+              </p>
+            ) : null}
+
             <div className="space-y-4">
               {schedule.map((slot, index) => (
                 <div 
@@ -674,6 +683,46 @@ const RadioStreamingApp = () => {
                     <div className="text-right">
                       <p className="text-gray-400 text-sm font-mono">{slot.time}</p>
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    {(() => {
+                      const reminded = isShowReminded(slot.id);
+                      return (
+                        <button
+                          type="button"
+                          data-testid={`show-reminder-${slot.id}`}
+                          onClick={() => {
+                            void toggleShowReminder(slot).then((result) => {
+                              if (result === 'added') {
+                                setReminderFeedback(
+                                  `Reminder set for "${slot.show}" — notification 15 minutes before it starts.`,
+                                );
+                              } else if (result === 'removed') {
+                                setReminderFeedback(`Reminder removed for "${slot.show}".`);
+                              } else if (result === 'denied') {
+                                setReminderFeedback(
+                                  'Allow notifications in your browser to get show reminders.',
+                                );
+                              }
+                              window.setTimeout(() => setReminderFeedback(null), 5000);
+                            });
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                            reminded
+                              ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
+                              : 'bg-white/10 hover:bg-white/20 text-white'
+                          }`}
+                          aria-pressed={reminded}
+                        >
+                          {reminded ? (
+                            <BellRing className="w-4 h-4 shrink-0" aria-hidden />
+                          ) : (
+                            <Bell className="w-4 h-4 shrink-0" aria-hidden />
+                          )}
+                          {reminded ? 'Reminded' : 'Set Reminder'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
@@ -1022,7 +1071,7 @@ const RadioStreamingApp = () => {
               <section className="bg-white/5 rounded-xl p-4">
                 <h4 className="text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
                   <Bell className="w-4 h-4" />
-                  Event reminders
+                  Show & event reminders
                 </h4>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
@@ -1032,9 +1081,9 @@ const RadioStreamingApp = () => {
                     className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500"
                   />
                   <span>
-                    <span className="font-medium block">Notify before events</span>
+                    <span className="font-medium block">Notify before shows and events</span>
                     <span className="text-sm text-gray-400">
-                      Browser alert 15 minutes before an event you set a reminder for.
+                      Browser alert 15 minutes before a radio show or event you set a reminder for.
                     </span>
                   </span>
                 </label>

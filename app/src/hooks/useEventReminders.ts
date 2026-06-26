@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { StationEvent } from '../types';
 import { getEventTimeRange } from '../utils/eventCalendar';
 import {
-  EVENT_REMINDER_LEAD_MS,
+  REMINDER_LEAD_MS,
   readEventReminders,
   showEventReminderNotification,
   writeEventReminders,
@@ -29,7 +29,7 @@ export function useEventReminders() {
       const start = new Date(reminder.startsAt).getTime();
       if (Number.isNaN(start)) return reminder;
 
-      const notifyAt = start - EVENT_REMINDER_LEAD_MS;
+      const notifyAt = start - REMINDER_LEAD_MS;
       if (now >= notifyAt && now < start + 30 * 60 * 1000) {
         showEventReminderNotification(reminder);
         changed = true;
@@ -58,7 +58,7 @@ export function useEventReminders() {
       const start = new Date(reminder.startsAt).getTime();
       if (Number.isNaN(start)) continue;
 
-      const notifyAt = start - EVENT_REMINDER_LEAD_MS;
+      const notifyAt = start - REMINDER_LEAD_MS;
       const delay = notifyAt - now;
       if (delay <= 0 || delay > MAX_TIMEOUT_MS) continue;
 

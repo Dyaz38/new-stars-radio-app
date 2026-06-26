@@ -89,6 +89,8 @@ export const STORAGE_KEYS = {
   LISTENER_ID: 'newstarsradio-listener-id',
   /** Event ids the listener asked to be reminded about (local device). */
   EVENT_REMINDERS: 'newstarsradio-event-reminders',
+  /** Schedule show ids the listener asked to be reminded about (local device). */
+  SHOW_REMINDERS: 'newstarsradio-show-reminders',
 } as const;
 
 export const GRADIENT_CLASSES = [
