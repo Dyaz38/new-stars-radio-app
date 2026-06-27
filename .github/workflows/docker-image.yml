@@ -2,17 +2,35 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
-
-  build:
-
+  build-ad-server:
+    name: Build ad-server image
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - uses: actions/checkout@v4
+
+      - name: Build ad-server Docker image
+        run: |
+          docker build \
+            --file ad-server/Dockerfile \
+            --tag new-stars-ad-server:${{ github.sha }} \
+            ad-server
+
+  build-admin-panel:
+    name: Build admin-panel image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build admin-panel Docker image
+        run: |
+          docker build \
+            --file ad-server/admin-panel/Dockerfile \
+            --tag new-stars-admin-panel:${{ github.sha }} \
+            ad-server/admin-panel
