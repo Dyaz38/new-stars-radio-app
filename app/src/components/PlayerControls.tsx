@@ -25,8 +25,8 @@ const PlayerControlsComponent: React.FC<PlayerControlsProps> = ({
   onToggleLike,
 }) => {
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6">
-      <div className="flex items-center justify-center space-x-8 mb-6">
+    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="flex items-center justify-center space-x-6 sm:space-x-8 mb-4 sm:mb-6">
         <button
           onClick={onToggleMute}
           className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-all"

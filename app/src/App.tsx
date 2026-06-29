@@ -525,12 +525,12 @@ const RadioStreamingApp = () => {
       </div>
       
             {/* Header */}
-      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 p-4">
+      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 px-4 py-2 sm:p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-      <div>
-            <h1 className="font-bold text-lg">{RADIO_CONFIG.STATION_NAME}</h1>
-            <p className="text-sm text-gray-300">{RADIO_CONFIG.TAGLINE}</p>
+          <div className="flex items-center space-x-3 min-w-0">
+      <div className="min-w-0">
+            <h1 className="hidden sm:block font-bold text-lg">{RADIO_CONFIG.STATION_NAME}</h1>
+            <p className="text-xs sm:text-sm text-gray-300 truncate">{RADIO_CONFIG.TAGLINE}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -550,17 +550,17 @@ const RadioStreamingApp = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Current Show Info */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold">{djInitials}</span>
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-gradient-to-r from-pink-400 to-purple-500 rounded-full flex items-center justify-center">
+              <span className="text-lg sm:text-2xl font-bold">{djInitials}</span>
               </div>
-            <div>
-              <h2 className="text-xl font-bold">{currentShow}</h2>
-              <p className="text-gray-300">with {currentDJ}</p>
-              <p className="text-sm text-gray-400">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold line-clamp-2 leading-snug">{currentShow}</h2>
+              <p className="text-sm sm:text-base text-gray-300 truncate">with {currentDJ}</p>
+              <p className="text-xs sm:text-sm text-gray-400">
                 {currentScheduleSlot?.time ?? '—'}
               </p>
             </div>
@@ -581,12 +581,12 @@ const RadioStreamingApp = () => {
         />
 
         {/* Audio Visualizer */}
-        <div className="mb-6 relative" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="mb-4 sm:mb-6 relative" style={{ position: 'relative', zIndex: 1 }}>
           <AudioVisualizer
             isPlaying={isPlaying}
             audioElement={audioRef.current}
             reducedMotion={reduceMotion}
-            className="h-24 bg-gradient-to-r from-purple-900/20 to-pink-900/20 backdrop-blur-sm"
+            className="h-20 sm:h-24 bg-gradient-to-r from-purple-900/20 to-pink-900/20 backdrop-blur-sm"
             style={{ position: 'relative', zIndex: 1 }}
           />
           </div>
@@ -606,36 +606,36 @@ const RadioStreamingApp = () => {
 
 
         {/* Quick Actions */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <button
               type="button"
               data-testid="open-schedule"
               onClick={() => setShowSchedule(true)}
-              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-3 sm:p-4 flex flex-col items-center space-y-1.5 sm:space-y-2 transition-all"
             >
-              <Calendar className="w-6 h-6" />
-              <span className="text-sm">View Schedule</span>
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-xs sm:text-sm leading-tight text-center">View Schedule</span>
             </button>
             
             <button
               type="button"
               data-testid="open-events"
               onClick={() => setShowEvents(true)}
-              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-3 sm:p-4 flex flex-col items-center space-y-1.5 sm:space-y-2 transition-all"
             >
-              <Users className="w-6 h-6" />
-              <span className="text-sm">Events</span>
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-xs sm:text-sm leading-tight text-center">Events</span>
             </button>
             
             <button
               type="button"
               onClick={() => setShowSettings(true)}
-              className="bg-white/20 hover:bg-white/30 rounded-xl p-4 flex flex-col items-center space-y-2 transition-all"
+              className="bg-white/20 hover:bg-white/30 rounded-xl p-3 sm:p-4 flex flex-col items-center space-y-1.5 sm:space-y-2 transition-all"
             >
-              <Settings className="w-6 h-6" />
-              <span className="text-sm">Settings</span>
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-xs sm:text-sm leading-tight text-center">Settings</span>
             </button>
           </div>
         </div>

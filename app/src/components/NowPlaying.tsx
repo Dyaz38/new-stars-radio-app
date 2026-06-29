@@ -29,9 +29,9 @@ const NowPlayingComponent: React.FC<NowPlayingProps> = ({
 }) => {
   const [showArtworkModal, setShowArtworkModal] = useState(false);
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Now Playing</h3>
+    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h3 className="text-base sm:text-lg font-semibold">Now Playing</h3>
         <div className="flex items-center space-x-3">
           <button
             onClick={onRefreshMetadata}
@@ -50,7 +50,7 @@ const NowPlayingComponent: React.FC<NowPlayingProps> = ({
         </div>
       </div>
       
-      <div className="flex items-center space-x-4 mb-4">
+      <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
         {/* Clickable Artwork */}
         <button
           onClick={() => setShowArtworkModal(true)}
@@ -63,7 +63,7 @@ const NowPlayingComponent: React.FC<NowPlayingProps> = ({
                 src={currentSong.coverArt}
                 alt={`${currentSong.title} by ${currentSong.artist}`}
                 fallback={<span className="text-2xl text-white">🎵</span>}
-                className="w-20 h-20 rounded-lg flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600"
                 onError={() => console.log('Cover art failed to load, showing fallback')}
               />
               {/* Hover overlay */}
@@ -74,7 +74,7 @@ const NowPlayingComponent: React.FC<NowPlayingProps> = ({
               </div>
             </div>
           ) : (
-            <div className={`w-20 h-20 rounded-lg flex items-center justify-center overflow-hidden relative ${
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center overflow-hidden relative ${
               currentSong.coverArt && currentSong.coverArt.startsWith('gradient-') 
                 ? `bg-gradient-to-br ${getGradientClass(currentSong.coverArt)}`
                 : 'bg-gradient-to-br from-blue-500 to-purple-600'
@@ -89,15 +89,15 @@ const NowPlayingComponent: React.FC<NowPlayingProps> = ({
             </div>
           )}
         </button>
-        <div className="flex-1">
-          <h4 className="font-bold text-lg flex items-center gap-2" data-testid="current-song">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-base sm:text-lg line-clamp-2 leading-snug flex items-center gap-2" data-testid="current-song">
             {currentSong.title}
             {isLoadingMetadata && (
               <div className="w-4 h-4 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" data-testid="loading"></div>
             )}
           </h4>
-          <p className="text-gray-300">{currentSong.artist}</p>
-          <p className="text-sm text-gray-400">{currentSong.time}</p>
+          <p className="text-sm sm:text-base text-gray-300 truncate">{currentSong.artist}</p>
+          <p className="text-xs sm:text-sm text-gray-400">{currentSong.time}</p>
         </div>
         <div className="flex items-center space-x-2">
           <button 
