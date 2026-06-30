@@ -775,6 +775,10 @@ const RadioStreamingApp = () => {
               </div>
             </div>
 
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 border-b border-white/10 bg-gray-900">
+              <EventHousePromo />
+            </div>
+
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4">
             <div className="mb-4 sm:mb-5 rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
               <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -875,7 +879,6 @@ const RadioStreamingApp = () => {
             ) : null}
 
             <div className="space-y-3 sm:space-y-4">
-              <EventHousePromo />
               {filteredEvents.length === 0 ? (
                 <p className="text-center text-gray-400 py-4 sm:py-6 text-xs sm:text-sm px-2">
                   {eventCityFilter.trim()
