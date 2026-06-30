@@ -34,6 +34,28 @@ DEFAULT_EVENTS: list[StationEvent] = NEW_STARS_EVENTS
 DEFAULT_EVENT_LOCATIONS: list[str] = NEW_STARS_EVENT_LOCATIONS
 
 
+def _is_placeholder_event_image(url: str | None) -> bool:
+    if not url or not url.strip():
+        return False
+    lower = url.strip().lower()
+    return "picsum.photos" in lower or "placehold.co" in lower or "placeholder.com" in lower
+
+
+def _sanitize_event(item: StationEvent) -> StationEvent:
+    if item.image_url and _is_placeholder_event_image(item.image_url):
+        return item.model_copy(update={"image_url": None})
+    return item
+
+
+def _sanitize_events(items: list[StationEvent]) -> list[StationEvent]:
+    cleaned: list[StationEvent] = []
+    for item in items:
+        if item.image_url and _is_placeholder_event_image(item.image_url):
+            continue
+        cleaned.append(_sanitize_event(item))
+    return cleaned
+
+
 def _events_file_path() -> Path:
     path = Path(settings.EVENTS_STORAGE_PATH)
     if not path.is_absolute():
@@ -57,7 +79,7 @@ def _read_events() -> list[StationEvent]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         parsed = EventsResponse.model_validate(raw)
-        return parsed.items
+        return _sanitize_events(parsed.items)
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.warning("Invalid events file detected (%s). Resetting to defaults.", exc)
         _write_events(DEFAULT_EVENTS)

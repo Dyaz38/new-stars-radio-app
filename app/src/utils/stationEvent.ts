@@ -1,3 +1,4 @@
+import { sanitizeEventImageUrl, isPlaceholderEventImage } from '../constants/houseEvent';
 import type { StationEvent } from '../types';
 
 export type EventApiRow = {
@@ -15,8 +16,11 @@ export type EventApiRow = {
   country_code?: string | null;
 };
 
-/** Map API snake_case row to listener app event shape. */
-export function mapEventFromApi(row: EventApiRow): StationEvent {
+/** Map API snake_case row to listener app event shape. Skips legacy placeholder seed rows. */
+export function mapEventFromApi(row: EventApiRow): StationEvent | null {
+  if (isPlaceholderEventImage(row.image_url)) {
+    return null;
+  }
   return {
     id: row.id,
     title: row.title,
@@ -28,12 +32,10 @@ export function mapEventFromApi(row: EventApiRow): StationEvent {
     description: row.description ?? '',
     startsAt: row.starts_at ?? null,
     endsAt: row.ends_at ?? null,
-    imageUrl: row.image_url ?? null,
+    imageUrl: sanitizeEventImageUrl(row.image_url),
     countryCode: row.country_code ?? null,
   };
 }
-
-/** Normalize cached JSON (supports legacy camelCase and snake_case). */
 export function normalizeStoredEvent(raw: unknown): StationEvent | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -41,8 +43,11 @@ export function normalizeStoredEvent(raw: unknown): StationEvent | null {
   if (!Number.isFinite(id) || id < 1) return null;
 
   const imageRaw = row.imageUrl ?? row.image_url;
+  if (typeof imageRaw === 'string' && isPlaceholderEventImage(imageRaw)) {
+    return null;
+  }
   const imageUrl =
-    typeof imageRaw === 'string' && imageRaw.trim() ? imageRaw.trim() : null;
+    typeof imageRaw === 'string' ? sanitizeEventImageUrl(imageRaw) : null;
 
   const countryRaw = row.countryCode ?? row.country_code;
   const countryCode =

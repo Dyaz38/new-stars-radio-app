@@ -38,6 +38,7 @@ import {
 import { filterEventsForCountry } from './utils/eventGeo';
 import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
 import { EventPosterImage } from './components/EventPosterImage';
+import { EventHousePromo } from './components/EventHousePromo';
 
 type EventCategory = 'all' | 'mon-thu' | 'weekend' | 'online';
 
@@ -268,20 +269,20 @@ const RadioStreamingApp = () => {
           published_count?: number | null;
         };
         if (Array.isArray(payload.items)) {
-          const mapped = payload.items.map((row) =>
-            mapEventFromApi(row as Parameters<typeof mapEventFromApi>[0]),
-          );
+          const mapped = payload.items
+            .map((row) =>
+              mapEventFromApi(row as Parameters<typeof mapEventFromApi>[0]),
+            )
+            .filter((e): e is StationEvent => e !== null);
           setEventsListenerCountry(payload.listener_country ?? geoCountry ?? null);
           setEventsPublishedCount(
             typeof payload.published_count === 'number' ? payload.published_count : mapped.length,
           );
           setEventsList(mapped);
-          if (mapped.length > 0) {
-            try {
-              localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
-            } catch {
-              /* ignore */
-            }
+          try {
+            localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(mapped));
+          } catch {
+            /* ignore */
           }
           console.log('📆 Events loaded from ad server');
           return;
@@ -874,8 +875,9 @@ const RadioStreamingApp = () => {
             ) : null}
 
             <div className="space-y-3 sm:space-y-4">
+              <EventHousePromo />
               {filteredEvents.length === 0 ? (
-                <p className="text-center text-gray-400 py-8 sm:py-10 text-xs sm:text-sm px-2">
+                <p className="text-center text-gray-400 py-4 sm:py-6 text-xs sm:text-sm px-2">
                   {eventCityFilter.trim()
                     ? 'No events match this venue with the filters you chose. Try All areas, another location, or a different time filter.'
                     : eventsPublishedCount != null &&
@@ -883,7 +885,7 @@ const RadioStreamingApp = () => {
                         eventsList.length === 0 &&
                         effectiveEventsCountry
                       ? `${eventsPublishedCount} event${eventsPublishedCount === 1 ? '' : 's'} ${eventsPublishedCount === 1 ? 'is' : 'are'} published, but none are available in ${effectiveEventsCountry}. In Ad Manager, set Country to Global (all countries) or match your listeners' region.`
-                      : 'No events to show right now.'}
+                      : 'No upcoming community events listed yet — check back soon.'}
                 </p>
               ) : (
               filteredEvents.map((event) => {
