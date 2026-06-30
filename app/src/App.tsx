@@ -643,13 +643,13 @@ const RadioStreamingApp = () => {
 
       {/* Schedule Modal */}
       {showSchedule && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">📻 New Stars Radio Schedule</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3">
+              <h3 className="text-base sm:text-xl font-bold leading-snug">📻 New Stars Radio Schedule</h3>
               <button 
                 onClick={() => setShowSchedule(false)}
-                className="text-gray-400 hover:text-white text-xl"
+                className="text-gray-400 hover:text-white text-lg sm:text-xl shrink-0"
               >
                 ✕
               </button>
@@ -661,27 +661,27 @@ const RadioStreamingApp = () => {
               </p>
             ) : null}
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {schedule.map((slot, index) => (
                 <div 
                   key={index} 
-                  className={`rounded-lg p-4 ${slot.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'}`}
+                  className={`rounded-lg p-3 sm:p-4 ${slot.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'}`}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-bold text-lg">{slot.show}</h4>
+                      <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-1">
+                        <h4 className="font-bold text-base sm:text-lg line-clamp-2 leading-snug">{slot.show}</h4>
                         {slot.current && (
                           <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
                             ON AIR
                           </span>
                         )}
                       </div>
-                      <p className="text-pink-300 font-semibold text-sm">with {slot.dj}</p>
-                      <p className="text-gray-300 text-sm mt-1">{slot.description}</p>
+                      <p className="text-pink-300 font-semibold text-xs sm:text-sm truncate">with {slot.dj}</p>
+                      <p className="text-gray-300 text-xs sm:text-sm mt-1 line-clamp-3">{slot.description}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <p className="text-gray-400 text-sm font-mono text-right">{slot.time}</p>
+                    <div className="flex flex-col items-end gap-1.5 sm:gap-2 shrink-0">
+                      <p className="text-gray-400 text-xs sm:text-sm font-mono text-right">{slot.time}</p>
                       {(() => {
                         const reminded = isShowReminded(slot.id);
                         return (
@@ -704,7 +704,7 @@ const RadioStreamingApp = () => {
                                 window.setTimeout(() => setReminderFeedback(null), 5000);
                               });
                             }}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap ${
+                            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm transition-colors whitespace-nowrap ${
                               reminded
                                 ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
                                 : 'bg-white/10 hover:bg-white/20 text-white'
@@ -712,9 +712,9 @@ const RadioStreamingApp = () => {
                             aria-pressed={reminded}
                           >
                             {reminded ? (
-                              <BellRing className="w-4 h-4 shrink-0" aria-hidden />
+                              <BellRing className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                             ) : (
-                              <Bell className="w-4 h-4 shrink-0" aria-hidden />
+                              <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                             )}
                             {reminded ? 'Reminded' : 'Set Reminder'}
                           </button>
@@ -726,8 +726,8 @@ const RadioStreamingApp = () => {
               ))}
             </div>
             
-            <div className="mt-6 bg-white/5 rounded-lg p-4">
-              <p className="text-sm text-gray-300 text-center">
+            <div className="mt-4 sm:mt-6 bg-white/5 rounded-lg p-3 sm:p-4">
+              <p className="text-xs sm:text-sm text-gray-300 text-center">
                 🎵 All times are local. Schedule subject to change for special events and breaking news.
               </p>
             </div>
@@ -737,29 +737,29 @@ const RadioStreamingApp = () => {
 
       {/* Events Modal */}
       {showEvents && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[85vh] border border-white/10 flex flex-col overflow-hidden">
-            <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Users className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] border border-white/10 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 gap-3">
+              <h3 className="text-base sm:text-xl font-bold flex items-center gap-2 leading-snug">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                 Station Events
               </h3>
               <button
                 type="button"
                 onClick={() => setShowEvents(false)}
-                className="text-gray-400 hover:text-white text-xl leading-none"
+                className="text-gray-400 hover:text-white text-lg sm:text-xl leading-none shrink-0"
                 aria-label="Close events"
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex-shrink-0 px-6 pb-3 border-b border-white/10 bg-gray-900">
-              <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 px-4 sm:px-6 pb-3 border-b border-white/10 bg-gray-900">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <img
                   src={RADIO_CONFIG.STATION_LOGO_URL}
                   alt={`${RADIO_CONFIG.STATION_NAME} logo`}
-                  className="h-[46px] w-auto shrink-0 object-contain rounded-sm drop-shadow-md"
+                  className="h-[38px] sm:h-[46px] w-auto shrink-0 object-contain rounded-sm drop-shadow-md"
                 />
                 <div className="flex-1 min-w-0" style={{ minHeight: 50 }}>
                   <AdBanner
@@ -774,8 +774,8 @@ const RadioStreamingApp = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-            <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4">
+            <div className="mb-4 sm:mb-5 rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
               <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm text-gray-200 flex items-center gap-2 shrink-0">
                   <MapPin className="w-4 h-4 text-pink-400" aria-hidden />
@@ -828,32 +828,32 @@ const RadioStreamingApp = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-5">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-5">
               <button
                 type="button"
                 onClick={() => setEventFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'all' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm ${eventFilter === 'all' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
               >
                 All
               </button>
               <button
                 type="button"
                 onClick={() => setEventFilter('mon-thu')}
-                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'mon-thu' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm ${eventFilter === 'mon-thu' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
               >
                 Mon–Thu
               </button>
               <button
                 type="button"
                 onClick={() => setEventFilter('weekend')}
-                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'weekend' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm ${eventFilter === 'weekend' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
               >
                 Weekend
               </button>
               <button
                 type="button"
                 onClick={() => setEventFilter('online')}
-                className={`px-3 py-1.5 rounded-lg text-sm ${eventFilter === 'online' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm ${eventFilter === 'online' ? 'bg-pink-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}
               >
                 Online
               </button>
@@ -873,9 +873,9 @@ const RadioStreamingApp = () => {
               </p>
             ) : null}
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {filteredEvents.length === 0 ? (
-                <p className="text-center text-gray-400 py-10 text-sm px-2">
+                <p className="text-center text-gray-400 py-8 sm:py-10 text-xs sm:text-sm px-2">
                   {eventCityFilter.trim()
                     ? 'No events match this venue with the filters you chose. Try All areas, another location, or a different time filter.'
                     : eventsPublishedCount != null &&
@@ -889,7 +889,7 @@ const RadioStreamingApp = () => {
               filteredEvents.map((event) => {
                 const eventImageSrc = resolveStationEventImageUrl(event.imageUrl);
                 return (
-                <article key={event.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <article key={event.id} className="bg-white/5 rounded-xl p-3 sm:p-4 border border-white/10">
                   {eventImageSrc ? (
                     <EventPosterImage
                       src={eventImageSrc}
@@ -897,10 +897,10 @@ const RadioStreamingApp = () => {
                       onOpenLightbox={() => setEventImageLightbox({ src: eventImageSrc, alt: event.title })}
                     />
                   ) : null}
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div>
-                      <h4 className="font-semibold text-lg">{event.title}</h4>
-                      <p className="text-sm text-gray-400">{event.dateLabel}</p>
+                  <div className="flex items-start justify-between gap-3 sm:gap-4 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-base sm:text-lg line-clamp-2 leading-snug">{event.title}</h4>
+                      <p className="text-xs sm:text-sm text-gray-400">{event.dateLabel}</p>
                     </div>
                     <span
                       className={`text-xs px-2 py-1 rounded-full ${
@@ -914,9 +914,9 @@ const RadioStreamingApp = () => {
                       {event.status.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-sm text-pink-300 mb-2">{event.location}</p>
-                  <p className="text-sm text-gray-300">{event.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 items-center">
+                  <p className="text-xs sm:text-sm text-pink-300 mb-2">{event.location}</p>
+                  <p className="text-xs sm:text-sm text-gray-300 line-clamp-4 sm:line-clamp-none">{event.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2 items-center">
                     {(() => {
                       const range = getEventTimeRange(event);
                       const reminded = isEventReminded(event.id);
@@ -947,7 +947,7 @@ const RadioStreamingApp = () => {
                                 window.setTimeout(() => setReminderFeedback(null), 5000);
                               });
                             }}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm transition-colors ${
                               reminded
                                 ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
                                 : 'bg-white/10 hover:bg-white/20 text-white'
@@ -955,9 +955,9 @@ const RadioStreamingApp = () => {
                             aria-pressed={reminded}
                           >
                             {reminded ? (
-                              <BellRing className="w-4 h-4 shrink-0" aria-hidden />
+                              <BellRing className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                             ) : (
-                              <Bell className="w-4 h-4 shrink-0" aria-hidden />
+                              <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                             )}
                             {reminded ? 'Reminded' : 'Set Reminder'}
                           </button>
@@ -972,9 +972,9 @@ const RadioStreamingApp = () => {
                                 href={buildGoogleCalendarUrl(event, range.start, range.end)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
                               >
-                                <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
+                                <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                                 Google Calendar
                               </a>
                               <button
@@ -985,9 +985,9 @@ const RadioStreamingApp = () => {
                                     buildIcsContent(event, range.start, range.end),
                                   )
                                 }
-                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-white/10 hover:bg-white/20 text-white transition-colors"
                               >
-                                <Download className="w-4 h-4 shrink-0" aria-hidden />
+                                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
                                 Download .ics
                               </button>
                             </>
@@ -1008,36 +1008,36 @@ const RadioStreamingApp = () => {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto border border-white/10">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Settings className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-gray-900 rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto border border-white/10">
+            <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3">
+              <h3 className="text-base sm:text-xl font-bold flex items-center gap-2 leading-snug">
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                 Settings
               </h3>
               <button
                 type="button"
                 onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-white text-xl leading-none"
+                className="text-gray-400 hover:text-white text-lg sm:text-xl leading-none shrink-0"
                 aria-label="Close settings"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-6">
-              <section className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-pink-300 mb-2">About</h4>
-                <p className="text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
-                <p className="text-sm text-gray-300 mt-1">{RADIO_CONFIG.TAGLINE}</p>
-                <p className="text-gray-400 text-sm mt-2">
+            <div className="space-y-4 sm:space-y-6">
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-pink-300 mb-2">About</h4>
+                <p className="text-base sm:text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
+                <p className="text-xs sm:text-sm text-gray-300 mt-1">{RADIO_CONFIG.TAGLINE}</p>
+                <p className="text-gray-400 text-xs sm:text-sm mt-2">
                   New Stars Radio is your #1 stop for up and coming artists in Hip-Hop, R&apos;n&apos;B and Smooth Jazz. We are committed to finding great unknown artists and bringing them to your eardrums.
                 </p>
               </section>
 
-              <section className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
-                  <Volume2 className="w-4 h-4" />
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 shrink-0" />
                   Volume
                 </h4>
                 <input
@@ -1051,24 +1051,24 @@ const RadioStreamingApp = () => {
                 <p className="text-xs text-gray-500 mt-2">Same level as the player above. Saved for this session.</p>
               </section>
 
-              <section className="bg-white/5 rounded-xl p-4">
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={reduceMotion}
                     onChange={(e) => setReduceMotion(e.target.checked)}
-                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500"
+                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500 shrink-0"
                   />
                   <span>
-                    <span className="font-medium block">Reduce visualizer motion</span>
-                    <span className="text-sm text-gray-400">Shows a static bar display instead of animated waves while you listen.</span>
+                    <span className="text-sm sm:text-base font-medium block">Reduce visualizer motion</span>
+                    <span className="text-xs sm:text-sm text-gray-400">Shows a static bar display instead of animated waves while you listen.</span>
                   </span>
                 </label>
               </section>
 
-              <section className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-pink-300 mb-3 flex items-center gap-2">
+                  <Bell className="w-4 h-4 shrink-0" />
                   Show & event reminders
                 </h4>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -1076,11 +1076,11 @@ const RadioStreamingApp = () => {
                     type="checkbox"
                     checked={preferences.showReminders}
                     onChange={(e) => updatePreferences({ showReminders: e.target.checked })}
-                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500"
+                    className="mt-1 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-pink-500 shrink-0"
                   />
                   <span>
-                    <span className="font-medium block">Notify before shows and events</span>
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm sm:text-base font-medium block">Notify before shows and events</span>
+                    <span className="text-xs sm:text-sm text-gray-400">
                       Browser alert 15 minutes before a radio show or event you set a reminder for.
                     </span>
                   </span>
@@ -1096,8 +1096,8 @@ const RadioStreamingApp = () => {
                 ) : null}
               </section>
 
-              <section className="bg-white/5 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-pink-300 mb-2">Cached schedule</h4>
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-pink-300 mb-2">Cached schedule</h4>
                 <p className="text-xs text-gray-400 mb-3">
                   If the timetable looks wrong after an update, clear the saved copy and reload from the server.
                 </p>
@@ -1111,9 +1111,9 @@ const RadioStreamingApp = () => {
                 </button>
               </section>
 
-              <section className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-amber-200 mb-2">Playback</h4>
-                <p className="text-sm text-gray-300">
+              <section className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-amber-200 mb-2">Playback</h4>
+                <p className="text-xs sm:text-sm text-gray-300">
                   Some browsers block sound until you press play. If you do not hear audio, tap the main play button once.
                 </p>
               </section>
