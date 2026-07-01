@@ -1,9 +1,9 @@
 /** Built-in promo when no community events are listed — mirrors the house ad pattern. */
 export const HOUSE_EVENT = {
   TITLE: 'Promote Your Event',
-  TAGLINE: 'List your show on New Stars Radio',
+  TAGLINE: 'List your events on New Stars Radio',
   DESCRIPTION:
-    'Concerts, showcases, livestreams, and listener meetups — reach our audience in the Events tab.',
+    'Concerts, showcases, livestreams, lounges, night clubs, bars, and restaurants — reach our audience in the Events tab.',
   CLICK_URL:
     'mailto:events@newstarsradio.com?subject=Promote%20Your%20Event%20on%20New%20Stars%20Radio',
   CTA_LABEL: 'Contact us to get listed',
