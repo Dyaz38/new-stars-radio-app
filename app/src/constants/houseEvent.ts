@@ -3,7 +3,7 @@ export const HOUSE_EVENT = {
   TITLE: 'Promote Your Event',
   TAGLINE: 'List your events on New Stars Radio',
   DESCRIPTION:
-    'Concerts, showcases, livestreams, lounges, night clubs, bars, and restaurants — reach our audience in the Events tab.',
+    'Concerts, showcases, lounges, night clubs, bars, and restaurants — reach our audience in the Events tab.',
   CLICK_URL:
     'mailto:events@newstarsradio.com?subject=Promote%20Your%20Event%20on%20New%20Stars%20Radio',
   CTA_LABEL: 'Contact us to get listed',
