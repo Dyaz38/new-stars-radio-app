@@ -775,11 +775,10 @@ const RadioStreamingApp = () => {
               </div>
             </div>
 
-            <div className="flex-shrink-0 px-4 sm:px-6 py-3 border-b border-white/10 bg-gray-900">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4">
+            <div className="mb-4 sm:mb-5">
               <EventHousePromo />
             </div>
-
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4">
             <div className="mb-4 sm:mb-5 rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
               <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm text-gray-200 flex items-center gap-2 shrink-0">

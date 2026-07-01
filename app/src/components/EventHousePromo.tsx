@@ -7,10 +7,10 @@ export function EventHousePromo() {
       className="bg-gradient-to-br from-purple-900/40 via-pink-900/30 to-indigo-900/40 rounded-xl p-3 sm:p-4 border border-pink-500/30"
       data-house-event-promo="true"
     >
-      <div className="mb-3 flex aspect-[2/3] max-w-sm mx-auto w-full flex-col items-center justify-center rounded-lg border border-white/10 bg-gradient-to-br from-purple-600/40 via-pink-600/30 to-indigo-700/40 px-6 text-center shadow-inner">
-        <CalendarHeart className="w-12 h-12 sm:w-14 sm:h-14 text-pink-200 mb-3" aria-hidden />
-        <p className="text-lg sm:text-xl font-bold text-white leading-snug">{HOUSE_EVENT.TITLE}</p>
-        <p className="text-sm sm:text-base text-pink-100 mt-1">{HOUSE_EVENT.TAGLINE}</p>
+      <div className="mb-3 flex w-full max-w-xs mx-auto aspect-[4/3] sm:aspect-[3/2] max-h-[180px] sm:max-h-[220px] flex-col items-center justify-center rounded-lg border border-white/10 bg-gradient-to-br from-purple-600/40 via-pink-600/30 to-indigo-700/40 px-4 text-center shadow-inner">
+        <CalendarHeart className="w-10 h-10 sm:w-12 sm:h-12 text-pink-200 mb-2 sm:mb-3" aria-hidden />
+        <p className="text-base sm:text-lg font-bold text-white leading-snug">{HOUSE_EVENT.TITLE}</p>
+        <p className="text-xs sm:text-sm text-pink-100 mt-1">{HOUSE_EVENT.TAGLINE}</p>
       </div>
       <p className="text-xs sm:text-sm text-gray-300 text-center mb-4 px-1">{HOUSE_EVENT.DESCRIPTION}</p>
       <a
