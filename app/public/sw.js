@@ -1,130 +1,120 @@
-const CACHE_NAME = 'new-stars-radio-v2';
+const CACHE_NAME = 'new-stars-radio-v3';
 const urlsToCache = [
-  '/',
   '/manifest.json',
   '/station-icon-192.png',
   '/station-icon-512.png',
   '/apple-touch-icon.png',
 ];
 
-// Install service worker and cache resources
+function shouldBypassServiceWorker(url) {
+  return (
+    url.hostname.includes('railway.app') ||
+    url.hostname.includes('airtime.pro') ||
+    url.hostname.includes('musicbrainz.org') ||
+    url.hostname.includes('coverartarchive.org') ||
+    url.hostname.includes('itunes.apple.com') ||
+    url.hostname.includes('genius.com') ||
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('vite') ||
+    url.pathname.includes('react-refresh')
+  );
+}
+
+function isHtmlRequest(request) {
+  return (
+    request.mode === 'navigate' ||
+    request.destination === 'document' ||
+    request.headers.get('accept')?.includes('text/html')
+  );
+}
+
+// Install service worker and cache static icons only (not index.html)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Service Worker: Cache opened');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => {
-        console.log('Service Worker: All resources cached');
-        return self.skipWaiting();
-      })
+      .then((cache) => cache.addAll(urlsToCache))
+      .then(() => self.skipWaiting())
   );
 });
 
 // Activate service worker and clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('Service Worker: Activated');
-      return self.clients.claim();
-    })
+    caches.keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        )
+      )
+      .then(() => self.clients.claim())
   );
 });
 
-// Handle fetch requests (cache-first strategy)
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Skip service worker for API requests (ad server, metadata, etc.)
-  if (url.hostname.includes('railway.app') ||
-      url.hostname.includes('airtime.pro') ||
-      url.hostname.includes('musicbrainz.org') ||
-      url.hostname.includes('coverartarchive.org') ||
-      url.hostname.includes('itunes.apple.com') ||
-      url.hostname.includes('genius.com')) {
-    return;
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
-  
-  // Skip for Vite dev server (localhost in development)
-  if (url.hostname === 'localhost' || 
-      url.hostname === '127.0.0.1' ||
-      url.pathname.startsWith('/@') ||
-      url.pathname.includes('vite') ||
-      url.pathname.includes('react-refresh')) {
+});
+
+// Network-first for HTML and build assets so deploys never serve stale bundles
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  if (shouldBypassServiceWorker(url)) return;
+
+  if (isHtmlRequest(event.request) || url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached resource if available
-        if (response) {
-          return response;
-        }
-        
-        // Otherwise fetch from network
-        return fetch(event.request).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+    caches.match(event.request).then((cached) => {
+      const networkFetch = fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
           }
-
-          // Clone response for cache
-          const responseToCache = response.clone();
-          
-          // Cache static resources only
-          if (event.request.url.includes('static') || 
-              event.request.url.includes('assets') ||
-              event.request.url.includes('vite.svg')) {
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-          }
-
           return response;
-        }).catch((error) => {
-          // If fetch fails, return error response
+        })
+        .catch((error) => {
           console.error('Service Worker fetch error:', error);
           throw error;
         });
-      })
+
+      return cached || networkFetch;
+    })
   );
 });
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notification clicked', event.notification.data);
-  
   event.notification.close();
-  
+
   const data = event.notification.data;
   const action = event.action;
-  
-  // Handle different actions
+
   if (action === 'play' || action === 'like' || !action) {
-    // Focus or open the app
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true })
         .then((clientList) => {
-          // If app is already open, focus it
           for (const client of clientList) {
             if (client.url.includes(data?.url || '/') && 'focus' in client) {
               return client.focus();
             }
           }
-          
-          // Otherwise open new window
+
           if (clients.openWindow) {
             return clients.openWindow(data?.url || '/');
           }
@@ -133,18 +123,16 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-// Handle notification close
 self.addEventListener('notificationclose', (event) => {
   console.log('Service Worker: Notification closed', event.notification.data);
 });
 
-// Handle push messages (for future implementation)
 self.addEventListener('push', (event) => {
   if (!event.data) return;
-  
+
   try {
     const data = event.data.json();
-    
+
     event.waitUntil(
       self.registration.showNotification(data.title || 'New Stars Radio', {
         body: data.body || 'New update available',
@@ -152,9 +140,7 @@ self.addEventListener('push', (event) => {
         badge: '/vite.svg',
         tag: data.tag || 'push-notification',
         data: data.data || {},
-        actions: data.actions || [
-          { action: 'open', title: 'Open App' }
-        ]
+        actions: data.actions || [{ action: 'open', title: 'Open App' }],
       })
     );
   } catch (error) {
@@ -162,11 +148,8 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Handle background sync (for future implementation)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'background-sync') {
     console.log('Service Worker: Background sync triggered');
-    // Could be used for syncing liked songs, preferences, etc.
   }
 });
-
