@@ -4,7 +4,7 @@ from __future__ import annotations
 from app.constants.placements import preferred_sizes_for_placement
 
 HOUSE_AD_CLICK_URL = (
-    "mailto:ads@newstarsradio.com?subject=Advertise%20on%20New%20Stars%20Radio"
+    "mailto:sales@newstarsradio.com?subject=Advertise%20on%20New%20Stars%20Radio"
 )
 HOUSE_AD_ALT = "New Stars Radio — Advertise With Us"
 

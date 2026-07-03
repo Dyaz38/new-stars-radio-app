@@ -10,7 +10,7 @@ from app.models.advertiser import Advertiser, AdvertiserStatus
 from app.models.campaign import Campaign, CampaignStatus
 
 HOUSE_ADVERTISER_NAME = "New Stars Radio (House)"
-HOUSE_ADVERTISER_EMAIL = "ads@newstarsradio.com"
+HOUSE_ADVERTISER_EMAIL = "sales@newstarsradio.com"
 
 CAMPAIGN_GLOBAL = "House Promo — Global"
 CAMPAIGN_NA = "House Promo — Namibia (NA)"
