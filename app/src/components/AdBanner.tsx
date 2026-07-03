@@ -68,6 +68,11 @@ function buildLocalHouseAdData(compact: boolean, viewportWidth: number): AdData 
   };
 }
 
+/** Legacy house campaigns in production DB may still reference ads@ until seed sync runs. */
+function normalizeClickUrl(url: string): string {
+  return url.replace('ads@newstarsradio.com', 'sales@newstarsradio.com');
+}
+
 function resolveAdImageUrl(imageUrl: string): string {
   if (imageUrl.startsWith('http')) return imageUrl;
   if (imageUrl.startsWith('/promo/')) return imageUrl;
@@ -213,7 +218,7 @@ export const AdBanner = ({
     if (!activeAd) return;
 
     if (activeAd.is_house_ad || !activeAd.click_tracking_token) {
-      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
+      window.open(normalizeClickUrl(activeAd.click_url), '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -232,10 +237,10 @@ export const AdBanner = ({
         }),
       });
 
-      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
+      window.open(normalizeClickUrl(activeAd.click_url), '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Error tracking click:', err);
-      window.open(activeAd.click_url, '_blank', 'noopener,noreferrer');
+      window.open(normalizeClickUrl(activeAd.click_url), '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -253,6 +258,7 @@ export const AdBanner = ({
 
   const displayAd =
     adData ?? buildLocalHouseAdData(compact, dimensions.width);
+  const clickUrl = normalizeClickUrl(displayAd.click_url);
 
   if (hideWhenEmpty && displayAd.is_house_ad) {
     return null;
@@ -272,7 +278,7 @@ export const AdBanner = ({
     >
       <a
         ref={adRef}
-        href={displayAd.click_url}
+        href={clickUrl}
         onClick={handleClick}
         target="_blank"
         rel="noopener noreferrer"

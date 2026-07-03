@@ -35,10 +35,16 @@ def _campaign_window() -> tuple[datetime, datetime]:
 def _get_or_create_advertiser(db: Session) -> Advertiser:
     advertiser = (
         db.query(Advertiser)
-        .filter(Advertiser.email == HOUSE_ADVERTISER_EMAIL)
+        .filter(
+            (Advertiser.email == HOUSE_ADVERTISER_EMAIL)
+            | (Advertiser.name == HOUSE_ADVERTISER_NAME)
+        )
         .first()
     )
     if advertiser:
+        if advertiser.email != HOUSE_ADVERTISER_EMAIL:
+            advertiser.email = HOUSE_ADVERTISER_EMAIL
+            db.flush()
         return advertiser
 
     advertiser = Advertiser(
@@ -93,17 +99,56 @@ def _ensure_campaign(
     return campaign
 
 
+def _sync_house_creative(
+    creative: AdCreative,
+    *,
+    image_url: str,
+    width: int,
+    height: int,
+    alt_text: str,
+) -> bool:
+    changed = False
+    if creative.click_url != CLICK_URL:
+        creative.click_url = CLICK_URL
+        changed = True
+    if creative.image_url != image_url:
+        creative.image_url = image_url
+        changed = True
+    if creative.image_width != width:
+        creative.image_width = width
+        changed = True
+    if creative.image_height != height:
+        creative.image_height = height
+        changed = True
+    if creative.alt_text != alt_text:
+        creative.alt_text = alt_text
+        changed = True
+    if creative.status != CreativeStatus.ACTIVE:
+        creative.status = CreativeStatus.ACTIVE
+        changed = True
+    return changed
+
+
 def _ensure_creatives(db: Session, campaign: Campaign) -> None:
-    existing = {
-        c.name
-        for c in db.query(AdCreative).filter(AdCreative.campaign_id == campaign.id).all()
-    }
     specs = [
         (CREATIVE_MOBILE, IMAGE_MOBILE, 320, 50, "New Stars Radio — advertise with us"),
         (CREATIVE_DESKTOP, IMAGE_DESKTOP, 728, 90, "New Stars Radio — Tomorrow's Stars, Today"),
     ]
     for name, image_url, width, height, alt_text in specs:
-        if name in existing:
+        creative = (
+            db.query(AdCreative)
+            .filter(AdCreative.campaign_id == campaign.id, AdCreative.name == name)
+            .first()
+        )
+        if creative:
+            if _sync_house_creative(
+                creative,
+                image_url=image_url,
+                width=width,
+                height=height,
+                alt_text=alt_text,
+            ):
+                db.flush()
             continue
         db.add(
             AdCreative(
