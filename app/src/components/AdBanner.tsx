@@ -70,7 +70,10 @@ function buildLocalHouseAdData(compact: boolean, viewportWidth: number): AdData 
 
 function resolveAdImageUrl(imageUrl: string): string {
   if (imageUrl.startsWith('http')) return imageUrl;
-  if (imageUrl.startsWith('/ads/')) return imageUrl;
+  if (imageUrl.startsWith('/promo/')) return imageUrl;
+  // Legacy house paths from older API responses — serve from listener app /promo/
+  if (imageUrl.includes('newstars-house-320x50')) return '/promo/newstars-house-320x50.png';
+  if (imageUrl.includes('newstars-house-728x90')) return '/promo/newstars-house-728x90.png';
   const origin = API_ENDPOINTS.AD_SERVER.replace('/api/v1', '');
   return `${origin}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
 }
@@ -90,8 +93,11 @@ export const AdBanner = ({
   const [impressionTracked, setImpressionTracked] = useState(false);
   const [dimensions, setDimensions] = useState(getAdDimensions(compact));
   const adRef = useRef<HTMLAnchorElement>(null);
+  const hasLoadedOnceRef = useRef(false);
+  const usingLocalFallbackRef = useRef(false);
 
   const applyLocalHouseAd = useCallback(() => {
+    usingLocalFallbackRef.current = true;
     setAdData(buildLocalHouseAdData(compact, dimensions.width));
     setImpressionTracked(false);
   }, [compact, dimensions.width]);
@@ -116,7 +122,9 @@ export const AdBanner = ({
   useEffect(() => {
     const fetchAd = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedOnceRef.current) {
+          setLoading(true);
+        }
         setImpressionTracked(false);
 
         const userId = getUserId();
@@ -148,10 +156,12 @@ export const AdBanner = ({
         }
 
         setAdData(data as AdData);
+        usingLocalFallbackRef.current = false;
       } catch (err) {
         console.error('Error fetching ad:', err);
         applyLocalHouseAd();
       } finally {
+        hasLoadedOnceRef.current = true;
         setLoading(false);
       }
     };
@@ -229,13 +239,13 @@ export const AdBanner = ({
     }
   };
 
-  if (loading) {
+  if (loading && !adData) {
     if (hideWhenEmpty) return null;
     return (
       <div
         className={`flex items-center justify-center ${className}`}
         style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
-        data-testid="ad-banner-loading"
+        data-testid="promo-banner-loading"
         aria-hidden
       />
     );
@@ -252,13 +262,13 @@ export const AdBanner = ({
 
   return (
     <div
-      className={`ad-banner-container mb-4 flex items-center justify-center ${className}`}
+      className={`promo-banner-slot mb-4 flex items-center justify-center ${className}`}
       style={{
         minHeight: dimensions.height,
         ...style,
       }}
-      data-ad-placement={placement}
-      data-house-ad={displayAd.is_house_ad ? 'true' : 'false'}
+      data-promo-placement={placement}
+      data-house-promo={displayAd.is_house_ad ? 'true' : 'false'}
     >
       <a
         ref={adRef}
@@ -287,8 +297,10 @@ export const AdBanner = ({
             objectFit: 'contain',
           }}
           onError={() => {
-            console.error('Failed to load ad image:', imageUrl);
-            applyLocalHouseAd();
+            console.error('Failed to load promo image:', imageUrl);
+            if (!usingLocalFallbackRef.current) {
+              applyLocalHouseAd();
+            }
           }}
         />
       </a>

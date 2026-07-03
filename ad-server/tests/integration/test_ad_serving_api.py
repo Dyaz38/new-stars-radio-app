@@ -211,7 +211,7 @@ class TestAdRequestEndpoint:
         # Empty inventory serves built-in New Stars house promo
         assert data["is_house_ad"] is True
         assert data["image_width"] in (320, 728)
-        assert data["image_url"].startswith("/static/ads/")
+        assert data["image_url"].startswith("/static/promo/")
     
     def test_request_ad_invalid_user_id(self):
         """Test ad request with invalid user_id."""

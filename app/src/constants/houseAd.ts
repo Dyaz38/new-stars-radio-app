@@ -2,8 +2,8 @@
 export const HOUSE_AD = {
   CLICK_URL: 'mailto:sales@newstarsradio.com?subject=Advertise%20on%20New%20Stars%20Radio',
   ALT: "New Stars Radio — Advertise With Us",
-  MOBILE: { url: '/ads/newstars-house-320x50.png', width: 320, height: 50 },
-  DESKTOP: { url: '/ads/newstars-house-728x90.png', width: 728, height: 90 },
+  MOBILE: { url: '/promo/newstars-house-320x50.png', width: 320, height: 50 },
+  DESKTOP: { url: '/promo/newstars-house-728x90.png', width: 728, height: 90 },
 } as const;
 
 export function getLocalHouseAd(compact: boolean, viewportWidth: number) {

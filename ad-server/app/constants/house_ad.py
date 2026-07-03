@@ -10,8 +10,8 @@ HOUSE_AD_ALT = "New Stars Radio — Advertise With Us"
 
 # Relative paths served from ad-server /static
 HOUSE_AD_IMAGE_BY_SIZE: dict[tuple[int, int], str] = {
-    (320, 50): "/static/ads/newstars-house-320x50.png",
-    (728, 90): "/static/ads/newstars-house-728x90.png",
+    (320, 50): "/static/promo/newstars-house-320x50.png",
+    (728, 90): "/static/promo/newstars-house-728x90.png",
 }
 
 # Stable ids for house fallback responses (not stored in DB; tracking skipped client-side)
