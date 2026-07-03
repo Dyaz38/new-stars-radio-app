@@ -1,12 +1,8 @@
 import { CalendarHeart, Mail } from 'lucide-react';
 import { HOUSE_EVENT } from '../constants/houseEvent';
 
-function openContactLink(url: string) {
-  if (url.startsWith('mailto:')) {
-    window.location.href = url;
-    return;
-  }
-  window.open(url, '_blank', 'noopener,noreferrer');
+function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
 export function EventHousePromo() {
@@ -24,11 +20,11 @@ export function EventHousePromo() {
       <a
         href={HOUSE_EVENT.CLICK_URL}
         onClick={(e) => {
+          // Mobile browsers need a direct navigation; desktop uses native mailto handling.
+          if (!isMobileBrowser()) return;
           e.preventDefault();
-          openContactLink(HOUSE_EVENT.CLICK_URL);
+          window.location.href = HOUSE_EVENT.CLICK_URL;
         }}
-        target="_blank"
-        rel="noopener noreferrer"
         className="flex items-center justify-center gap-2 w-full rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white text-sm sm:text-base font-semibold px-4 py-2.5 transition-colors"
       >
         <Mail className="w-4 h-4 shrink-0" aria-hidden />
