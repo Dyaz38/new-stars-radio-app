@@ -139,6 +139,13 @@ async def startup_event():
     static_path.mkdir(exist_ok=True)
     (static_path / "ads").mkdir(exist_ok=True)
 
+    if settings.ADMIN_PASSWORD_RESET:
+        logger.warning(
+            "ADMIN_PASSWORD_RESET is enabled — admin password will be reset on this startup. "
+            "Remove ADMIN_PASSWORD_RESET and ADMIN_RESET_PASSWORD from Railway after signing in. "
+            "See ad-server/docs/ADMIN_PASSWORD_RECOVERY.md"
+        )
+
     # Ensure admin user exists (idempotent - skips if already present)
     try:
         create_initial_admin()
@@ -201,4 +208,5 @@ async def health_check():
         "database": "ok",
         "version": settings.VERSION,
         "password_reset_email_delivery": password_reset_delivery_mode(),
+        "admin_password_reset_enabled": settings.ADMIN_PASSWORD_RESET,
     }

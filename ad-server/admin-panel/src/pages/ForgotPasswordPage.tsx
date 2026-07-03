@@ -111,6 +111,29 @@ export default function ForgotPasswordPage() {
               </p>
             </details>
 
+            <details className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
+              <summary className="cursor-pointer font-semibold text-slate-900">
+                Operator backup (no email)
+              </summary>
+              <p className="mt-3 text-slate-600 leading-relaxed">
+                If email reset is not configured, use Railway to reset the admin password once on deploy:
+              </p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+                <li>
+                  Railway → ad-server → Variables: set <code className="rounded bg-slate-200 px-1">ADMIN_PASSWORD_RESET=true</code>{" "}
+                  and <code className="rounded bg-slate-200 px-1">ADMIN_RESET_PASSWORD</code> to a strong temp password
+                </li>
+                <li>Redeploy the service</li>
+                <li>Sign in with that temp password</li>
+                <li>
+                  <strong>Remove</strong> those variables and redeploy again
+                </li>
+              </ol>
+              <p className="mt-3 text-xs text-slate-500">
+                Full guide: <code className="rounded bg-slate-200 px-1">ad-server/docs/ADMIN_PASSWORD_RECOVERY.md</code>
+              </p>
+            </details>
+
             <Link
               to="/login"
               className="flex w-full items-center justify-center rounded-lg bg-indigo-600 py-3 font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"

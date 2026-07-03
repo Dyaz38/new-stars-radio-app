@@ -200,14 +200,40 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 text-center">
-            <strong>Demo Credentials:</strong>
-            <br />
-            admin@newstarsradio.com / changeme123
+        {/* Demo credentials — local dev only */}
+        {import.meta.env.DEV && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-600 text-center">
+              <strong>Dev only:</strong>
+              <br />
+              admin@newstarsradio.com / changeme123
+            </p>
+          </div>
+        )}
+
+        <details className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
+          <summary className="cursor-pointer font-semibold text-slate-900">
+            Can&apos;t sign in? Recovery options
+          </summary>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-600">
+            <li>
+              <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Forgot password
+              </Link>{" "}
+              — email reset link (needs Resend or SMTP on the server)
+            </li>
+            <li>
+              <strong>Backup reset (Railway):</strong> set{" "}
+              <code className="rounded bg-slate-200 px-1 text-xs">ADMIN_PASSWORD_RESET=true</code> and{" "}
+              <code className="rounded bg-slate-200 px-1 text-xs">ADMIN_RESET_PASSWORD</code>, redeploy once,
+              sign in, then remove those variables
+            </li>
+          </ul>
+          <p className="mt-3 text-xs text-slate-500">
+            See <code className="rounded bg-slate-200 px-1">ad-server/docs/ADMIN_PASSWORD_RECOVERY.md</code> in the
+            repo for step-by-step instructions.
           </p>
-        </div>
+        </details>
       </div>
     </div>
   );

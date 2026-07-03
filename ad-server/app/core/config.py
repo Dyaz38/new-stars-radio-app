@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     # Admin panel public URL (password reset links in emails)
     FRONTEND_ADMIN_URL: str = "https://newstarsadminpanel.vercel.app"
 
+    # Backup admin recovery — set ADMIN_PASSWORD_RESET=true on Railway, redeploy once, sign in, remove vars
+    ADMIN_PASSWORD_RESET: bool = False
+    ADMIN_RESET_EMAIL: str = "admin@newstarsradio.com"
+    ADMIN_RESET_PASSWORD: Optional[str] = None
+    ADMIN_INITIAL_PASSWORD: str = "changeme123"
+
     # SMTP — optional; if unset, reset links are logged server-side (see email service)
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587

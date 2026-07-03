@@ -111,3 +111,11 @@ After requesting a reset, open **Railway → ad-server → Logs** and search for
 `PASSWORD RESET: no email delivery configured`
 
 The log line includes the **full reset URL** you can paste into the browser (one-time use, 1 hour).
+
+---
+
+## 6. Backup reset (no email at all)
+
+If you cannot use email reset, use the **Railway environment-variable backup**:
+
+See **[ADMIN_PASSWORD_RECOVERY.md](./ADMIN_PASSWORD_RECOVERY.md)** for `ADMIN_PASSWORD_RESET` and `ADMIN_RESET_PASSWORD` steps.

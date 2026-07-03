@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     likes,
     schedule,
 )
+from app.core.config import settings
 from app.services.password_reset_email import password_reset_delivery_mode
 
 # Create main API router
@@ -43,6 +44,7 @@ async def api_health():
         "status": "healthy",
         "api_version": "v1",
         "password_reset_email_delivery": password_reset_delivery_mode(),
+        "admin_password_reset_enabled": settings.ADMIN_PASSWORD_RESET,
     }
 
 
