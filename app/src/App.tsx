@@ -15,6 +15,7 @@ import { useEventReminders } from './hooks/useEventReminders';
 import { useShowReminders } from './hooks/useShowReminders';
 import { useMediaSession } from './hooks/useMediaSession';
 import { PWAPrompt } from './components/PWAPrompt';
+import { PWAInstallPanel } from './components/PWAInstallPanel';
 import { AdBanner } from './components/AdBanner';
 import { AD_PLACEMENTS } from './constants/adPlacements';
 import type { ScheduleShow, StationEvent } from './types';
@@ -119,6 +120,7 @@ const RadioStreamingApp = () => {
 
   const {
     isInstallable,
+    isInstalled,
     isOffline,
     updateAvailable,
     installApp,
@@ -490,6 +492,7 @@ const RadioStreamingApp = () => {
       {/* PWA Install Prompt and Status */}
       <PWAPrompt
         isInstallable={isInstallable}
+        isInstalled={isInstalled}
         isOffline={isOffline}
         updateAvailable={updateAvailable}
         onInstall={installApp}
@@ -1098,6 +1101,16 @@ const RadioStreamingApp = () => {
                     Allow notifications
                   </button>
                 ) : null}
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <PWAInstallPanel
+                  isInstallable={isInstallable}
+                  isInstalled={isInstalled}
+                  updateAvailable={updateAvailable}
+                  onInstall={installApp}
+                  onUpdate={updateServiceWorker}
+                />
               </section>
 
               <section className="bg-white/5 rounded-xl p-3 sm:p-4">

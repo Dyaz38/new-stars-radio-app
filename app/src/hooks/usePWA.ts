@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { isStandalonePwa } from '../utils/pwa';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -27,6 +28,11 @@ export const usePWA = () => {
   });
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const pendingReloadRef = useRef(false);
+
+  const refreshInstalledState = useCallback(() => {
+    setPWAState(prev => ({ ...prev, isInstalled: isStandalonePwa() }));
+  }, []);
 
   // Register service worker (only in production)
   useEffect(() => {
@@ -43,7 +49,8 @@ export const usePWA = () => {
           console.log('[PWA] Service Worker registered:', registration);
           setPWAState(prev => ({ ...prev, swRegistration: registration }));
 
-          // Check for updates
+          void registration.update();
+
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (newWorker) {
@@ -86,14 +93,20 @@ export const usePWA = () => {
       setDeferredPrompt(null);
     };
 
+    const handleDisplayModeChange = () => refreshInstalledState();
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', handleDisplayModeChange);
+
+    refreshInstalledState();
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      window.matchMedia('(display-mode: standalone)').removeEventListener('change', handleDisplayModeChange);
     };
-  }, []);
+  }, [refreshInstalledState]);
 
   // Handle online/offline status
   useEffect(() => {
@@ -127,18 +140,35 @@ export const usePWA = () => {
     };
   }, []);
 
-  // Check if app is already installed
   useEffect(() => {
-    const checkIfInstalled = () => {
-      // Check if running as PWA
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                           (window.navigator as any).standalone ||
-                           document.referrer.includes('android-app://');
-      
-      setPWAState(prev => ({ ...prev, isInstalled: isStandalone }));
+    const checkForUpdates = () => {
+      pwaState.swRegistration?.update().catch((error) => {
+        console.error('[PWA] Update check failed:', error);
+      });
     };
 
-    checkIfInstalled();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
+        refreshInstalledState();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [pwaState.swRegistration, refreshInstalledState]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleControllerChange = () => {
+      if (!pendingReloadRef.current) return;
+      pendingReloadRef.current = false;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
   }, []);
 
   // Install the app
@@ -168,13 +198,15 @@ export const usePWA = () => {
 
   // Update the service worker
   const updateServiceWorker = useCallback(() => {
-    if (pwaState.swRegistration && pwaState.swRegistration.waiting) {
+    if (pwaState.swRegistration?.waiting) {
+      pendingReloadRef.current = true;
       pwaState.swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
       setPWAState(prev => ({ ...prev, updateAvailable: false }));
-      
-      // Reload the page to get the new version
-      window.location.reload();
+      return;
     }
+
+    void pwaState.swRegistration?.update();
+    window.location.reload();
   }, [pwaState.swRegistration]);
 
   // Request notification permission

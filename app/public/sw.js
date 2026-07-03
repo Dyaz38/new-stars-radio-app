@@ -1,9 +1,11 @@
-const CACHE_NAME = 'new-stars-radio-v3';
+const CACHE_NAME = 'new-stars-radio-v4';
 const urlsToCache = [
   '/manifest.json',
   '/station-icon-192.png',
   '/station-icon-512.png',
   '/apple-touch-icon.png',
+  '/promo/newstars-house-320x50.png',
+  '/promo/newstars-house-728x90.png',
 ];
 
 function shouldBypassServiceWorker(url) {
