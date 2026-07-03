@@ -5,7 +5,7 @@ export const HOUSE_EVENT = {
   DESCRIPTION:
     'Concerts, showcases, lounges, night clubs, bars, and restaurants — reach our audience in the Events tab.',
   CLICK_URL:
-    'mailto:newstarsevents@gmail.com?subject=Promote%20Your%20Event%20on%20New%20Stars%20Radio',
+    'mailto:events@newstarsradio.com?subject=Promote%20Your%20Event%20on%20New%20Stars%20Radio',
   CTA_LABEL: 'Contact us to get listed',
 } as const;
 
