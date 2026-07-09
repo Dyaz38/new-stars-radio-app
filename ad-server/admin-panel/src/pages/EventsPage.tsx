@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import api, { normalizeApiBaseUrl } from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
+import { CountryPicker } from "../components/CountryPicker";
 
 interface StationEvent {
   id: number;
@@ -41,17 +42,6 @@ interface EventLocationsUpdateResponse {
 }
 
 const CUSTOM_LOCATION = "__custom__";
-const CUSTOM_COUNTRY = "__custom_country__";
-
-/** Preset ISO codes — same style as campaign targeting in Ad Manager */
-const EVENT_COUNTRY_PRESETS: { code: string; label: string }[] = [
-  { code: "NA", label: "Namibia (NA)" },
-  { code: "ZA", label: "South Africa (ZA)" },
-  { code: "US", label: "United States (US)" },
-  { code: "GB", label: "United Kingdom (GB)" },
-  { code: "DE", label: "Germany (DE)" },
-  { code: "AU", label: "Australia (AU)" },
-];
 
 const EMPTY_TEMPLATE: StationEvent = {
   id: 1,
@@ -111,13 +101,6 @@ function locationSelectValue(location: string, places: string[]): string {
   return CUSTOM_LOCATION;
 }
 
-function countrySelectValue(code: string | null | undefined): string {
-  const c = code?.trim().toUpperCase() ?? "";
-  if (!c) return "";
-  if (EVENT_COUNTRY_PRESETS.some((p) => p.code === c)) return c;
-  return CUSTOM_COUNTRY;
-}
-
 function formatEventsLoadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
     if (err.response?.data && typeof err.response.data === "object" && "detail" in err.response.data) {
@@ -143,7 +126,6 @@ export default function EventsPage() {
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const [newPlaceInput, setNewPlaceInput] = useState("");
   const [customLocationIds, setCustomLocationIds] = useState<Set<number>>(() => new Set());
-  const [customCountryIds, setCustomCountryIds] = useState<Set<number>>(() => new Set());
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["station-events"],
@@ -225,19 +207,9 @@ export default function EventsPage() {
     });
   };
 
-  const setRowCustomCountry = (id: number, enabled: boolean) => {
-    setCustomCountryIds((prev) => {
-      const next = new Set(prev);
-      if (enabled) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  };
-
   const resetEdits = () => {
     setEditorRows(data?.items ? [...data.items] : []);
     setCustomLocationIds(new Set());
-    setCustomCountryIds(new Set());
     setFeedback(null);
   };
 
@@ -255,7 +227,6 @@ export default function EventsPage() {
       return base.filter((r) => r.id !== id).map((r) => ({ ...r }));
     });
     setRowCustomLocation(id, false);
-    setRowCustomCountry(id, false);
   };
 
   const saveAll = () => {
@@ -640,68 +611,14 @@ export default function EventsPage() {
                           );
                         })()}
                       </td>
-                      <td className="px-3 py-3 align-top">
-                        {(() => {
-                          const selectValue = customCountryIds.has(row.id)
-                            ? CUSTOM_COUNTRY
-                            : countrySelectValue(row.country_code);
-                          const presetCodes = new Set(EVENT_COUNTRY_PRESETS.map((p) => p.code));
-                          const customCode =
-                            row.country_code?.trim().toUpperCase() &&
-                            !presetCodes.has(row.country_code.trim().toUpperCase())
-                              ? row.country_code.trim().toUpperCase()
-                              : "";
-                          const showCustomInput =
-                            customCountryIds.has(row.id) || selectValue === CUSTOM_COUNTRY;
-                          return (
-                            <div className="flex flex-col gap-1.5 min-w-[9rem]">
-                              <select
-                                value={selectValue}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  if (v === "") {
-                                    setRowCustomCountry(row.id, false);
-                                    updateRow(row.id, { country_code: null });
-                                  } else if (v === CUSTOM_COUNTRY) {
-                                    setRowCustomCountry(row.id, true);
-                                    updateRow(row.id, {
-                                      country_code: customCode || null,
-                                    });
-                                  } else {
-                                    setRowCustomCountry(row.id, false);
-                                    updateRow(row.id, { country_code: v });
-                                  }
-                                }}
-                                className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
-                                aria-label="Event country targeting"
-                                title="Global = all countries; otherwise only listeners in that ISO country (by IP)"
-                              >
-                                <option value="">Global (all countries)</option>
-                                {EVENT_COUNTRY_PRESETS.map((p) => (
-                                  <option key={p.code} value={p.code}>
-                                    {p.label}
-                                  </option>
-                                ))}
-                                <option value={CUSTOM_COUNTRY}>Other ISO code…</option>
-                              </select>
-                              {showCustomInput && (
-                                <input
-                                  type="text"
-                                  maxLength={2}
-                                  value={customCode}
-                                  onChange={(e) => {
-                                    const next = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase();
-                                    updateRow(row.id, {
-                                      country_code: next.length === 2 ? next : next || null,
-                                    });
-                                  }}
-                                  placeholder="e.g. BW"
-                                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm uppercase"
-                                />
-                              )}
-                            </div>
-                          );
-                        })()}
+                      <td className="px-3 py-3 align-top min-w-[11rem]">
+                        <CountryPicker
+                          mode="single"
+                          compact
+                          value={row.country_code ?? null}
+                          onChange={(code) => updateRow(row.id, { country_code: code })}
+                          hint="Germany = DE, Greece = GR"
+                        />
                       </td>
                       <td className="px-3 py-3">
                         <input

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
+import { CountryPicker } from "../components/CountryPicker";
 
 interface Campaign {
   id: string;
@@ -340,8 +341,8 @@ function CampaignModal({
     target_states: campaign?.target_states || [],
   });
 
-  const [countriesInput, setCountriesInput] = useState(
-    campaign?.target_countries?.join(", ") || ""
+  const [targetCountries, setTargetCountries] = useState<string[]>(
+    campaign?.target_countries || [],
   );
   const [citiesInput, setCitiesInput] = useState(
     campaign?.target_cities?.join(", ") || ""
@@ -355,7 +356,7 @@ function CampaignModal({
     e.preventDefault();
     setError("");
     
-    const targetCountries = countriesInput ? countriesInput.split(",").map((c) => c.trim().toUpperCase()).filter(c => c) : [];
+    const targetCountriesCodes = targetCountries.map((c) => c.trim().toUpperCase()).filter(Boolean);
     const targetCities = citiesInput ? citiesInput.split(",").map((c) => c.trim()).filter(c => c) : [];
     const targetStates = statesInput ? statesInput.split(",").map((s) => s.trim()).filter(s => s) : [];
 
@@ -366,7 +367,7 @@ function CampaignModal({
       end_date: formData.end_date + "T23:59:59",
       priority: formData.priority,
       impression_budget: formData.impression_budget,
-      target_countries: targetCountries,
+      target_countries: targetCountriesCodes,
       target_cities: targetCities,
       target_states: targetStates,
     };
@@ -516,21 +517,13 @@ function CampaignModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Target Countries (comma-separated, 2-letter codes)
-            </label>
-            <input
-              type="text"
-              value={countriesInput}
-              onChange={(e) => setCountriesInput(e.target.value)}
-              placeholder="e.g., NA, ZA, US (Namibia, South Africa, USA)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Use ISO 3166-1 alpha-2 codes (e.g., NA for Namibia, US for United States)
-            </p>
-          </div>
+          <CountryPicker
+            mode="multiple"
+            label="Target countries"
+            value={targetCountries}
+            onChange={setTargetCountries}
+            hint="Search by country name or code. Germany = DE, Greece = GR. Leave empty for worldwide."
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
