@@ -143,7 +143,7 @@ class TestAdSelectionService:
         assert result is None
     
     def test_select_creative_filters_by_placement_size(self):
-        """events_modal must not return desktop-only creatives."""
+        """events_modal prefers 320×50 but accepts 728×90 when that is all that exists."""
         mock_db = Mock()
         service = AdSelectionService(mock_db)
         campaign = self._create_mock_campaign()
@@ -170,6 +170,19 @@ class TestAdSelectionService:
         banner_pick = service._select_creative(campaign, "banner_top")
         assert banner_pick is not None
         assert banner_pick.image_width in (320, 728)
+
+    def test_select_creative_events_modal_accepts_desktop_only(self):
+        """728×90 campaigns should still serve in the Events modal slot."""
+        mock_db = Mock()
+        service = AdSelectionService(mock_db)
+        campaign = self._create_mock_campaign()
+
+        events_pick = service._select_creative(campaign, "events_modal")
+        assert events_pick is not None
+        assert events_pick.image_width == 728
+        assert events_pick.image_height == 90
+
+    def test_update_campaign_served_increments_metrics(self):
         """Test that campaign impressions_served is incremented."""
         # Arrange
         mock_db = Mock()

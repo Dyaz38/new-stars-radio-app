@@ -31,7 +31,7 @@ interface Campaign {
 }
 
 const CREATIVE_SIZE_PRESETS = [
-  { id: "728x90", label: "728 × 90 — Main banner (desktop)", width: 728, height: 90, placements: "banner_top, banner_bottom" },
+  { id: "728x90", label: "728 × 90 — Main banner (desktop) + Events modal", width: 728, height: 90, placements: "banner_top, banner_bottom, events_modal" },
   { id: "320x50", label: "320 × 50 — Main banner (mobile) + Events modal", width: 320, height: 50, placements: "banner_top, banner_bottom, events_modal" },
 ] as const;
 

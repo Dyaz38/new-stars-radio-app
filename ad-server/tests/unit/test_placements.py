@@ -17,9 +17,9 @@ class TestPlacementSizes:
     def test_size_matches_rejects_wrong_aspect(self):
         assert size_matches(300, 250, 320, 50) is False
 
-    def test_events_modal_accepts_mobile_banner_only(self):
+    def test_events_modal_accepts_mobile_and_desktop_banners(self):
         assert creative_matches_placement(320, 50, "events_modal") is True
-        assert creative_matches_placement(728, 90, "events_modal") is False
+        assert creative_matches_placement(728, 90, "events_modal") is True
 
     def test_banner_top_accepts_main_sizes(self):
         assert creative_matches_placement(728, 90, "banner_top") is True

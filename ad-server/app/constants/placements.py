@@ -5,7 +5,8 @@ from __future__ import annotations
 PLACEMENT_SIZE_PREFERENCES: dict[str, list[tuple[int, int]]] = {
     "banner_top": [(728, 90), (320, 50)],
     "banner_bottom": [(728, 90), (320, 50)],
-    "events_modal": [(320, 50)],
+    # 728×90 scales down in the compact Events header; prefer 320×50 when both exist.
+    "events_modal": [(320, 50), (728, 90)],
 }
 
 DEFAULT_PLACEMENT = "banner_top"

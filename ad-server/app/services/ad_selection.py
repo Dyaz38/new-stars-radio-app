@@ -16,7 +16,11 @@ import random
 
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.ad_creative import AdCreative, CreativeStatus
-from app.constants.placements import creative_matches_placement
+from app.constants.placements import (
+    creative_matches_placement,
+    preferred_sizes_for_placement,
+    size_matches,
+)
 from app.core.security import create_tracking_token
 
 logger = logging.getLogger(__name__)
@@ -229,6 +233,16 @@ class AdSelectionService:
 
         if not active_creatives:
             return None
+
+        # Prefer the best-listed size for this placement (e.g. 320×50 before 728×90 in Events).
+        for target_w, target_h in preferred_sizes_for_placement(placement):
+            sized = [
+                c
+                for c in active_creatives
+                if size_matches(c.image_width, c.image_height, target_w, target_h)
+            ]
+            if sized:
+                return random.choice(sized)
 
         return random.choice(active_creatives)
     
