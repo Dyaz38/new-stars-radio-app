@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../constants';
 import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
 import { getLocalHouseAd, HOUSE_AD } from '../constants/houseAd';
+import { AdSenseFallback, isAdSenseFallbackConfigured } from './AdSenseFallback';
 
 interface AdData {
   ad_id: string;
@@ -264,6 +265,19 @@ export const AdBanner = ({
     return null;
   }
 
+  if (displayAd.is_house_ad && isAdSenseFallbackConfigured(placement)) {
+    return (
+      <AdSenseFallback
+        className={className}
+        style={style}
+        width={dimensions.width}
+        height={dimensions.height}
+        placement={placement}
+        compact={compact || dimensions.height <= 50}
+      />
+    );
+  }
+
   const imageUrl = resolveAdImageUrl(displayAd.image_url);
 
   return (
@@ -274,6 +288,7 @@ export const AdBanner = ({
         ...style,
       }}
       data-promo-placement={placement}
+      data-ad-placement={placement}
       data-house-promo={displayAd.is_house_ad ? 'true' : 'false'}
     >
       <a
