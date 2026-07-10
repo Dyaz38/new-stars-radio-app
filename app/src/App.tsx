@@ -37,6 +37,7 @@ import {
   getThisWeekSegment,
 } from './utils/eventCalendar';
 import { filterEventsForCountry } from './utils/eventGeo';
+import { applyCurrentScheduleFlags } from './utils/scheduleTime';
 import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
 import { EventPosterImage } from './components/EventPosterImage';
 import { EventHousePromo } from './components/EventHousePromo';
@@ -148,8 +149,6 @@ const RadioStreamingApp = () => {
   const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
 
   // UI state
-  const [currentShow, setCurrentShow] = useState('Midday R&B Flow');
-  const [currentDJ, setCurrentDJ] = useState('DJ Lila');
   const [showSchedule, setShowSchedule] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -163,7 +162,9 @@ const RadioStreamingApp = () => {
       return false;
     }
   });
-  const [schedule, setSchedule] = useState<ScheduleShow[]>([...DEFAULT_SCHEDULE]);
+  const [schedule, setSchedule] = useState<ScheduleShow[]>(() =>
+    applyCurrentScheduleFlags([...DEFAULT_SCHEDULE]),
+  );
   const [eventsList, setEventsList] = useState<StationEvent[]>([]);
   const [eventsListenerCountry, setEventsListenerCountry] = useState<string | null>(null);
   const [eventsPublishedCount, setEventsPublishedCount] = useState<number | null>(null);
@@ -214,7 +215,7 @@ const RadioStreamingApp = () => {
   );
 
   const djInitials = useMemo(() => {
-    const name = currentDJ.trim();
+    const name = (currentScheduleSlot?.dj ?? '').trim();
     if (!name) return '?';
     if (/^auto\s+dj$/i.test(name)) return '♪';
     const withoutPrefix = name.replace(/^DJ\s+/i, '').trim();
@@ -223,7 +224,7 @@ const RadioStreamingApp = () => {
       return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
     }
     return words[0].slice(0, 2).toUpperCase();
-  }, [currentDJ]);
+  }, [currentScheduleSlot?.dj]);
 
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
@@ -234,29 +235,34 @@ const RadioStreamingApp = () => {
 
   // Load schedule from external source (API, JSON file, or local storage)
   const loadSchedule = useCallback(async () => {
+    const applyAndSet = (items: ScheduleShow[]) => {
+      setSchedule(applyCurrentScheduleFlags(items));
+    };
+
     try {
       const response = await fetch(getScheduleUrl());
       if (response.ok) {
         const payload = await response.json() as { items?: ScheduleShow[] };
         if (Array.isArray(payload.items) && payload.items.length > 0) {
-          setSchedule(payload.items);
+          applyAndSet(payload.items);
           console.log('📅 Schedule loaded from ad server');
           return;
         }
       }
 
-      // Fallback for offline/dev mode
       const savedSchedule = localStorage.getItem(STORAGE_KEYS.SCHEDULE);
       if (savedSchedule) {
         const parsedSchedule: ScheduleShow[] = JSON.parse(savedSchedule);
-        setSchedule(parsedSchedule);
+        applyAndSet(parsedSchedule);
         console.log('📅 Schedule fallback loaded from localStorage');
         return;
       }
 
       console.log('📅 Schedule fallback using defaults');
+      applyAndSet([...DEFAULT_SCHEDULE]);
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
+      applyAndSet([...DEFAULT_SCHEDULE]);
     }
   }, []);
 
@@ -348,54 +354,10 @@ const RadioStreamingApp = () => {
     void loadSchedule();
   }, [loadSchedule]);
 
-  // Mark current show based on time
-  const updateCurrentShow = useCallback(() => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
-
-    const newSchedule = schedule.map(show => {
-      const [startTime, endTime] = show.time.split(' - ');
-      const startMinutes = parseTime(startTime);
-      const endMinutes = parseTime(endTime);
-      
-      const isCurrent = (startMinutes <= currentTime && currentTime < endMinutes) ||
-                       (startMinutes > endMinutes && (currentTime >= startMinutes || currentTime < endMinutes));
-      
-      return { ...show, current: isCurrent };
-    });
-
-    if (JSON.stringify(newSchedule) !== JSON.stringify(schedule)) {
-      setSchedule(newSchedule);
-    }
-  }, [schedule]);
-
-  // Helper function to parse time string to minutes - memoized for performance
-  const parseTime = useCallback((timeStr: string): number => {
-    const [time, period] = timeStr.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let totalMinutes = hours * 60 + minutes;
-    
-    if (period === 'PM' && hours !== 12) totalMinutes += 12 * 60;
-    if (period === 'AM' && hours === 12) totalMinutes = minutes;
-    
-    return totalMinutes;
-  }, []); // No dependencies needed as it's a pure function
-
   // Load schedule on component mount
   useEffect(() => {
-    // Load schedule and update display
-    loadSchedule().then(() => {
-      // After loading, update the main display
-      const currentShowData = schedule.find(show => show.current);
-      if (currentShowData) {
-        setCurrentShow(currentShowData.show);
-        setCurrentDJ(currentShowData.dj);
-      }
-    });
-    void loadEvents();
-  }, []);
+    void loadSchedule();
+  }, [loadSchedule]);
 
   // Reload events when IP country is detected (server filters by country)
   useEffect(() => {
@@ -404,29 +366,19 @@ const RadioStreamingApp = () => {
     }
   }, [listenerGeo.country, listenerGeo.loading, loadEvents]);
 
-  // Update current show every minute and sync with main display
+  // Refresh which schedule slot is ON AIR (hero card + schedule modal)
   useEffect(() => {
-    updateCurrentShow();
-    
-    // Update main display with current show info
-    const currentShowData = schedule.find(show => show.current);
-    if (currentShowData) {
-      setCurrentShow(currentShowData.show);
-      setCurrentDJ(currentShowData.dj);
-    }
-    
-    const interval = setInterval(() => {
-      updateCurrentShow();
-      // Also update main display in the interval
-      const currentShowData = schedule.find(show => show.current);
-      if (currentShowData) {
-        setCurrentShow(currentShowData.show);
-        setCurrentDJ(currentShowData.dj);
-      }
-    }, RADIO_CONFIG.SCHEDULE_UPDATE_INTERVAL);
-    
+    const tick = () => {
+      setSchedule((prev) => {
+        const next = applyCurrentScheduleFlags(prev);
+        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+      });
+    };
+
+    tick();
+    const interval = setInterval(tick, RADIO_CONFIG.SCHEDULE_UPDATE_INTERVAL);
     return () => clearInterval(interval);
-  }, [schedule]);
+  }, []);
 
   // Update current song for liked songs tracking
   useEffect(() => {
@@ -562,8 +514,19 @@ const RadioStreamingApp = () => {
               <span className="text-lg sm:text-2xl font-bold">{djInitials}</span>
               </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold line-clamp-2 leading-snug">{currentShow}</h2>
-              <p className="text-sm sm:text-base text-gray-300 truncate">with {currentDJ}</p>
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+                <h2 className="text-lg sm:text-xl font-bold line-clamp-2 leading-snug">
+                  {currentScheduleSlot?.show ?? '—'}
+                </h2>
+                {currentScheduleSlot?.current ? (
+                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse shrink-0">
+                    ON AIR
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-sm sm:text-base text-gray-300 truncate">
+                {currentScheduleSlot ? `with ${currentScheduleSlot.dj}` : 'Loading schedule…'}
+              </p>
               <p className="text-xs sm:text-sm text-gray-400">
                 {currentScheduleSlot?.time ?? '—'}
               </p>
@@ -688,10 +651,13 @@ const RadioStreamingApp = () => {
                       <p className="text-gray-400 text-xs sm:text-sm font-mono text-right">{slot.time}</p>
                       {(() => {
                         const reminded = isShowReminded(slot.id);
+                        const onAirNow = Boolean(slot.current);
                         return (
                           <button
                             type="button"
                             data-testid={`show-reminder-${slot.id}`}
+                            disabled={onAirNow}
+                            title={onAirNow ? 'This show is on air now' : 'Notify 15 minutes before start'}
                             onClick={() => {
                               void toggleShowReminder(slot).then((result) => {
                                 if (result === 'added') {
@@ -712,7 +678,7 @@ const RadioStreamingApp = () => {
                               reminded
                                 ? 'bg-pink-600/90 hover:bg-pink-600 text-white'
                                 : 'bg-white/10 hover:bg-white/20 text-white'
-                            }`}
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
                             aria-pressed={reminded}
                           >
                             {reminded ? (
@@ -934,6 +900,13 @@ const RadioStreamingApp = () => {
                             type="button"
                             data-testid={`event-reminder-${event.id}`}
                             disabled={!canRemind}
+                            title={
+                              !range
+                                ? 'Add start/end times in Ad Manager to enable reminders'
+                                : event.status === 'past'
+                                  ? 'This event has ended'
+                                  : 'Notify 15 minutes before start'
+                            }
                             onClick={() => {
                               void toggleEventReminder(event).then((result) => {
                                 if (result === 'added') {
@@ -970,8 +943,8 @@ const RadioStreamingApp = () => {
                           </button>
                           {!range ? (
                             <p className="text-xs text-gray-500 w-full">
-                              Set start time in Ad Manager to open this event in Google Calendar or download a
-                              calendar file (.ics).
+                              Add <strong className="text-gray-400">start time</strong> in Ad Manager to enable
+                              reminders and calendar links.
                             </p>
                           ) : (
                             <>

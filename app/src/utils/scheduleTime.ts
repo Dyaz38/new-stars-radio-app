@@ -32,3 +32,30 @@ export function getNextShowStartAt(timeRange: string, from: Date = new Date()): 
 export function getFollowingShowStartAt(timeRange: string, afterStart: Date): Date {
   return getNextShowStartAt(timeRange, new Date(afterStart.getTime() + 1000));
 }
+
+/** True when `now` falls inside a daily schedule slot (handles overnight ranges). */
+export function isScheduleSlotCurrent(timeRange: string, now: Date = new Date()): boolean {
+  const parts = timeRange.split(' - ').map((s) => s.trim());
+  if (parts.length < 2) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutes = parseScheduleClockTime(parts[0]);
+  const endMinutes = parseScheduleClockTime(parts[1]);
+
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
+
+  return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+}
+
+/** Mark which schedule row is on air right now (for hero card + schedule modal). */
+export function applyCurrentScheduleFlags<T extends { time: string; current?: boolean }>(
+  slots: T[],
+  now: Date = new Date(),
+): T[] {
+  return slots.map((slot) => ({
+    ...slot,
+    current: isScheduleSlotCurrent(slot.time, now),
+  }));
+}
