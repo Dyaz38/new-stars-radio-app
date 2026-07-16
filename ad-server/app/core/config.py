@@ -148,10 +148,12 @@ class Settings(BaseSettings):
             origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
         else:
             origins = []
-        # Ensure production URLs are always allowed
+        # Ensure production URLs are always allowed (even if CORS_ORIGINS is trimmed on Railway)
         for origin in [
             "https://newstarsadminpanel.vercel.app",
             "https://new-stars-radio-app.vercel.app",
+            "https://www.newstarsradio.com",
+            "https://newstarsradio.com",
         ]:
             if origin not in origins:
                 origins.append(origin)
