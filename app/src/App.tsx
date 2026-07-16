@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink, MapPin, Bell, BellRing } from 'lucide-react';
+import { Calendar, Users, Radio, Signal, Settings, Play, Pause, Volume2, Trash2, Download, ExternalLink, MapPin, Bell, BellRing, Shield } from 'lucide-react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlayerControls } from './components/PlayerControls';
 import { NowPlaying } from './components/NowPlaying';
@@ -18,6 +18,7 @@ import { PWAPrompt } from './components/PWAPrompt';
 import { PWAInstallPanel } from './components/PWAInstallPanel';
 import { AdBanner } from './components/AdBanner';
 import { AD_PLACEMENTS } from './constants/adPlacements';
+import { PRIVACY_POLICY_URL } from './constants/privacy';
 import type { ScheduleShow, StationEvent } from './types';
 
 import {
@@ -1106,6 +1107,24 @@ const RadioStreamingApp = () => {
                 <p className="text-xs sm:text-sm text-gray-300">
                   Some browsers block sound until you press play. If you do not hear audio, tap the main play button once.
                 </p>
+              </section>
+
+              <section className="bg-white/5 rounded-xl p-3 sm:p-4">
+                <h4 className="text-xs sm:text-sm font-semibold text-pink-300 mb-2 flex items-center gap-2">
+                  <Shield className="w-4 h-4 shrink-0" aria-hidden />
+                  Privacy
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-400 mb-3">
+                  How we handle location for ads and events, anonymous IDs, likes, reminders, and third-party services
+                  including Google AdSense.
+                </p>
+                <a
+                  href={PRIVACY_POLICY_URL}
+                  className="inline-flex items-center gap-2 text-sm text-pink-300 hover:text-pink-200 underline"
+                >
+                  Read Privacy Policy
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+                </a>
               </section>
             </div>
           </div>
