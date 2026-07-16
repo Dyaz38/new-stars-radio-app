@@ -279,6 +279,8 @@ export const AdBanner = ({
   }
 
   const imageUrl = resolveAdImageUrl(displayAd.image_url);
+  const isNativeCompactCreative =
+    compact && displayAd.image_width <= 400 && displayAd.image_height <= 60;
 
   return (
     <div
@@ -290,6 +292,7 @@ export const AdBanner = ({
       data-promo-placement={placement}
       data-ad-placement={placement}
       data-house-promo={displayAd.is_house_ad ? 'true' : 'false'}
+      data-ad-size={`${displayAd.image_width}x${displayAd.image_height}`}
     >
       <a
         ref={adRef}
@@ -309,14 +312,28 @@ export const AdBanner = ({
           alt={displayAd.alt_text || 'Advertisement'}
           width={displayAd.image_width}
           height={displayAd.image_height}
-          className="w-full h-auto rounded-lg shadow-md sm:shadow-lg"
-          style={{
-            maxWidth: dimensions.width,
-            maxHeight: dimensions.height,
-            width: '100%',
-            height: 'auto',
-            objectFit: 'contain',
-          }}
+          className={
+            isNativeCompactCreative
+              ? 'rounded-lg shadow-md sm:shadow-lg'
+              : 'w-full h-auto rounded-lg shadow-md sm:shadow-lg'
+          }
+          style={
+            isNativeCompactCreative
+              ? {
+                  display: 'block',
+                  width: `${Math.min(displayAd.image_width, dimensions.width)}px`,
+                  height: `${Math.min(displayAd.image_height, dimensions.height)}px`,
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                }
+              : {
+                  maxWidth: dimensions.width,
+                  maxHeight: dimensions.height,
+                  width: '100%',
+                  height: 'auto',
+                  objectFit: 'contain',
+                }
+          }
           onError={() => {
             console.error('Failed to load promo image:', imageUrl);
             if (!usingLocalFallbackRef.current) {

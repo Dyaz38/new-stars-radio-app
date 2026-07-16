@@ -126,11 +126,17 @@ export default function CampaignsPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex justify-between items-center">
-          <p className="text-gray-600">Manage advertising campaigns</p>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+          <div>
+            <p className="text-gray-600">Manage advertising campaigns</p>
+            <p className="mt-2 text-sm text-gray-500 max-w-xl">
+              After creating a campaign, upload both <strong>728 × 90</strong> (desktop banner) and{' '}
+              <strong>320 × 50</strong> (mobile banner + Events modal) creatives under Ad Creatives.
+            </p>
+          </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shrink-0 self-start"
           >
             ➕ Create Campaign
           </button>

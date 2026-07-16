@@ -2,6 +2,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
+import {
+  CREATIVE_SIZE_PRESETS,
+  type CreativeSizePresetId,
+  matchCreativeSizePreset,
+  placementTagsForDimensions,
+  presetForCreativeDimensions,
+  readImageFileDimensions,
+} from "../constants/creativeSizes";
 
 /** Resolve image URL: full URLs and data URLs as-is, relative paths get API origin prepended */
 function resolveImageUrl(url: string): string {
@@ -30,19 +38,9 @@ interface Campaign {
   status: string;
 }
 
-const CREATIVE_SIZE_PRESETS = [
-  { id: "728x90", label: "728 × 90 — Main banner (desktop) + Events modal", width: 728, height: 90, placements: "banner_top, banner_bottom, events_modal" },
-  { id: "320x50", label: "320 × 50 — Main banner (mobile) + Events modal", width: 320, height: 50, placements: "banner_top, banner_bottom, events_modal" },
-] as const;
-
-type CreativeSizePresetId = (typeof CREATIVE_SIZE_PRESETS)[number]["id"];
-
 function presetForCreative(creative?: Creative | null): CreativeSizePresetId {
   if (!creative) return "728x90";
-  const match = CREATIVE_SIZE_PRESETS.find(
-    (p) => p.width === creative.image_width && p.height === creative.image_height,
-  );
-  return match?.id ?? "728x90";
+  return presetForCreativeDimensions(creative.image_width, creative.image_height);
 }
 
 export default function CreativesPage() {
@@ -116,11 +114,21 @@ export default function CreativesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex justify-between items-center">
-          <p className="text-gray-600">Manage ad creatives and images</p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+          <div className="max-w-2xl">
+            <p className="text-gray-600">Manage ad creatives and images</p>
+            <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+              <p className="font-medium">Events modal looks best at 320 × 50</p>
+              <p className="mt-1 text-indigo-900/90">
+                Upload a <strong>320 × 50</strong> creative alongside your 728 × 90 desktop banner for the same
+                campaign. The listener app prefers the mobile size in the Events modal; desktop-only creatives still
+                work but are scaled down.
+              </p>
+            </div>
+          </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shrink-0 self-start"
           >
             ➕ Upload Creative
           </button>
@@ -155,7 +163,21 @@ export default function CreativesPage() {
                     <p>
                       <strong>Size:</strong> {creative.image_width} × {creative.image_height}
                     </p>
-                    <p className="truncate">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {placementTagsForDimensions(creative.image_width, creative.image_height).map((tag) => (
+                        <span
+                          key={tag}
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            tag.includes("best fit")
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="truncate pt-1">
                       <strong>Click URL:</strong>{" "}
                       <a
                         href={creative.click_url}
@@ -250,16 +272,36 @@ function CreativeModal({
   const [imagePreview, setImagePreview] = useState<string>(
     creative ? resolveImageUrl(creative.image_url) : ""
   );
+  const [dimensionNotice, setDimensionNotice] = useState<string | null>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const dims = await readImageFileDimensions(file);
+      const matched = matchCreativeSizePreset(dims.width, dims.height);
+      if (matched) {
+        setFormData((prev) => ({ ...prev, sizePreset: matched.id }));
+        setDimensionNotice(
+          matched.eventsModalPreferred
+            ? `Detected ${dims.width}×${dims.height} — ideal for the Events modal and mobile banner.`
+            : `Detected ${dims.width}×${dims.height} — best for the desktop top banner.`,
+        );
+      } else {
+        setDimensionNotice(
+          `Image is ${dims.width}×${dims.height}. Use 320×50 (Events modal) or 728×90 (desktop banner) for best results.`,
+        );
+      }
+    } catch {
+      setDimensionNotice(null);
     }
   };
 
@@ -451,9 +493,14 @@ function CreativeModal({
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              The ad server matches creatives to slots by size: 728×90 → main banner (desktop);
-              320×50 → main banner (mobile) and Events modal. Uploads auto-detect dimensions.
+              File uploads auto-detect pixel size on the server. For URL uploads, pick the size that matches your
+              image. Add a <strong>320 × 50</strong> variant per campaign for a sharp Events modal ad.
             </p>
+            {dimensionNotice ? (
+              <p className="mt-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-3 py-2">
+                {dimensionNotice}
+              </p>
+            ) : null}
           </div>
 
           <div>
