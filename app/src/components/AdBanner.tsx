@@ -75,6 +75,26 @@ function normalizeClickUrl(url: string): string {
   return url.replace('ads@newstarsradio.com', 'sales@newstarsradio.com');
 }
 
+function isHousePromoAd(ad: AdData): boolean {
+  return Boolean(
+    ad.is_house_ad ||
+    ad.ad_id === 'house-local' ||
+    ad.image_url.includes('newstars-house') ||
+    ad.image_url.includes('/static/promo/'),
+  );
+}
+
+function normalizeDisplayAd(ad: AdData, compact: boolean, viewportWidth: number): AdData {
+  if (!isHousePromoAd(ad)) return ad;
+  const local = getLocalHouseAd(compact, viewportWidth);
+  return {
+    ...ad,
+    image_url: local.url,
+    image_width: local.width,
+    image_height: local.height,
+    is_house_ad: true,
+  };
+}
 function resolveAdImageUrl(imageUrl: string): string {
   if (imageUrl.startsWith('http')) return imageUrl;
   if (imageUrl.startsWith('/promo/')) return imageUrl;
@@ -221,7 +241,11 @@ export const AdBanner = ({
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    const activeAd = adData ?? buildLocalHouseAdData(compact, dimensions.width);
+    const activeAd = normalizeDisplayAd(
+      adData ?? buildLocalHouseAdData(compact, dimensions.width),
+      compact,
+      dimensions.width,
+    );
     if (!activeAd) return;
 
     if (activeAd.is_house_ad || !activeAd.click_tracking_token) {
@@ -251,20 +275,15 @@ export const AdBanner = ({
     }
   };
 
-  if (loading && !adData) {
-    if (hideWhenEmpty) return null;
-    return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ minHeight: Math.max(dimensions.height, 50), ...style }}
-        data-testid="promo-banner-loading"
-        aria-hidden
-      />
-    );
+  if (hideWhenEmpty && loading && !adData) {
+    return null;
   }
 
-  const displayAd =
-    adData ?? buildLocalHouseAdData(compact, dimensions.width);
+  const displayAd = normalizeDisplayAd(
+    adData ?? buildLocalHouseAdData(compact, dimensions.width),
+    compact,
+    dimensions.width,
+  );
   const clickUrl = normalizeClickUrl(displayAd.click_url);
 
   if (hideWhenEmpty && displayAd.is_house_ad) {
@@ -290,8 +309,11 @@ export const AdBanner = ({
   }
 
   const imageUrl = resolveAdImageUrl(displayAd.image_url);
+  const isMobileLeaderboard = !compact && dimensions.height <= 50;
   const isNativeCompactCreative =
-    compact && displayAd.image_width <= 400 && displayAd.image_height <= 60;
+    (compact || isMobileLeaderboard) &&
+    displayAd.image_width <= 400 &&
+    displayAd.image_height <= 60;
 
   return (
     <div

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'new-stars-radio-v4';
+const CACHE_NAME = 'new-stars-radio-v5';
 const urlsToCache = [
   '/manifest.json',
   '/station-icon-192.png',
