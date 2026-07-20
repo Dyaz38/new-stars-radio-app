@@ -43,6 +43,33 @@ function presetForCreative(creative?: Creative | null): CreativeSizePresetId {
   return presetForCreativeDimensions(creative.image_width, creative.image_height);
 }
 
+function CreativePreview({ creative }: { creative: Creative }) {
+  const [failed, setFailed] = useState(false);
+  const src = resolveImageUrl(creative.image_url);
+  const showBroken = failed || !src.trim();
+
+  return (
+    <div className="relative pb-[56.25%] bg-gray-100">
+      {showBroken ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center">
+          <span className="text-xs font-semibold text-amber-800">Preview unavailable</span>
+          <span className="mt-1 text-[11px] text-gray-500 break-all line-clamp-3">
+            {creative.image_url?.trim() || "No image URL saved"}
+          </span>
+          <span className="mt-2 text-[11px] text-gray-400">Edit → re-upload or paste Image URL</span>
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={creative.alt_text}
+          className="absolute inset-0 w-full h-full object-contain"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function CreativesPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -139,13 +166,7 @@ export default function CreativesPage() {
           {creatives && creatives.length > 0 ? (
             creatives.map((creative) => (
               <div key={creative.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div className="relative pb-[56.25%] bg-gray-100">
-                  <img
-                    src={resolveImageUrl(creative.image_url)}
-                    alt={creative.alt_text}
-                    className="absolute inset-0 w-full h-full object-contain"
-                  />
-                </div>
+                <CreativePreview creative={creative} />
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{creative.name}</h3>
@@ -265,7 +286,7 @@ function CreativeModal({
     name: creative?.name || "",
     click_url: creative?.click_url || "",
     alt_text: creative?.alt_text || "",
-    image_url: "",
+    image_url: creative?.image_url || "",
     sizePreset: presetForCreative(creative),
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -316,6 +337,14 @@ function CreativeModal({
         CREATIVE_SIZE_PRESETS[0];
 
       if (creative) {
+        if (imageFile) {
+          const formDataToSend = new FormData();
+          const file = imageFile;
+          const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : ".png";
+          formDataToSend.append("image_file", file, file.name || `creative${ext}`);
+          await api.post(`/creatives/${creative.id}/image`, formDataToSend);
+        }
+
         // Backend PUT expects JSON, not FormData
         const payload: Record<string, string | number | undefined> = {
           name: formData.name,
@@ -323,7 +352,7 @@ function CreativeModal({
           alt_text: formData.alt_text || undefined,
         };
         const imageUrl = formData.image_url?.trim();
-        if (imageUrl) {
+        if (imageUrl && imageUrl !== creative.image_url.trim()) {
           payload.image_url = imageUrl;
           payload.image_width = selectedSize.width;
           payload.image_height = selectedSize.height;
@@ -346,13 +375,19 @@ function CreativeModal({
           const formDataToSend = new FormData();
           formDataToSend.append("campaign_id", formData.campaign_id);
           formDataToSend.append("name", formData.name);
-          formDataToSend.append("click_url", formData.click_url);
-          formDataToSend.append("alt_text", formData.alt_text);
+          formDataToSend.append("click_url", formData.click_url.trim());
+          formDataToSend.append("alt_text", formData.alt_text.trim());
           // Ensure file part has a filename (helps some backends)
           const file = imageFile!;
-          formDataToSend.append("image_file", file, file.name || "image.jpg");
+          const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : ".png";
+          formDataToSend.append("image_file", file, file.name || `creative${ext}`);
           await api.post("/creatives", formDataToSend);
         } else {
+          if (!formData.campaign_id) {
+            setError("Please select a campaign.");
+            setIsLoading(false);
+            return;
+          }
           await api.post("/creatives/with-url", {
             campaign_id: formData.campaign_id,
             name: formData.name,
@@ -449,11 +484,11 @@ function CreativeModal({
               Click URL *
             </label>
             <input
-              type="url"
+              type="text"
               required
               value={formData.click_url}
               onChange={(e) => setFormData({ ...formData, click_url: e.target.value })}
-              placeholder="https://example.com"
+              placeholder="https://example.com or mailto:sales@newstarsradio.com"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
@@ -508,26 +543,31 @@ function CreativeModal({
               Image URL (optional – use if file upload fails)
             </label>
             <input
-              type="url"
+              type="text"
               value={formData.image_url || ""}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, image_url: e.target.value }))
               }
               onBlur={(e) => {
                 const url = e.target.value.trim();
-                if (url) setImagePreview(url);
+                if (url) setImagePreview(resolveImageUrl(url));
               }}
-              placeholder="https://example.com/image.jpg"
+              placeholder="https://example.com/image.png"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
+            {creative?.image_url ? (
+              <p className="mt-1 text-xs text-gray-500 break-all">
+                Current: {creative.image_url}
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Or upload image file {creative ? "(leave empty to keep current)" : ""}
+              Or upload image file {creative ? "(pick a file to replace the current image)" : ""}
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp"
               onChange={handleImageChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />

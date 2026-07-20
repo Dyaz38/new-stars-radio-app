@@ -220,6 +220,62 @@ async def get_creative(
     return creative
 
 
+@router.post("/{creative_id}/image", response_model=CreativeResponse)
+async def replace_creative_image(
+    creative_id: UUID,
+    image_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Replace a creative's image file (updates URL and detected dimensions)."""
+    creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
+    if not creative:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Creative not found",
+        )
+
+    effective_filename = (image_file.filename or "").strip() or "image.jpg"
+    file_ext = Path(effective_filename).suffix.lower()
+    allowed = settings.get_allowed_extensions_list()
+    if file_ext not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Use one of: {', '.join(allowed)}",
+        )
+
+    try:
+        image_url = upload_creative_image(image_file, creative.campaign_id, effective_filename)
+    except Exception as e:
+        logger.exception("Creative image replace failed: %s", e)
+        err_msg = str(e).split("\n")[0][:200]
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                f"File upload failed: {err_msg}. "
+                "Check R2 credentials in Railway, or paste a direct Image URL on Edit instead."
+            ),
+        ) from e
+
+    image_width, image_height = await _read_upload_dimensions(image_file)
+    creative.image_url = image_url
+    creative.image_width = image_width
+    creative.image_height = image_height
+
+    try:
+        db.commit()
+        db.refresh(creative)
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Creative image replace database error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please try again.",
+        ) from e
+
+    return creative
+
+
 @router.put("/{creative_id}", response_model=CreativeResponse)
 async def update_creative(
     creative_id: UUID,
