@@ -1,49 +1,39 @@
 """
 Ad creative management endpoints.
 """
-import io
 import logging
-from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, status, UploadFile
-from PIL import Image, UnidentifiedImageError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.core.config import settings
 from app.core.database import get_db
 from app.models.ad_creative import AdCreative, CreativeStatus
 from app.models.campaign import Campaign
 from app.models.user import User
 from app.schemas.creative import CreativeCreate, CreativeResponse, CreativeUpdate
-from app.services.storage import upload_creative_image
+from app.services.image_upload import buffer_image_upload
+from app.services.storage import upload_creative_bytes
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-async def _read_upload_dimensions(image_file: UploadFile) -> Tuple[int, int]:
-    """Read pixel dimensions from an uploaded image."""
-    content = await image_file.read()
-    await image_file.seek(0)
-    try:
-        with Image.open(io.BytesIO(content)) as img:
-            width, height = img.size
-    except UnidentifiedImageError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not read image dimensions. Upload a valid JPEG, PNG, GIF, or WebP file.",
-        ) from e
-    if width <= 0 or height <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image dimensions.",
-        )
-    return width, height
+def _storage_upload_error(prefix: str, exc: Exception) -> HTTPException:
+    logger.exception("%s: %s", prefix, exc)
+    err_msg = str(exc).split("\n")[0][:200]
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            f"{prefix}: {err_msg}. "
+            "Check Railway storage settings (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
+            "R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL)."
+        ),
+    )
 
 
 @router.post("", response_model=CreativeResponse, status_code=status.HTTP_201_CREATED)
@@ -54,47 +44,24 @@ async def create_creative(
     alt_text: Optional[str] = Form(None),
     image_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new ad creative with image upload."""
     logger.info("create_creative: campaign_id=%s name=%r", campaign_id, name)
 
-    # Verify campaign exists
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Campaign not found"
+            detail="Campaign not found",
         )
 
-    # Validate file (allow missing filename for some clients; use default)
-    effective_filename = (image_file.filename or "").strip() or "image.jpg"
-    file_ext = Path(effective_filename).suffix.lower()
-    allowed = settings.get_allowed_extensions_list()
-    if file_ext not in allowed:
-        logger.warning("Creative create 400: file type not allowed filename=%r ext=%r", image_file.filename, file_ext)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Use one of: {', '.join(allowed)}"
-        )
+    content, effective_filename, image_width, image_height = await buffer_image_upload(image_file)
 
-    # Upload to R2 (if configured) or local disk
     try:
-        image_url = upload_creative_image(image_file, campaign_id, effective_filename)
+        image_url = upload_creative_bytes(content, campaign_id, effective_filename)
     except Exception as e:
-        logger.exception("Creative image upload failed: %s", e)
-        err_msg = str(e).split("\n")[0][:200]  # First line, truncated
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                f"File upload failed: {err_msg}. "
-                "Check R2 credentials in Railway (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME). "
-                "Or use Image URL instead of file upload."
-            ),
-        ) from e
-
-    # Detect image dimensions from the uploaded file
-    image_width, image_height = await _read_upload_dimensions(image_file)
+        raise _storage_upload_error("File upload failed", e) from e
 
     creative = AdCreative(
         campaign_id=campaign_id,
@@ -114,7 +81,7 @@ async def create_creative(
     except IntegrityError as e:
         db.rollback()
         logger.warning("Creative create integrity error: %s", e)
-        hint = "Duplicate name in campaign? Try a different creative name, or use Image URL instead of file upload."
+        hint = "Duplicate name in campaign? Try a different creative name."
         try:
             err_msg = str(e.orig) if hasattr(e, "orig") and e.orig else str(e)
             if "foreign key" in err_msg.lower() or "violates foreign key" in err_msg.lower():
@@ -142,15 +109,14 @@ async def create_creative(
 async def create_creative_with_url(
     creative_data: CreativeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new ad creative with image URL (no file upload)."""
-    # Verify campaign exists
     campaign = db.query(Campaign).filter(Campaign.id == creative_data.campaign_id).first()
     if not campaign:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Campaign not found"
+            detail="Campaign not found",
         )
 
     creative = AdCreative(
@@ -192,14 +158,14 @@ async def list_creatives(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """List ad creatives, optionally filtered by campaign."""
     query = db.query(AdCreative)
-    
+
     if campaign_id:
         query = query.filter(AdCreative.campaign_id == campaign_id)
-    
+
     creatives = query.offset(skip).limit(limit).all()
     return creatives
 
@@ -208,14 +174,14 @@ async def list_creatives(
 async def get_creative(
     creative_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
     if not creative:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Creative not found"
+            detail="Creative not found",
         )
     return creative
 
@@ -235,29 +201,13 @@ async def replace_creative_image(
             detail="Creative not found",
         )
 
-    effective_filename = (image_file.filename or "").strip() or "image.jpg"
-    file_ext = Path(effective_filename).suffix.lower()
-    allowed = settings.get_allowed_extensions_list()
-    if file_ext not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Use one of: {', '.join(allowed)}",
-        )
+    content, effective_filename, image_width, image_height = await buffer_image_upload(image_file)
 
     try:
-        image_url = upload_creative_image(image_file, creative.campaign_id, effective_filename)
+        image_url = upload_creative_bytes(content, creative.campaign_id, effective_filename)
     except Exception as e:
-        logger.exception("Creative image replace failed: %s", e)
-        err_msg = str(e).split("\n")[0][:200]
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                f"File upload failed: {err_msg}. "
-                "Check R2 credentials in Railway, or paste a direct Image URL on Edit instead."
-            ),
-        ) from e
+        raise _storage_upload_error("File upload failed", e) from e
 
-    image_width, image_height = await _read_upload_dimensions(image_file)
     creative.image_url = image_url
     creative.image_width = image_width
     creative.image_height = image_height
@@ -281,14 +231,14 @@ async def update_creative(
     creative_id: UUID,
     creative_data: CreativeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update an ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
     if not creative:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Creative not found"
+            detail="Creative not found",
         )
 
     update_data = creative_data.model_dump(exclude_unset=True)
@@ -324,14 +274,14 @@ async def update_creative(
 async def delete_creative(
     creative_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete an ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
     if not creative:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Creative not found"
+            detail="Creative not found",
         )
 
     try:
@@ -346,27 +296,3 @@ async def delete_creative(
         ) from e
 
     return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

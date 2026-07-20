@@ -1,7 +1,7 @@
 """
 Main FastAPI application entry point.
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -99,9 +99,25 @@ def _cors_headers_for_request(origin: str | None) -> dict:
     return {}
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Preserve API error details (upload failures, validation, auth) instead of masking them."""
+    origin = request.headers.get("origin")
+    headers = _cors_headers_for_request(origin)
+    if exc.headers:
+        headers = {**headers, **exc.headers}
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    """Ensure 500 responses include CORS headers so the browser doesn't show a CORS error instead."""
+    """Ensure unexpected 500 responses include CORS headers so the browser doesn't show a CORS error instead."""
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
     logger.exception("Unhandled exception: %s", exc)
     origin = request.headers.get("origin")
     headers = _cors_headers_for_request(origin)

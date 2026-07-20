@@ -183,9 +183,7 @@ async def upload_event_image(
         err_msg = str(e).split("\n")[0][:200]
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                f"Upload failed: {err_msg}. Check storage (R2 or disk) or use an Image URL instead."
-            ),
+            detail=f"Upload failed: {err_msg}. Check storage settings on Railway (R2 or disk).",
         ) from e
     return EventImageUploadResponse(image_url=image_url)
 

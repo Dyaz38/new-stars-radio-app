@@ -3,11 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
 import {
-  CREATIVE_SIZE_PRESETS,
-  type CreativeSizePresetId,
   matchCreativeSizePreset,
   placementTagsForDimensions,
-  presetForCreativeDimensions,
   readImageFileDimensions,
 } from "../constants/creativeSizes";
 
@@ -38,11 +35,6 @@ interface Campaign {
   status: string;
 }
 
-function presetForCreative(creative?: Creative | null): CreativeSizePresetId {
-  if (!creative) return "728x90";
-  return presetForCreativeDimensions(creative.image_width, creative.image_height);
-}
-
 function CreativePreview({ creative }: { creative: Creative }) {
   const [failed, setFailed] = useState(false);
   const src = resolveImageUrl(creative.image_url);
@@ -56,7 +48,7 @@ function CreativePreview({ creative }: { creative: Creative }) {
           <span className="mt-1 text-[11px] text-gray-500 break-all line-clamp-3">
             {creative.image_url?.trim() || "No image URL saved"}
           </span>
-          <span className="mt-2 text-[11px] text-gray-400">Edit → re-upload or paste Image URL</span>
+          <span className="mt-2 text-[11px] text-gray-400">Edit → upload a new image file</span>
         </div>
       ) : (
         <img
@@ -286,8 +278,6 @@ function CreativeModal({
     name: creative?.name || "",
     click_url: creative?.click_url || "",
     alt_text: creative?.alt_text || "",
-    image_url: creative?.image_url || "",
-    sizePreset: presetForCreative(creative),
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(
@@ -310,7 +300,6 @@ function CreativeModal({
       const dims = await readImageFileDimensions(file);
       const matched = matchCreativeSizePreset(dims.width, dims.height);
       if (matched) {
-        setFormData((prev) => ({ ...prev, sizePreset: matched.id }));
         setDimensionNotice(
           matched.eventsModalPreferred
             ? `Detected ${dims.width}×${dims.height} — ideal for the Events modal and mobile banner.`
@@ -332,10 +321,6 @@ function CreativeModal({
     setError("");
 
     try {
-      const selectedSize =
-        CREATIVE_SIZE_PRESETS.find((p) => p.id === formData.sizePreset) ??
-        CREATIVE_SIZE_PRESETS[0];
-
       if (creative) {
         if (imageFile) {
           const formDataToSend = new FormData();
@@ -345,59 +330,32 @@ function CreativeModal({
           await api.post(`/creatives/${creative.id}/image`, formDataToSend);
         }
 
-        // Backend PUT expects JSON, not FormData
-        const payload: Record<string, string | number | undefined> = {
+        await api.put(`/creatives/${creative.id}`, {
           name: formData.name,
           click_url: formData.click_url,
           alt_text: formData.alt_text || undefined,
-        };
-        const imageUrl = formData.image_url?.trim();
-        if (imageUrl && imageUrl !== creative.image_url.trim()) {
-          payload.image_url = imageUrl;
-          payload.image_width = selectedSize.width;
-          payload.image_height = selectedSize.height;
-        }
-        await api.put(`/creatives/${creative.id}`, payload);
+        });
       } else {
-        const hasFile = !!imageFile;
-        const imageUrl = formData.image_url?.trim() || "";
-        if (!hasFile && !imageUrl) {
-          setError("Please provide an image (upload a file or enter an image URL).");
+        if (!formData.campaign_id) {
+          setError("Please select a campaign.");
           setIsLoading(false);
           return;
         }
-        if (hasFile) {
-          if (!formData.campaign_id) {
-            setError("Please select a campaign.");
-            setIsLoading(false);
-            return;
-          }
-          const formDataToSend = new FormData();
-          formDataToSend.append("campaign_id", formData.campaign_id);
-          formDataToSend.append("name", formData.name);
-          formDataToSend.append("click_url", formData.click_url.trim());
-          formDataToSend.append("alt_text", formData.alt_text.trim());
-          // Ensure file part has a filename (helps some backends)
-          const file = imageFile!;
-          const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : ".png";
-          formDataToSend.append("image_file", file, file.name || `creative${ext}`);
-          await api.post("/creatives", formDataToSend);
-        } else {
-          if (!formData.campaign_id) {
-            setError("Please select a campaign.");
-            setIsLoading(false);
-            return;
-          }
-          await api.post("/creatives/with-url", {
-            campaign_id: formData.campaign_id,
-            name: formData.name,
-            click_url: formData.click_url,
-            alt_text: formData.alt_text || undefined,
-            image_url: imageUrl,
-            image_width: selectedSize.width,
-            image_height: selectedSize.height,
-          });
+        if (!imageFile) {
+          setError("Please choose an image file to upload.");
+          setIsLoading(false);
+          return;
         }
+
+        const formDataToSend = new FormData();
+        formDataToSend.append("campaign_id", formData.campaign_id);
+        formDataToSend.append("name", formData.name);
+        formDataToSend.append("click_url", formData.click_url.trim());
+        formDataToSend.append("alt_text", formData.alt_text.trim());
+        const file = imageFile;
+        const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : ".png";
+        formDataToSend.append("image_file", file, file.name || `creative${ext}`);
+        await api.post("/creatives", formDataToSend);
       }
 
       onSuccess();
@@ -414,7 +372,7 @@ function CreativeModal({
       } else if (err.response?.data && typeof err.response.data === "string") {
         errorMessage = err.response.data;
       } else if (err.response?.status) {
-        errorMessage = `Server error (${err.response.status}). Try using Image URL instead of file upload, or try again.`;
+        errorMessage = `Server error (${err.response.status}). Please try again.`;
       } else if (err.message === "Network Error" || !err.response) {
         errorMessage = "Request failed. Check browser Console (F12) for CORS/network errors.";
       } else {
@@ -436,11 +394,6 @@ function CreativeModal({
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600 font-medium">{error}</p>
-            {!creative && (
-              <p className="text-sm text-gray-600 mt-2">
-                Workaround: Use <strong>Image URL</strong> instead of file upload. Host your image on Imgur, your website, or any host, then paste the direct image link.
-              </p>
-            )}
           </div>
         )}
 
@@ -509,68 +462,24 @@ function CreativeModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ad size *
+              Image file {creative ? "(optional — choose to replace current image)" : "*"}
             </label>
-            <select
-              value={formData.sizePreset}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  sizePreset: e.target.value as CreativeSizePresetId,
-                })
-              }
+            <input
+              type="file"
+              required={!creative}
+              accept="image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp"
+              onChange={handleImageChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              {CREATIVE_SIZE_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
+            />
             <p className="mt-1 text-xs text-gray-500">
-              File uploads auto-detect pixel size on the server. For URL uploads, pick the size that matches your
-              image. Add a <strong>320 × 50</strong> variant per campaign for a sharp Events modal ad.
+              Use PNG or JPEG at 728×90 (desktop banner) or 320×50 (Events modal). Size is detected automatically
+              on upload.
             </p>
             {dimensionNotice ? (
               <p className="mt-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-3 py-2">
                 {dimensionNotice}
               </p>
             ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Image URL (optional – use if file upload fails)
-            </label>
-            <input
-              type="text"
-              value={formData.image_url || ""}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, image_url: e.target.value }))
-              }
-              onBlur={(e) => {
-                const url = e.target.value.trim();
-                if (url) setImagePreview(resolveImageUrl(url));
-              }}
-              placeholder="https://example.com/image.png"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            {creative?.image_url ? (
-              <p className="mt-1 text-xs text-gray-500 break-all">
-                Current: {creative.image_url}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Or upload image file {creative ? "(pick a file to replace the current image)" : ""}
-            </label>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp"
-              onChange={handleImageChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
             {imagePreview && (
               <div className="mt-4 relative pb-[56.25%] bg-gray-100 rounded-lg overflow-hidden">
                 <img

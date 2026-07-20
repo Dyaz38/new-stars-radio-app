@@ -2,7 +2,9 @@
 Storage service for ad creative images.
 Supports local disk (dev) and Cloudflare R2 (production).
 """
+import io
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
@@ -13,6 +15,49 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+_ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def sanitize_upload_filename(filename: str, default: str = "image.png") -> str:
+    """Return a safe filename with a known image extension."""
+    name = Path((filename or "").strip() or default).name
+    stem = Path(name).stem
+    ext = Path(name).suffix.lower()
+    safe_stem = re.sub(r"[^\w\-]+", "-", stem).strip("-") or "image"
+    if ext not in _ALLOWED_IMAGE_EXTENSIONS:
+        ext = Path(default).suffix.lower() or ".png"
+    return f"{safe_stem}{ext}"
+
+
+async def read_upload_bytes(upload: UploadFile, max_size: Optional[int] = None) -> bytes:
+    """Read and validate an uploaded file into memory."""
+    limit = max_size or settings.MAX_UPLOAD_SIZE
+    content = await upload.read()
+    if not content:
+        raise ValueError("Uploaded file is empty.")
+    if len(content) > limit:
+        max_mb = max(1, limit // (1024 * 1024))
+        raise ValueError(f"File is too large. Maximum size is {max_mb} MB.")
+    return content
+
+
+def upload_creative_bytes(
+    content: bytes,
+    campaign_id: UUID,
+    effective_filename: str,
+) -> str:
+    """
+    Upload creative bytes and return the URL to store in the database.
+    Uses a unique object key so repeated uploads do not overwrite prior images.
+    """
+    safe_name = sanitize_upload_filename(effective_filename)
+    storage_name = f"{campaign_id}_{uuid4().hex[:12]}_{safe_name}"
+    object_key = f"ads/{storage_name}"
+
+    if settings.r2_enabled:
+        return _upload_bytes_to_r2(content, object_key)
+    return _upload_bytes_to_local(content, storage_name)
+
 
 def upload_creative_image(
     file: UploadFile,
@@ -20,27 +65,29 @@ def upload_creative_image(
     effective_filename: str,
 ) -> str:
     """
-    Upload an image and return the URL to use in the database.
-    - If R2 is configured: uploads to R2 and returns the public URL.
-    - Otherwise: saves to local disk and returns /static/ads/... path.
+    Upload an image from an UploadFile and return the URL to use in the database.
+    Prefer upload_creative_bytes() when the file has already been buffered.
     """
-    object_key = f"ads/{campaign_id}_{effective_filename}"
-
-    if settings.r2_enabled:
-        return _upload_to_r2(file, object_key)
-    return _upload_to_local(file, campaign_id, effective_filename)
-
-
-def _upload_to_r2(file: UploadFile, object_key: str) -> str:
-    """Upload to Cloudflare R2 and return public URL."""
-    import boto3
-    from botocore.exceptions import ClientError
-
     file_body = file.file
     if file_body is None:
         raise ValueError("Upload file has no body")
 
-    # R2_ACCOUNT_ID must be just the ID (e.g. cab369bb...), not a URL
+    file_body.seek(0)
+    content = file_body.read()
+    if not content:
+        raise ValueError("Uploaded file is empty.")
+    if len(content) > settings.MAX_UPLOAD_SIZE:
+        max_mb = max(1, settings.MAX_UPLOAD_SIZE // (1024 * 1024))
+        raise ValueError(f"File is too large. Maximum size is {max_mb} MB.")
+
+    return upload_creative_bytes(content, campaign_id, effective_filename)
+
+
+def _upload_bytes_to_r2(content: bytes, object_key: str) -> str:
+    """Upload bytes to Cloudflare R2 and return public URL."""
+    import boto3
+    from botocore.exceptions import ClientError
+
     account_id = (settings.R2_ACCOUNT_ID or "").strip()
     for prefix in ("https://", "http://", "https:/", "http:/"):
         if account_id.lower().startswith(prefix):
@@ -48,6 +95,7 @@ def _upload_to_r2(file: UploadFile, object_key: str) -> str:
             break
     if account_id.endswith(".r2.cloudflarestorage.com"):
         account_id = account_id.replace(".r2.cloudflarestorage.com", "")
+
     endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com"
     client = boto3.client(
         "s3",
@@ -58,10 +106,8 @@ def _upload_to_r2(file: UploadFile, object_key: str) -> str:
     )
 
     try:
-        # Ensure we're at the start of the file (in case it was read earlier)
-        file_body.seek(0)
         client.upload_fileobj(
-            file_body,
+            io.BytesIO(content),
             settings.R2_BUCKET_NAME,
             object_key,
             ExtraArgs={"ContentType": _guess_content_type(object_key)},
@@ -70,7 +116,6 @@ def _upload_to_r2(file: UploadFile, object_key: str) -> str:
         logger.exception("R2 upload failed: %s", e)
         raise
 
-    # Return full public URL (R2_PUBLIC_URL should not have trailing slash)
     base = (settings.R2_PUBLIC_URL or "").rstrip("/")
     return f"{base}/{object_key}"
 
@@ -88,28 +133,12 @@ def _guess_content_type(object_key: str) -> str:
     return mime.get(ext, "application/octet-stream")
 
 
-def _upload_to_local(file: UploadFile, campaign_id: UUID, effective_filename: str) -> str:
-    """Save to local disk and return /static/ads/... path."""
-    import shutil
-
+def _upload_bytes_to_local(content: bytes, filename: str) -> str:
+    """Save bytes to local disk and return /static/ads/... path."""
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = f"{campaign_id}_{effective_filename}"
     file_path = upload_dir / filename
-
-    file_body = file.file
-    if file_body is None:
-        raise ValueError("Upload file has no body")
-
-    try:
-        file_body.seek(0)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file_body, buffer)
-    except OSError as e:
-        logger.warning("Local file save failed: %s", e, exc_info=True)
-        raise
-
+    file_path.write_bytes(content)
     return f"/static/ads/{filename}"
 
 
@@ -118,34 +147,26 @@ def upload_station_event_image(file: UploadFile, effective_filename: str) -> str
     Upload a station event banner/image; returns URL for JSON storage.
     R2: full public URL. Local: path /static/events/...
     """
-    uid = uuid4().hex[:16]
-    safe_name = f"{uid}_{effective_filename}"
-
-    if settings.r2_enabled:
-        object_key = f"events/{safe_name}"
-        return _upload_to_r2(file, object_key)
-
-    return _upload_event_to_local(file, safe_name)
-
-
-def _upload_event_to_local(file: UploadFile, filename: str) -> str:
-    """Save under static/events/ and return /static/events/... path."""
-    import shutil
-
-    events_dir = Path("static") / "events"
-    events_dir.mkdir(parents=True, exist_ok=True)
-    file_path = events_dir / filename
-
     file_body = file.file
     if file_body is None:
         raise ValueError("Upload file has no body")
 
-    try:
-        file_body.seek(0)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file_body, buffer)
-    except OSError as e:
-        logger.warning("Event image local save failed: %s", e, exc_info=True)
-        raise
+    file_body.seek(0)
+    content = file_body.read()
+    if not content:
+        raise ValueError("Uploaded file is empty.")
+    if len(content) > settings.MAX_UPLOAD_SIZE:
+        max_mb = max(1, settings.MAX_UPLOAD_SIZE // (1024 * 1024))
+        raise ValueError(f"File is too large. Maximum size is {max_mb} MB.")
 
-    return f"/static/events/{filename}"
+    safe_name = sanitize_upload_filename(effective_filename, default="image.jpg")
+    storage_name = f"{uuid4().hex[:16]}_{safe_name}"
+
+    if settings.r2_enabled:
+        object_key = f"events/{storage_name}"
+        return _upload_bytes_to_r2(content, object_key)
+
+    events_dir = Path("static") / "events"
+    events_dir.mkdir(parents=True, exist_ok=True)
+    (events_dir / storage_name).write_bytes(content)
+    return f"/static/events/{storage_name}"
