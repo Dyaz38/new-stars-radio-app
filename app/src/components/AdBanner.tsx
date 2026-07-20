@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../constants';
 import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
 import { getLocalHouseAd, HOUSE_AD } from '../constants/houseAd';
-import { AdSenseFallback, isAdSenseFallbackConfigured } from './AdSenseFallback';
+import { AdSenseFallback } from './AdSenseFallback';
+import { shouldTryAdSenseForHouseAd } from '../utils/adSenseEligibility';
 
 interface AdData {
   ad_id: string;
@@ -98,6 +99,7 @@ export const AdBanner = ({
   const [loading, setLoading] = useState(true);
   const [impressionTracked, setImpressionTracked] = useState(false);
   const [dimensions, setDimensions] = useState(getAdDimensions(compact));
+  const [adSenseUnfilled, setAdSenseUnfilled] = useState(false);
   const adRef = useRef<HTMLAnchorElement>(null);
   const hasLoadedOnceRef = useRef(false);
   const usingLocalFallbackRef = useRef(false);
@@ -107,6 +109,10 @@ export const AdBanner = ({
     setAdData(buildLocalHouseAdData(compact, dimensions.width));
     setImpressionTracked(false);
   }, [compact, dimensions.width]);
+
+  useEffect(() => {
+    setAdSenseUnfilled(false);
+  }, [adData?.ad_id, adData?.image_url, placement, dimensions.width, dimensions.height]);
 
   useEffect(() => {
     if (compact) return;
@@ -265,7 +271,11 @@ export const AdBanner = ({
     return null;
   }
 
-  if (displayAd.is_house_ad && isAdSenseFallbackConfigured(placement)) {
+  if (
+    displayAd.is_house_ad &&
+    shouldTryAdSenseForHouseAd(placement) &&
+    !adSenseUnfilled
+  ) {
     return (
       <AdSenseFallback
         className={className}
@@ -274,6 +284,7 @@ export const AdBanner = ({
         height={dimensions.height}
         placement={placement}
         compact={compact || dimensions.height <= 50}
+        onUnfilled={() => setAdSenseUnfilled(true)}
       />
     );
   }

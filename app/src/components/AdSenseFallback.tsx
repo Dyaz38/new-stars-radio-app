@@ -35,6 +35,8 @@ interface AdSenseFallbackProps {
   placement: AdPlacement;
   /** Fixed-size slot (Events modal / mobile banner) vs responsive leaderboard */
   compact?: boolean;
+  /** Called when the slot stays empty (preview domains, unapproved site, ad blockers). */
+  onUnfilled?: () => void;
 }
 
 /**
@@ -48,6 +50,7 @@ export function AdSenseFallback({
   height,
   placement,
   compact = false,
+  onUnfilled,
 }: AdSenseFallbackProps) {
   const placementKey = getAdSensePlacementKey(placement);
   const env = readAdSenseEnv(placementKey);
@@ -55,6 +58,30 @@ export function AdSenseFallback({
   const slot = env?.slot ?? '';
   const insRef = useRef<HTMLModElement>(null);
   const pushedRef = useRef(false);
+  const unfilledRef = useRef(false);
+
+  useEffect(() => {
+    unfilledRef.current = false;
+  }, [client, slot, placement]);
+
+  useEffect(() => {
+    if (!client || !slot || !onUnfilled) return;
+
+    const timer = window.setTimeout(() => {
+      if (unfilledRef.current) return;
+      const el = insRef.current;
+      const filled =
+        el?.getAttribute('data-ad-status') === 'filled' ||
+        Boolean(el?.querySelector('iframe')) ||
+        Boolean(el && el.offsetHeight > 12 && el.childElementCount > 0);
+      if (!filled) {
+        unfilledRef.current = true;
+        onUnfilled();
+      }
+    }, 4500);
+
+    return () => window.clearTimeout(timer);
+  }, [client, slot, onUnfilled, placement]);
 
   useEffect(() => {
     if (!client || !slot || !insRef.current || pushedRef.current) return;
