@@ -8,10 +8,26 @@ import {
   readImageFileDimensions,
 } from "../constants/creativeSizes";
 
+/** Normalize legacy R2 URLs where spaces were saved but the object key uses hyphens. */
+function normalizeRemoteImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.includes(" ")) {
+      parsed.pathname = parsed.pathname.replace(/ /g, "-");
+    }
+    return parsed.href;
+  } catch {
+    return url.replace(/ /g, "-");
+  }
+}
+
 /** Resolve image URL: full URLs and data URLs as-is, relative paths get API origin prepended */
 function resolveImageUrl(url: string): string {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+  if (url.startsWith("data:")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return normalizeRemoteImageUrl(url);
+  }
   const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
   const origin = new URL(base).origin;
   return origin + (url.startsWith("/") ? url : "/" + url);

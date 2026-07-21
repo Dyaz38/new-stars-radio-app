@@ -1,7 +1,7 @@
 """
 Ad creative schemas.
 """
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
 from uuid import UUID
 from datetime import datetime

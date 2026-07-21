@@ -8,7 +8,7 @@ from fastapi import UploadFile
 from PIL import Image
 
 from app.services.image_upload import buffer_image_upload
-from app.services.storage import sanitize_upload_filename, upload_creative_bytes
+from app.services.storage import public_url_for_object_key, sanitize_upload_filename, upload_creative_bytes
 from uuid import uuid4
 
 
@@ -32,6 +32,16 @@ async def test_buffer_image_upload_reads_dimensions_before_stream_is_consumed():
 
 def test_sanitize_upload_filename_strips_unsafe_chars():
     assert sanitize_upload_filename("../../evil name.PNG") == "evil-name.png"
+    assert sanitize_upload_filename("nsr ad 728x90 partner sample.png") == "nsr-ad-728x90-partner-sample.png"
+
+
+def test_public_url_for_object_key_encodes_spaces(monkeypatch):
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "R2_PUBLIC_URL", "https://pub-example.r2.dev")
+    url = public_url_for_object_key("ads/campaign_nsr ad.png")
+    assert url == "https://pub-example.r2.dev/ads/campaign_nsr%20ad.png"
+    assert " " not in url
 
 
 def test_upload_creative_bytes_writes_local_file(tmp_path, monkeypatch):

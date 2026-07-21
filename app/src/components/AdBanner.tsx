@@ -96,7 +96,17 @@ function normalizeDisplayAd(ad: AdData, compact: boolean, viewportWidth: number)
   };
 }
 function resolveAdImageUrl(imageUrl: string): string {
-  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    try {
+      const parsed = new URL(imageUrl);
+      if (parsed.pathname.includes(' ')) {
+        parsed.pathname = parsed.pathname.replace(/ /g, '-');
+      }
+      return parsed.href;
+    } catch {
+      return imageUrl.replace(/ /g, '-');
+    }
+  }
   if (imageUrl.startsWith('/promo/')) return imageUrl;
   // Legacy house paths from older API responses — serve from listener app /promo/
   if (imageUrl.includes('newstars-house-320x50')) return '/promo/newstars-house-320x50.png';

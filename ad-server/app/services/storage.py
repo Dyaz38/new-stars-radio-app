@@ -7,6 +7,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 from fastapi import UploadFile
@@ -117,7 +118,13 @@ def _upload_bytes_to_r2(content: bytes, object_key: str) -> str:
         raise
 
     base = (settings.R2_PUBLIC_URL or "").rstrip("/")
-    return f"{base}/{object_key}"
+    return public_url_for_object_key(object_key, base=base)
+
+
+def public_url_for_object_key(object_key: str, *, base: str | None = None) -> str:
+    """Build a browser-safe public URL for an object key (encodes spaces and special chars)."""
+    root = (base or settings.R2_PUBLIC_URL or "").rstrip("/")
+    return f"{root}/{quote(object_key, safe='/')}"
 
 
 def _guess_content_type(object_key: str) -> str:
