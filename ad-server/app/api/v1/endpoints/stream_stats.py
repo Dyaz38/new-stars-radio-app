@@ -22,6 +22,10 @@ _cache_value: Optional[int] = None
 _cache_ts: float = 0.0
 CACHE_TTL_SEC = 15.0
 
+_live_info_cache: Optional[dict] = None
+_live_info_cache_ts: float = 0.0
+LIVE_INFO_CACHE_TTL_SEC = 10.0
+
 # Mount block in status.xsl: <h3>Mount Point /newstarsradio_a</h3> ... Current Listeners:</td><td class="streamdata">N</td>
 def _build_listener_pattern(mount: str) -> re.Pattern[str]:
     # mount e.g. "/newstarsradio_a" or "newstarsradio_a"
@@ -93,4 +97,50 @@ async def get_listener_count():
         "listeners": 0,
         "error": "unavailable",
         "mount": settings.ICECAST_MOUNT,
+    }
+
+
+async def _fetch_live_info_from_airtime() -> Optional[dict]:
+    url = settings.AIRTIME_LIVE_INFO_URL
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(12.0, connect=5.0)) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "User-Agent": "NewStarsRadio-AdServer/1.0",
+                    "Accept": "application/json",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data if isinstance(data, dict) else None
+    except Exception as e:
+        logger.exception("Failed to fetch Airtime live-info from %s: %s", url, e)
+        return None
+
+
+@router.get(
+    "/live-info",
+    summary="Airtime Pro now-playing metadata",
+    description="Proxies Airtime live-info JSON for the listener app (avoids browser CORS/DNS issues).",
+)
+async def get_live_info():
+    global _live_info_cache, _live_info_cache_ts
+    now = time.monotonic()
+    if _live_info_cache is not None and (now - _live_info_cache_ts) < LIVE_INFO_CACHE_TTL_SEC:
+        return _live_info_cache
+
+    data = await _fetch_live_info_from_airtime()
+    if data is not None:
+        _live_info_cache = data
+        _live_info_cache_ts = now
+        return data
+
+    if _live_info_cache is not None:
+        return _live_info_cache
+
+    return {
+        "current": None,
+        "next": None,
+        "error": "unavailable",
     }

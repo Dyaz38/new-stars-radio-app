@@ -2,13 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      window.__NSR_DISABLE_SW__ = /localhost$|^127\.0\.0\.1$|\.vercel\.app$/.test(location.hostname);
+    </script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Stars Radio - Tomorrow's Stars, Today</title>
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA Manifest (production only — preview URLs hit Vercel SSO on manifest.json) -->
+    <script>
+      if (!window.__NSR_DISABLE_SW__) {
+        var nsrManifest = document.createElement('link');
+        nsrManifest.rel = 'manifest';
+        nsrManifest.href = '/manifest.json';
+        document.head.appendChild(nsrManifest);
+      }
+    </script>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#8b5cf6" media="(prefers-color-scheme: light)" />
@@ -26,31 +36,33 @@
     <!-- Microsoft Tiles -->
     <meta name="msapplication-TileColor" content="#8b5cf6" />
     <meta name="msapplication-TileImage" content="/station-icon-192.png" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <!-- Unregister service worker in development -->
+    <!-- After manifest link; Vite injects the app bundle after this block -->
     <script>
-      // Unregister service workers in development mode
-      if ('serviceWorker' in navigator && window.location.hostname === 'localhost') {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          registrations.forEach(registration => {
-            registration.unregister().then(() => {
-              console.log('Service worker unregistered for development');
+      (function () {
+        if (!window.__NSR_DISABLE_SW__) return;
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            registrations.forEach(function (registration) {
+              registration.unregister().then(function () {
+                console.log('Service worker unregistered for preview/dev host');
+              });
             });
           });
-        });
-        // Clear all caches
+        }
         if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => {
+          caches.keys().then(function (names) {
+            names.forEach(function (name) {
               caches.delete(name);
               console.log('Cache cleared:', name);
             });
           });
         }
-      }
+      })();
     </script>
+  </head>
+  <body>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

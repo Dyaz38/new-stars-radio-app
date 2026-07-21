@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Song, AirtimeApiResponse, MusicBrainzSearchResponse, CoverArtArchiveResponse, ArtworkResult } from '../types';
-import { API_ENDPOINTS, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
+import { API_ENDPOINTS, getMetadataUrls, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
 import { normalizeAirtimeLiveInfo } from '../api/airtimeLiveInfo';
 import { decodeHtmlEntities } from '../utils/decodeHtmlEntities';
 
@@ -256,7 +256,7 @@ export const useMetadata = () => {
   const fetchMetadata = useCallback(async () => {
     setIsLoadingMetadata(true);
     try {
-      for (const url of API_ENDPOINTS.METADATA) {
+      for (const url of getMetadataUrls()) {
         try {
           console.log(`🎵 Trying metadata from: ${url}`);
           const response = await fetch(url, {

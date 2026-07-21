@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Song } from '../types';
 import { RADIO_CONFIG } from '../constants';
+import { isProductionListenerHost } from '../utils/pwa';
 
 interface NotificationPreferences {
   nowPlaying: boolean;
@@ -74,8 +75,8 @@ export const useNotifications = () => {
       if (result === 'granted') {
         console.log('🔔 Notification permission granted');
         
-        // Register service worker for background notifications
-        if ('serviceWorker' in navigator) {
+        // Register service worker for background notifications (production only)
+        if ('serviceWorker' in navigator && isProductionListenerHost()) {
           try {
             const registration = await navigator.serviceWorker.register('/sw.js');
             console.log('Service Worker registered for notifications:', registration);

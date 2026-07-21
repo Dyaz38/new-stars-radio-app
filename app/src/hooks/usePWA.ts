@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { isStandalonePwa } from '../utils/pwa';
+import { isProductionListenerHost, isStandalonePwa } from '../utils/pwa';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -34,11 +34,14 @@ export const usePWA = () => {
     setPWAState(prev => ({ ...prev, isInstalled: isStandalonePwa() }));
   }, []);
 
-  // Register service worker (only in production)
+  // Register service worker only on the production listener domain
   useEffect(() => {
-    // Skip service worker registration in development mode
-    if (import.meta.env.DEV) {
-      console.log('[PWA] Skipping service worker registration in development mode');
+    if (
+      import.meta.env.DEV ||
+      !isProductionListenerHost() ||
+      (window as Window & { __NSR_DISABLE_SW__?: boolean }).__NSR_DISABLE_SW__
+    ) {
+      console.log('[PWA] Skipping service worker registration outside production host');
       return;
     }
 

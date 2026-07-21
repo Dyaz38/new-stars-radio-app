@@ -15,14 +15,17 @@ export const RADIO_CONFIG = {
   SCHEDULE_UPDATE_INTERVAL: 60000,  // 1 minute
 } as const;
 
+const AIRTIME_METADATA_URLS = [
+  'https://newstarsradio.airtime.pro/api/live-info',
+  'https://newstarsradio.airtime.pro/api/live-info-v2',
+  'https://newstarsradio.airtime.pro/embed/data',
+  'https://newstarsradio.airtime.pro/api/live-info/format/json',
+  'http://newstarsradio.out.airtime.pro:8000/status-json.xsl',
+] as const;
+
 export const API_ENDPOINTS = {
-  METADATA: [
-    'https://newstarsradio.airtime.pro/api/live-info',
-    'https://newstarsradio.airtime.pro/api/live-info-v2', 
-    'https://newstarsradio.airtime.pro/embed/data',
-    'https://newstarsradio.airtime.pro/api/live-info/format/json',
-    'http://newstarsradio.out.airtime.pro:8000/status-json.xsl'
-  ],
+  /** Direct Airtime/Icecast sources (fallback when ad-server proxy is down). */
+  METADATA: AIRTIME_METADATA_URLS,
   MUSICBRAINZ_SEARCH: 'https://musicbrainz.org/ws/2/release',
   COVERART_ARCHIVE: 'https://coverartarchive.org/release',
   ITUNES: 'https://itunes.apple.com/search',
@@ -30,6 +33,12 @@ export const API_ENDPOINTS = {
   GENIUS_SONGS: 'https://api.genius.com/songs',
   AD_SERVER: (import.meta.env.VITE_AD_SERVER_URL || 'https://new-stars-radio-app-production.up.railway.app/api/v1').replace(/\/$/, '')
 } as const;
+
+/** Now-playing metadata (Airtime live-info via ad server proxy, then direct fallbacks). */
+export const getMetadataUrls = (): readonly string[] => [
+  `${API_ENDPOINTS.AD_SERVER}/stream/live-info`,
+  ...AIRTIME_METADATA_URLS,
+];
 
 /** Real-time listener count (Icecast via ad server proxy). */
 export const getStreamListenersUrl = () => `${API_ENDPOINTS.AD_SERVER}/stream/listeners`;

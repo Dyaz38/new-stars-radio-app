@@ -3,7 +3,7 @@
  * live-info-v2 nests the same under `tracks`. Normalize so both work everywhere.
  */
 
-import { API_ENDPOINTS } from '../constants';
+import { getMetadataUrls } from '../constants';
 import { decodeHtmlEntities } from '../utils/decodeHtmlEntities';
 
 export type AirtimeTrackBlock = {
@@ -55,8 +55,8 @@ function normKey(s: string): string {
     .trim();
 }
 
-/** Same Airtime JSON sources as the metadata hook (excludes Icecast / dead embed). */
-const LIVE_INFO_URLS = API_ENDPOINTS.METADATA.filter((u) => u.includes('/api/live-info'));
+/** Same Airtime JSON sources as the metadata hook (proxy + direct live-info endpoints). */
+const LIVE_INFO_URLS = getMetadataUrls().filter((u) => u.includes('live-info'));
 
 /**
  * When the UI state has no genre, fetch live-info and return genre only if

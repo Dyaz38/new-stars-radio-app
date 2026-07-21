@@ -1,4 +1,4 @@
-const CACHE_NAME = 'new-stars-radio-v5';
+const CACHE_NAME = 'new-stars-radio-v6';
 const urlsToCache = [
   '/manifest.json',
   '/station-icon-192.png',
@@ -18,9 +18,20 @@ function shouldBypassServiceWorker(url) {
     url.hostname.includes('genius.com') ||
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
+    url.hostname.endsWith('.vercel.app') ||
+    url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/@') ||
     url.pathname.includes('vite') ||
     url.pathname.includes('react-refresh')
+  );
+}
+
+function canCacheResponse(request, response) {
+  return (
+    response &&
+    response.status === 200 &&
+    response.type === 'basic' &&
+    (request.url.startsWith('http://') || request.url.startsWith('https://'))
   );
 }
 
@@ -71,10 +82,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (shouldBypassServiceWorker(url)) return;
 
-  if (isHtmlRequest(event.request) || url.pathname.startsWith('/assets/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
+  if (isHtmlRequest(event.request)) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
@@ -82,16 +91,17 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)
         .then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
+          if (canCacheResponse(event.request, response)) {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
+              cache.put(event.request, responseToCache).catch(() => {});
             });
           }
           return response;
         })
         .catch((error) => {
           console.error('Service Worker fetch error:', error);
+          if (cached) return cached;
           throw error;
         });
 

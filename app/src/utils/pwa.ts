@@ -1,6 +1,22 @@
 const INSTALL_DISMISS_KEY = 'nsr-pwa-install-dismissed-at';
 const INSTALL_DISMISS_DAYS = 7;
 
+/** Production listener domain only — not Vercel previews or localhost. */
+export function isProductionListenerHost(): boolean {
+  const host = window.location.hostname.toLowerCase();
+  return host === 'newstarsradio.com' || host === 'www.newstarsradio.com';
+}
+
+/** Dev server, Vercel preview URLs, etc. — service worker must not run here. */
+export function isPreviewOrDevHost(): boolean {
+  const host = window.location.hostname.toLowerCase();
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.endsWith('.vercel.app')
+  );
+}
+
 export function isStandalonePwa(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
