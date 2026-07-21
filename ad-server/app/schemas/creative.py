@@ -16,6 +16,14 @@ class CreativeBase(BaseModel):
     click_url: str
     alt_text: Optional[str] = None
 
+    @field_validator("image_url")
+    @classmethod
+    def normalize_image_url(cls, value: str) -> str:
+        """Legacy uploads stored spaces in R2 URLs while the object key uses hyphens."""
+        if value.startswith("http") and " " in value:
+            return value.replace(" ", "-")
+        return value
+
 
 class CreativeCreate(CreativeBase):
     """Schema for creating a creative."""
