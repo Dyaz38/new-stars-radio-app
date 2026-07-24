@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { AdminHeader } from "../components/AdminHeader";
 import {
+  buildCampaignBannerCoverage,
+  findActiveDesktopCreativeForCampaign,
   matchCreativeSizePreset,
   placementTagsForDimensions,
   readImageFileDimensions,
+  suggestMobileCreativeDefaults,
 } from "../constants/creativeSizes";
 
 /** Normalize legacy R2 URLs where spaces were saved but the object key uses hyphens. */
@@ -81,6 +84,13 @@ function CreativePreview({ creative }: { creative: Creative }) {
 export default function CreativesPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createModalDefaults, setCreateModalDefaults] = useState<{
+    campaignId: string;
+    name: string;
+    click_url: string;
+    alt_text: string;
+    mobileUpload: boolean;
+  } | null>(null);
   const [editingCreative, setEditingCreative] = useState<Creative | null>(null);
 
   const { data: creatives, isLoading, error: creativesError } = useQuery({
@@ -100,6 +110,27 @@ export default function CreativesPage() {
     },
     retry: 1,
   });
+
+  const campaignsMissingMobile = useMemo(() => {
+    if (!campaigns || !creatives) return [];
+    return buildCampaignBannerCoverage(campaigns, creatives);
+  }, [campaigns, creatives]);
+
+  const openMobileUpload = (campaignId: string, campaignName: string) => {
+    const desktopCreative = findActiveDesktopCreativeForCampaign(creatives || [], campaignId);
+    const defaults = suggestMobileCreativeDefaults(campaignName, desktopCreative);
+    setCreateModalDefaults({
+      campaignId,
+      ...defaults,
+      mobileUpload: true,
+    });
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateModalDefaults(null);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -162,12 +193,52 @@ export default function CreativesPage() {
             </div>
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setCreateModalDefaults(null);
+              setShowCreateModal(true);
+            }}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shrink-0 self-start"
           >
             ➕ Upload Creative
           </button>
         </div>
+
+        {campaignsMissingMobile.length > 0 ? (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="font-medium text-amber-950">
+              {campaignsMissingMobile.length} active campaign
+              {campaignsMissingMobile.length === 1 ? "" : "s"} still need a 320 × 50 mobile banner
+            </p>
+            <p className="mt-1 text-sm text-amber-900/90">
+              Export a mobile-sized version of each desktop ad (320 px wide × 50 px tall), then upload one
+              creative per campaign below. Use the same click URL as the desktop banner.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {campaignsMissingMobile.map((row) => (
+                <li
+                  key={row.campaignId}
+                  className="flex flex-col gap-2 rounded-md border border-amber-100 bg-white/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{row.campaignName}</p>
+                    <p className="text-sm text-gray-600">Has 728 × 90 desktop banner • missing 320 × 50</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openMobileUpload(row.campaignId, row.campaignName)}
+                    className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                  >
+                    Upload 320 × 50
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+            All active campaigns with a desktop banner also have a 320 × 50 mobile / Events modal creative.
+          </div>
+        )}
 
         {/* Creatives Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -251,10 +322,21 @@ export default function CreativesPage() {
       {showCreateModal && (
         <CreativeModal
           campaigns={campaigns || []}
-          onClose={() => setShowCreateModal(false)}
+          defaultCampaignId={createModalDefaults?.campaignId}
+          defaultFormValues={
+            createModalDefaults
+              ? {
+                  name: createModalDefaults.name,
+                  click_url: createModalDefaults.click_url,
+                  alt_text: createModalDefaults.alt_text,
+                }
+              : undefined
+          }
+          mobileUpload={createModalDefaults?.mobileUpload ?? false}
+          onClose={closeCreateModal}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["creatives"] });
-            setShowCreateModal(false);
+            closeCreateModal();
           }}
         />
       )}
@@ -279,21 +361,31 @@ export default function CreativesPage() {
 function CreativeModal({
   creative,
   campaigns,
+  defaultCampaignId,
+  defaultFormValues,
+  mobileUpload = false,
   onClose,
   onSuccess,
 }: {
   creative?: Creative;
   campaigns: Campaign[];
+  defaultCampaignId?: string;
+  defaultFormValues?: {
+    name: string;
+    click_url: string;
+    alt_text: string;
+  };
+  mobileUpload?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
-    campaign_id: creative?.campaign_id || "",
-    name: creative?.name || "",
-    click_url: creative?.click_url || "",
-    alt_text: creative?.alt_text || "",
+    campaign_id: creative?.campaign_id || defaultCampaignId || "",
+    name: creative?.name || defaultFormValues?.name || "",
+    click_url: creative?.click_url || defaultFormValues?.click_url || "",
+    alt_text: creative?.alt_text || defaultFormValues?.alt_text || "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(
@@ -404,8 +496,19 @@ function CreativeModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 my-8">
         <h2 className="text-2xl font-bold mb-6">
-          {creative ? "Edit Creative" : "Upload New Creative"}
+          {creative
+            ? "Edit Creative"
+            : mobileUpload
+              ? "Upload 320 × 50 Mobile Banner"
+              : "Upload New Creative"}
         </h2>
+
+        {mobileUpload && !creative ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Choose a <strong>320 × 50</strong> PNG or JPEG. Size is detected on upload — the Events modal and
+            mobile top banner use this creative.
+          </div>
+        ) : null}
 
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">

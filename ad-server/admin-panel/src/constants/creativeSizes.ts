@@ -79,3 +79,85 @@ export async function readImageFileDimensions(
     img.src = url;
   });
 }
+
+export function isDesktopBannerSize(width: number, height: number): boolean {
+  return sizeMatches(width, height, 728, 90);
+}
+
+export function isMobileBannerSize(width: number, height: number): boolean {
+  return sizeMatches(width, height, 320, 50);
+}
+
+export interface CampaignBannerCoverage {
+  campaignId: string;
+  campaignName: string;
+  campaignStatus: string;
+  hasDesktopBanner: boolean;
+  hasMobileBanner: boolean;
+  needsMobileBanner: boolean;
+}
+
+export interface CreativeForCoverage {
+  campaign_id: string;
+  image_width: number;
+  image_height: number;
+  status: string;
+  name: string;
+  click_url: string;
+  alt_text: string;
+}
+
+export function buildCampaignBannerCoverage(
+  campaigns: Array<{ id: string; name: string; status: string }>,
+  creatives: CreativeForCoverage[],
+): CampaignBannerCoverage[] {
+  return campaigns
+    .filter((campaign) => campaign.status === "active")
+    .map((campaign) => {
+      const activeCreatives = creatives.filter(
+        (creative) =>
+          creative.campaign_id === campaign.id && creative.status === "active",
+      );
+      const hasDesktopBanner = activeCreatives.some((creative) =>
+        isDesktopBannerSize(creative.image_width, creative.image_height),
+      );
+      const hasMobileBanner = activeCreatives.some((creative) =>
+        isMobileBannerSize(creative.image_width, creative.image_height),
+      );
+      return {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        campaignStatus: campaign.status,
+        hasDesktopBanner,
+        hasMobileBanner,
+        needsMobileBanner: hasDesktopBanner && !hasMobileBanner,
+      };
+    })
+    .filter((row) => row.needsMobileBanner)
+    .sort((a, b) => a.campaignName.localeCompare(b.campaignName));
+}
+
+export function findActiveDesktopCreativeForCampaign(
+  creatives: CreativeForCoverage[],
+  campaignId: string,
+): CreativeForCoverage | undefined {
+  return creatives.find(
+    (creative) =>
+      creative.campaign_id === campaignId &&
+      creative.status === "active" &&
+      isDesktopBannerSize(creative.image_width, creative.image_height),
+  );
+}
+
+export function suggestMobileCreativeDefaults(
+  campaignName: string,
+  desktopCreative?: Pick<CreativeForCoverage, "name" | "click_url" | "alt_text">,
+): { name: string; click_url: string; alt_text: string } {
+  return {
+    name: desktopCreative?.name
+      ? `${desktopCreative.name} (320×50)`
+      : `${campaignName} 320×50`,
+    click_url: desktopCreative?.click_url ?? "",
+    alt_text: desktopCreative?.alt_text ?? `${campaignName} mobile banner`,
+  };
+}
