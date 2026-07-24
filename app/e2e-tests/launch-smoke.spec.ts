@@ -10,6 +10,7 @@ test.describe('New Stars Radio - Production launch smoke', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
+      localStorage.setItem('nsr-pwa-install-dismissed-at', String(Date.now()));
       HTMLMediaElement.prototype.play = function play() {
         return Promise.resolve();
       };
@@ -17,9 +18,21 @@ test.describe('New Stars Radio - Production launch smoke', () => {
     });
   });
 
+  async function dismissLaunchOverlays(page: import('@playwright/test').Page) {
+    const notNow = page.getByRole('button', { name: 'Not now' });
+    if (await notNow.isVisible().catch(() => false)) {
+      await notNow.click().catch(() => {});
+    }
+    const dismissInstall = page.getByRole('button', { name: 'Dismiss install prompt' });
+    if (await dismissInstall.isVisible().catch(() => false)) {
+      await dismissInstall.click().catch(() => {});
+    }
+  }
+
   test('loads, plays, and opens core modals', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('[data-testid="app-loaded"]', { timeout: 20000 });
+    await dismissLaunchOverlays(page);
 
     await expect(page.locator('h1')).toContainText(/NEW STARS RADIO/i);
     await expect(page.locator('[data-ad-placement="banner_top"]')).toBeVisible({ timeout: 20000 });
@@ -30,11 +43,13 @@ test.describe('New Stars Radio - Production launch smoke', () => {
     ).toBeVisible({ timeout: 10000 });
 
     const scheduleButton = page.locator('[data-testid="open-schedule"], button:has-text("View Schedule")').first();
+    await scheduleButton.scrollIntoViewIfNeeded();
     await scheduleButton.click();
     await expect(page.getByRole('heading', { name: /Schedule/i })).toBeVisible();
     await page.getByRole('button', { name: '✕' }).first().click();
 
     const eventsButton = page.locator('[data-testid="open-events"], button:has-text("Events")').first();
+    await eventsButton.scrollIntoViewIfNeeded();
     await eventsButton.click();
     await expect(page.getByRole('heading', { name: /Station Events/i })).toBeVisible();
   });

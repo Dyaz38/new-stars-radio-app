@@ -45,3 +45,10 @@ ad-server/uploads/*
 
 # PDF files (if you want to exclude them)
 *.pdfnode_modules
+
+# Playwright / test artifacts
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
+**/.last-run.json

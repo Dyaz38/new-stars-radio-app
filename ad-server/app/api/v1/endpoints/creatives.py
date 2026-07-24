@@ -12,15 +12,29 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.ad_creative import AdCreative, CreativeStatus
-from app.models.campaign import Campaign
+from app.models.campaign import Campaign, CampaignStatus
 from app.models.user import User
 from app.schemas.creative import CreativeCreate, CreativeResponse, CreativeUpdate
+from app.maintenance.click_url_audit import audit_active_creative_click_urls
+from app.maintenance.click_url_rules import is_placeholder_click_url
+from app.maintenance.generate_mobile_banners import generate_missing_mobile_banners
 from app.services.image_upload import buffer_image_upload
 from app.services.storage import upload_creative_bytes
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _reject_placeholder_click_url_for_active_campaign(campaign: Campaign, click_url: str) -> None:
+    if campaign.status == CampaignStatus.ACTIVE and is_placeholder_click_url(click_url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Active campaigns need a real client click URL — not example.com. "
+                "Use the advertiser landing page or pause the campaign while testing."
+            ),
+        )
 
 
 def _storage_upload_error(prefix: str, exc: Exception) -> HTTPException:
@@ -55,6 +69,8 @@ async def create_creative(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Campaign not found",
         )
+
+    _reject_placeholder_click_url_for_active_campaign(campaign, click_url)
 
     content, effective_filename, image_width, image_height = await buffer_image_upload(image_file)
 
@@ -170,6 +186,58 @@ async def list_creatives(
     return creatives
 
 
+@router.get("/maintenance/click-url-audit")
+async def click_url_audit(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List active creatives on active campaigns that still use placeholder click URLs."""
+    issues = audit_active_creative_click_urls(db)
+    return {
+        "issue_count": len(issues),
+        "issues": [
+            {
+                "creative_id": item.creative_id,
+                "creative_name": item.creative_name,
+                "campaign_id": item.campaign_id,
+                "campaign_name": item.campaign_name,
+                "campaign_status": item.campaign_status,
+                "click_url": item.click_url,
+            }
+            for item in issues
+        ],
+    }
+
+
+@router.post("/maintenance/generate-mobile-banners")
+async def generate_mobile_banners_endpoint(
+    dry_run: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Create 320×50 creatives from each active campaign's 728×90 desktop banner.
+
+    Default dry_run=true previews work without writing to storage/DB.
+    """
+    summary = generate_missing_mobile_banners(db, dry_run=dry_run)
+    return {
+        "dry_run": summary.dry_run,
+        "generated_count": len(summary.generated),
+        "generated": [
+            {
+                "campaign_id": item.campaign_id,
+                "campaign_name": item.campaign_name,
+                "creative_id": item.creative_id,
+                "creative_name": item.creative_name,
+                "image_url": item.image_url,
+            }
+            for item in summary.generated
+        ],
+        "skipped": summary.skipped,
+    }
+
+
 @router.get("/{creative_id}", response_model=CreativeResponse)
 async def get_creative(
     creative_id: UUID,
@@ -245,6 +313,12 @@ async def update_creative(
 
     if "status" in update_data:
         update_data["status"] = CreativeStatus(update_data["status"])
+
+    next_click_url = update_data.get("click_url", creative.click_url)
+    campaign = db.query(Campaign).filter(Campaign.id == creative.campaign_id).first()
+    next_status = update_data.get("status", creative.status)
+    if campaign and next_status == CreativeStatus.ACTIVE:
+        _reject_placeholder_click_url_for_active_campaign(campaign, next_click_url)
 
     for field, value in update_data.items():
         setattr(creative, field, value)

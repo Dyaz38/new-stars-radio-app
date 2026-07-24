@@ -132,6 +132,74 @@ export default function CreativesPage() {
     setCreateModalDefaults(null);
   };
 
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+
+  const { data: clickUrlAudit } = useQuery({
+    queryKey: ["creatives", "click-url-audit"],
+    queryFn: async () => {
+      const response = await api.get<{
+        issue_count: number;
+        issues: Array<{
+          creative_id: string;
+          creative_name: string;
+          campaign_name: string;
+          click_url: string;
+        }>;
+      }>("/creatives/maintenance/click-url-audit");
+      return response.data;
+    },
+    retry: 1,
+  });
+
+  const generateMobileMutation = useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const response = await api.post("/creatives/maintenance/generate-mobile-banners", null, {
+        params: { dry_run: dryRun },
+      });
+      return response.data as {
+        dry_run: boolean;
+        generated_count: number;
+        generated: Array<{ campaign_name: string }>;
+        skipped: string[];
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["creatives"] });
+      if (data.generated_count === 0) {
+        setMaintenanceMessage(
+          data.skipped.length
+            ? `No mobile banners generated. ${data.skipped.join("; ")}`
+            : "All active campaigns already have 320 × 50 creatives.",
+        );
+        return;
+      }
+      const names = data.generated.map((g) => g.campaign_name).join(", ");
+      setMaintenanceMessage(
+        data.dry_run
+          ? `Dry run: would generate 320 × 50 for ${data.generated_count} campaign(s): ${names}`
+          : `Generated 320 × 50 banners for ${data.generated_count} campaign(s): ${names}`,
+      );
+    },
+    onError: (error: any) => {
+      setMaintenanceMessage(error.response?.data?.detail || "Mobile banner generation failed.");
+    },
+  });
+
+  const handleGenerateAllMobile = async () => {
+    setMaintenanceMessage("");
+    const preview = await generateMobileMutation.mutateAsync(true);
+    if (preview.generated_count === 0) return;
+    const names = preview.generated.map((g) => g.campaign_name).join(", ");
+    const ok = window.confirm(
+      `Generate 320 × 50 banners from desktop art for ${preview.generated_count} campaign(s)?\n\n${names}\n\nReview mobile layouts in Ad Creatives afterward — replace any that need a custom design.`,
+    );
+    if (ok) {
+      await generateMobileMutation.mutateAsync(false);
+    } else {
+      setMaintenanceMessage(`Cancelled. Would have generated for: ${names}`);
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return await api.delete(`/creatives/${id}`);
@@ -210,9 +278,19 @@ export default function CreativesPage() {
               {campaignsMissingMobile.length === 1 ? "" : "s"} still need a 320 × 50 mobile banner
             </p>
             <p className="mt-1 text-sm text-amber-900/90">
-              Export a mobile-sized version of each desktop ad (320 px wide × 50 px tall), then upload one
-              creative per campaign below. Use the same click URL as the desktop banner.
+              Upload a hand-designed 320 × 50 file per campaign, or auto-generate from each desktop banner (quick
+              start — replace later if text is too small).
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleGenerateAllMobile()}
+                disabled={generateMobileMutation.isPending}
+                className="rounded-lg bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+              >
+                {generateMobileMutation.isPending ? "Working…" : "Auto-generate all missing 320 × 50"}
+              </button>
+            </div>
             <ul className="mt-4 space-y-2">
               {campaignsMissingMobile.map((row) => (
                 <li
@@ -239,6 +317,35 @@ export default function CreativesPage() {
             All active campaigns with a desktop banner also have a 320 × 50 mobile / Events modal creative.
           </div>
         )}
+
+        {maintenanceMessage ? (
+          <div className="mb-6 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+            {maintenanceMessage}
+          </div>
+        ) : null}
+
+        {clickUrlAudit && clickUrlAudit.issue_count > 0 ? (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-4">
+            <p className="font-medium text-red-950">
+              {clickUrlAudit.issue_count} active creative
+              {clickUrlAudit.issue_count === 1 ? "" : "s"} still use placeholder click URLs
+            </p>
+            <p className="mt-1 text-sm text-red-900/90">
+              Edit each creative below and set the client&apos;s real landing page (not example.com).
+            </p>
+            <ul className="mt-3 space-y-2 text-sm">
+              {clickUrlAudit.issues.map((issue) => (
+                <li
+                  key={issue.creative_id}
+                  className="rounded-md border border-red-100 bg-white/70 px-3 py-2 text-gray-800"
+                >
+                  <span className="font-medium">{issue.campaign_name}</span> — {issue.creative_name}:{" "}
+                  <span className="break-all text-red-700">{issue.click_url}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {/* Creatives Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
