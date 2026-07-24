@@ -12,6 +12,7 @@ from app.schemas.campaign import CampaignCreate, CampaignUpdate, CampaignRespons
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.advertiser import Advertiser
 from app.models.user import User
+from app.maintenance.pause_test_campaigns import pause_test_campaigns
 
 router = APIRouter()
 
@@ -91,6 +92,36 @@ async def list_campaigns(
     
     campaigns = query.offset(skip).limit(limit).all()
     return campaigns
+
+
+@router.post("/maintenance/pause-test-campaigns")
+async def pause_test_campaigns_endpoint(
+    dry_run: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Pause sample/test campaigns (Starline, example.com click URLs).
+
+    House Promo campaigns are never changed. Default is dry_run=true.
+    """
+    summary = pause_test_campaigns(db, dry_run=dry_run)
+    return {
+        "dry_run": summary.dry_run,
+        "scanned": summary.scanned,
+        "paused_count": len(summary.paused),
+        "paused": [
+            {
+                "campaign_id": item.campaign_id,
+                "campaign_name": item.campaign_name,
+                "previous_status": item.previous_status,
+                "reason": item.reason,
+            }
+            for item in summary.paused
+        ],
+        "already_paused": summary.already_paused,
+        "active_real_campaigns": summary.active_real_campaigns,
+    }
 
 
 @router.get("/{campaign_id}", response_model=CampaignResponse)

@@ -109,6 +109,59 @@ export default function CampaignsPage() {
     },
   });
 
+  const [pauseTestMessage, setPauseTestMessage] = useState("");
+
+  const pauseTestCampaignsMutation = useMutation({
+    mutationFn: async (dryRun: boolean) => {
+      const response = await api.post("/campaigns/maintenance/pause-test-campaigns", null, {
+        params: { dry_run: dryRun },
+      });
+      return response.data as {
+        dry_run: boolean;
+        paused_count: number;
+        paused: { campaign_name: string; reason: string }[];
+        already_paused: string[];
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      if (data.paused_count === 0) {
+        setPauseTestMessage(
+          data.already_paused.length
+            ? `No changes needed — sample campaigns already paused (${data.already_paused.join(", ")}).`
+            : "No sample/test campaigns found to pause.",
+        );
+        return;
+      }
+      const names = data.paused.map((p) => p.campaign_name).join(", ");
+      setPauseTestMessage(
+        data.dry_run
+          ? `Dry run: would pause ${data.paused_count} campaign(s): ${names}`
+          : `Paused ${data.paused_count} sample campaign(s): ${names}`,
+      );
+    },
+    onError: (error: any) => {
+      setPauseTestMessage(error.response?.data?.detail || "Failed to pause sample campaigns.");
+    },
+  });
+
+  const handlePauseSampleCampaigns = async () => {
+    setPauseTestMessage("");
+    const preview = await pauseTestCampaignsMutation.mutateAsync(true);
+    if (preview.paused_count === 0) {
+      return;
+    }
+    const names = preview.paused.map((p) => p.campaign_name).join(", ");
+    const ok = window.confirm(
+      `Pause ${preview.paused_count} sample campaign(s)?\n\n${names}\n\nHouse Promo campaigns are not changed.`,
+    );
+    if (ok) {
+      await pauseTestCampaignsMutation.mutateAsync(false);
+    } else {
+      setPauseTestMessage(`Cancelled. Would have paused: ${names}`);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -134,13 +187,29 @@ export default function CampaignsPage() {
               <strong>320 × 50</strong> (mobile banner + Events modal) creatives under Ad Creatives.
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shrink-0 self-start"
-          >
-            ➕ Create Campaign
-          </button>
+          <div className="flex flex-col gap-2 shrink-0 self-start">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            >
+              ➕ Create Campaign
+            </button>
+            <button
+              type="button"
+              onClick={() => void handlePauseSampleCampaigns()}
+              disabled={pauseTestCampaignsMutation.isPending}
+              className="px-4 py-2 border border-amber-300 bg-amber-50 text-amber-900 rounded-lg hover:bg-amber-100 font-medium disabled:opacity-50"
+            >
+              {pauseTestCampaignsMutation.isPending ? "Checking…" : "Pause sample ads"}
+            </button>
+          </div>
         </div>
+
+        {pauseTestMessage ? (
+          <div className="mb-6 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+            {pauseTestMessage}
+          </div>
+        ) : null}
 
         {/* Campaigns Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
