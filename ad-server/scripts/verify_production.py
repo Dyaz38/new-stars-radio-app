@@ -52,8 +52,28 @@ def main() -> int:
     print(f"Now-playing proxy: HTTP {status}")
     if status != 200:
         ok = False
-    elif isinstance(body, dict) and body.get("error"):
-        print(f"  warning: {body.get('error')}")
+    elif isinstance(body, dict):
+        if body.get("error"):
+            print(f"  warning: {body.get('error')}")
+        elif body.get("current"):
+            current = body["current"]
+            meta = current.get("metadata") if isinstance(current, dict) else {}
+            artist = (meta or {}).get("artist_name") or current.get("name") if isinstance(current, dict) else None
+            title = (meta or {}).get("track_title")
+            source = body.get("source", "airtime")
+            print(f"  playing: {artist} — {title or current.get('name') if isinstance(current, dict) else '?'} (via {source})")
+        else:
+            print("  warning: no current track in response")
+
+    status, body = fetch_json(f"{args.api.rstrip('/')}/stream/listeners")
+    print(f"Listener count proxy: HTTP {status}")
+    if status != 200:
+        ok = False
+    elif isinstance(body, dict):
+        if body.get("error"):
+            print(f"  warning: {body.get('error')}")
+        else:
+            print(f"  listeners: {body.get('listeners')} (mount {body.get('mount')})")
 
     ad_body = {
         "user_id": "verify-script",

@@ -74,12 +74,18 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = None
     CACHE_TTL: int = 300  # 5 minutes
 
-    # Icecast (listener count proxy — public status page, not JSON API)
+    # Icecast (listener count + metadata fallbacks — proxied server-side for CORS)
     ICECAST_STATUS_URL: str = "http://newstarsradio.out.airtime.pro:8000/status.xsl"
+    ICECAST_STATUS_JSON_URL: str = "http://newstarsradio.out.airtime.pro:8000/status-json.xsl"
     ICECAST_MOUNT: str = "/newstarsradio_a"
 
-    # Airtime Pro live-info JSON (server-side genre resolution for song likes)
+    # MP3 stream (ICY metadata fallback when Airtime live-info is unreachable)
+    STREAM_URL: str = "https://newstarsradio.out.airtime.pro/newstarsradio_a"
+
+    # Airtime Pro live-info JSON (server-side genre resolution + now-playing proxy)
     AIRTIME_LIVE_INFO_URL: str = "https://newstarsradio.airtime.pro/api/live-info"
+    # Optional comma-separated override list (set on Railway if station subdomain changes)
+    AIRTIME_LIVE_INFO_URLS: Optional[str] = None
 
     # Schedule persistence for radio programming (used by app + admin panel)
     SCHEDULE_STORAGE_PATH: str = "data/radio_schedule.json"
