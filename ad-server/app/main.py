@@ -154,6 +154,7 @@ async def startup_event():
     # Create static directories if they don't exist
     static_path.mkdir(exist_ok=True)
     (static_path / "ads").mkdir(exist_ok=True)
+    (static_path / "creatives").mkdir(exist_ok=True)
 
     if settings.ADMIN_PASSWORD_RESET:
         logger.warning(

@@ -1,10 +1,12 @@
 """
 Ad creative schemas.
 """
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
+
+from app.integrations.creative_media import creative_media_path
 
 
 class CreativeBase(BaseModel):
@@ -48,6 +50,11 @@ class CreativeResponse(CreativeBase):
     status: str
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("image_url")
+    def serialize_public_image_url(self, value: str) -> str:
+        """Expose ad-blocker-safe proxy URL; raw storage URL stays in the database."""
+        return creative_media_path(self.id)
     
     model_config = ConfigDict(from_attributes=True)
 

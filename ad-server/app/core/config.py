@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     )
     
     # File Upload
-    UPLOAD_DIR: str = "static/ads"
+    UPLOAD_DIR: str = "static/creatives"
     MAX_UPLOAD_SIZE: int = 5 * 1024 * 1024  # 5MB
     ALLOWED_EXTENSIONS: str | List[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
 

@@ -7,6 +7,7 @@ from unittest.mock import Mock, MagicMock, PropertyMock
 import uuid
 
 from app.services.ad_selection import AdSelectionService
+from app.integrations.creative_media import creative_media_path
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.ad_creative import AdCreative, CreativeStatus
 from app.models.advertiser import Advertiser, AdvertiserStatus
@@ -121,7 +122,7 @@ class TestAdSelectionService:
         assert result is not None
         creative = campaign.creatives[0]
         assert result["ad_id"] == str(creative.id)
-        assert result["image_url"] == creative.image_url
+        assert result["image_url"] == creative_media_path(creative.id)
         assert result["image_width"] == creative.image_width
         assert result["image_height"] == creative.image_height
         assert result["click_url"] == creative.click_url

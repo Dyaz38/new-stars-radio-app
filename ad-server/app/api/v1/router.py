@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     creatives,
     events,
     geo,
+    media,
     reports,
     stream_stats,
     likes,
@@ -30,6 +31,7 @@ api_router.include_router(geo.router, prefix="/geo", tags=["Geo"])
 api_router.include_router(advertisers.router, prefix="/advertisers", tags=["Advertisers"])
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 api_router.include_router(creatives.router, prefix="/creatives", tags=["Creatives"])
+api_router.include_router(media.router, prefix="/media", tags=["Media"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(stream_stats.router, prefix="/stream", tags=["Stream"])
 api_router.include_router(likes.router, prefix="/likes", tags=["Song likes"])

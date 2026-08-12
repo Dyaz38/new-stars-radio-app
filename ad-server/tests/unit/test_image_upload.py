@@ -39,8 +39,8 @@ def test_public_url_for_object_key_encodes_spaces(monkeypatch):
     from app.core import config
 
     monkeypatch.setattr(config.settings, "R2_PUBLIC_URL", "https://pub-example.r2.dev")
-    url = public_url_for_object_key("ads/campaign_nsr ad.png")
-    assert url == "https://pub-example.r2.dev/ads/campaign_nsr%20ad.png"
+    url = public_url_for_object_key("creatives/campaign_nsr ad.png")
+    assert url == "https://pub-example.r2.dev/creatives/campaign_nsr%20ad.png"
     assert " " not in url
 
 
@@ -48,7 +48,17 @@ def test_upload_creative_bytes_writes_local_file(tmp_path, monkeypatch):
     from app.core import config
 
     monkeypatch.setattr(config.settings, "R2_ACCOUNT_ID", None)
-    monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "ads"))
+    monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "creatives"))
+
+    img = Image.new("RGB", (728, 90), color="blue")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    campaign_id = uuid4()
+
+    static_root = tmp_path / "static" / "creatives"
+    static_root.mkdir(parents=True)
+    monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(static_root))
+    monkeypatch.chdir(tmp_path)
 
     img = Image.new("RGB", (728, 90), color="blue")
     buf = io.BytesIO()
@@ -56,8 +66,8 @@ def test_upload_creative_bytes_writes_local_file(tmp_path, monkeypatch):
     campaign_id = uuid4()
 
     url = upload_creative_bytes(buf.getvalue(), campaign_id, "starline.png")
-    assert url.startswith("/static/ads/")
-    saved = tmp_path / "ads" / url.split("/")[-1]
+    assert url.startswith("/static/creatives/")
+    saved = static_root / url.split("/")[-1]
     assert saved.exists()
     with Image.open(saved) as loaded:
         assert loaded.size == (728, 90)

@@ -175,7 +175,7 @@ class TestAdRequestEndpoint:
         
         # Verify data
         assert data["campaign_id"] == test_campaign_with_creative["campaign_id"]
-        assert data["image_url"] == "https://example.com/ad.jpg"
+        assert data["image_url"] == f"/api/v1/media/i/{test_campaign_with_creative['creative_id']}"
         assert data["image_width"] == 728
         assert data["image_height"] == 90
     

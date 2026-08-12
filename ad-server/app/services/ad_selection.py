@@ -22,6 +22,7 @@ from app.constants.placements import (
     size_matches,
 )
 from app.core.security import create_tracking_token
+from app.integrations.creative_media import creative_media_path
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ class AdSelectionService:
             ad_data = {
                 "ad_id": str(creative.id),
                 "campaign_id": str(eligible_campaign.id),
-                "image_url": creative.image_url,
+                "image_url": creative_media_path(creative.id),
                 "image_width": creative.image_width,
                 "image_height": creative.image_height,
                 "click_url": creative.click_url,

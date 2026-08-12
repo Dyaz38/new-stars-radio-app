@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 from fastapi import UploadFile
 
 from app.core.config import settings
+from app.integrations.creative_media import R2_OBJECT_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def upload_creative_bytes(
     """
     safe_name = sanitize_upload_filename(effective_filename)
     storage_name = f"{campaign_id}_{uuid4().hex[:12]}_{safe_name}"
-    object_key = f"ads/{storage_name}"
+    object_key = f"{R2_OBJECT_PREFIX}{storage_name}"
 
     if settings.r2_enabled:
         return _upload_bytes_to_r2(content, object_key)
@@ -141,12 +142,18 @@ def _guess_content_type(object_key: str) -> str:
 
 
 def _upload_bytes_to_local(content: bytes, filename: str) -> str:
-    """Save bytes to local disk and return /static/ads/... path."""
+    """Save bytes to local disk and return /static/creatives/... path."""
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / filename
     file_path.write_bytes(content)
-    return f"/static/ads/{filename}"
+    # Serve via /static/creatives/ even when UPLOAD_DIR is legacy static/ads
+    static_root = Path("static")
+    try:
+        rel = file_path.resolve().relative_to(static_root.resolve())
+    except ValueError:
+        rel = Path("creatives") / filename
+    return f"/static/{rel.as_posix()}"
 
 
 def upload_station_event_image(file: UploadFile, effective_filename: str) -> str:
