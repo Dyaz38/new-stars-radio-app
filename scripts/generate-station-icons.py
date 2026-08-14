@@ -17,6 +17,7 @@ BLACK_THRESHOLD = 28
 # How much of the square the star fills (higher = more visible on home screens)
 FILL_ANY = 0.92
 FILL_MASKABLE = 0.78  # ~80% Android safe zone, kept bold
+FILL_FAVICON = 0.98  # tiny sizes — maximize visibility in browser tabs/shortcuts
 
 
 def remove_black_background(img: Image.Image) -> Image.Image:
@@ -79,14 +80,28 @@ def main() -> None:
         "station-icon-192.png": 192,
         "station-icon-512.png": 512,
         "apple-touch-icon.png": 180,
+        "favicon-16.png": 16,
         "favicon-32.png": 32,
         "favicon-48.png": 48,
+        "favicon-192.png": 192,
     }
 
     for filename, size in sizes.items():
-        fill = 0.88 if size <= 48 else FILL_ANY
+        fill = FILL_FAVICON if size <= 48 else FILL_ANY
         icon = fit_on_square(star, size, background=bg, fill_ratio=fill)
         icon.save(PUBLIC / filename, optimize=True)
+
+    # Multi-size favicon.ico for browser tabs, bookmarks, and New Tab shortcuts
+    ico_sizes = [16, 32, 48]
+    ico_images = [
+        fit_on_square(star, s, background=bg, fill_ratio=FILL_FAVICON) for s in ico_sizes
+    ]
+    ico_images[0].save(
+        PUBLIC / "favicon.ico",
+        format="ICO",
+        sizes=[(s, s) for s in ico_sizes],
+        append_images=ico_images[1:],
+    )
 
     # Maskable PWA icons — full-bleed purple, bold star in safe zone
     for filename, size in (
