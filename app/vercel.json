@@ -20,7 +20,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!ads\\.txt$).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
