@@ -19,6 +19,8 @@ import { PWAInstallPanel } from './components/PWAInstallPanel';
 import { AdBanner } from './components/AdBanner';
 import { AD_PLACEMENTS } from './constants/adPlacements';
 import { PRIVACY_POLICY_URL } from './constants/privacy';
+import { ABOUT_URL, STATION_ABOUT_SUMMARY } from './constants/site';
+import { SiteFooter } from './components/SiteFooter';
 import type { ScheduleShow, StationEvent } from './types';
 
 import {
@@ -607,6 +609,24 @@ const RadioStreamingApp = () => {
             </button>
           </div>
         </div>
+
+        <section
+          className="mt-4 sm:mt-6 bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6"
+          aria-labelledby="about-station-heading"
+        >
+          <h2 id="about-station-heading" className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">
+            About {RADIO_CONFIG.STATION_NAME}
+          </h2>
+          <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{STATION_ABOUT_SUMMARY}</p>
+          <a
+            href={ABOUT_URL}
+            className="inline-block mt-3 text-sm text-pink-300 hover:text-pink-200 underline"
+          >
+            Learn more about the station
+          </a>
+        </section>
+
+        <SiteFooter className="mt-6 sm:mt-8 pb-4" />
       </div>
 
       {/* Schedule Modal */}
@@ -1118,13 +1138,18 @@ const RadioStreamingApp = () => {
                   How we handle location for ads and events, anonymous IDs, likes, reminders, and third-party services
                   including Google AdSense.
                 </p>
-                <a
-                  href={PRIVACY_POLICY_URL}
-                  className="inline-flex items-center gap-2 text-sm text-pink-300 hover:text-pink-200 underline"
-                >
-                  Read Privacy Policy
-                  <ExternalLink className="w-3.5 h-3.5" aria-hidden />
-                </a>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                  <a href={ABOUT_URL} className="text-pink-300 hover:text-pink-200 underline">
+                    About
+                  </a>
+                  <a
+                    href={PRIVACY_POLICY_URL}
+                    className="inline-flex items-center gap-1.5 text-pink-300 hover:text-pink-200 underline"
+                  >
+                    Privacy Policy
+                    <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+                  </a>
+                </div>
               </section>
             </div>
           </div>

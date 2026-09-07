@@ -20,7 +20,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!ads\\.txt|manifest\\.json|sw\\.js|favicon\\.ico|station-icon-.*|favicon-.*|promo/.*|static/.*).*)",
+      "source": "/((?!ads\\.txt$).*)",
       "destination": "/index.html"
     }
   ]

@@ -1,9 +1,12 @@
-import { AD_PLACEMENTS, type AdPlacement } from '../constants/adPlacements';
+import type { AdPlacement } from '../constants/adPlacements';
 import { getAdSensePlacementKey, isAdSenseFallbackConfigured } from '../components/AdSenseFallback';
 
-/** Top banner always uses ad-server images so preview and production behave the same. */
-export function supportsAdSenseHouseReplacement(placement: AdPlacement): boolean {
-  return placement === AD_PLACEMENTS.EVENTS_MODAL;
+/**
+ * AdSense on thin modal screens was flagged during site review.
+ * Keep disabled until Google re-approves a content-rich placement.
+ */
+export function supportsAdSenseHouseReplacement(_placement: AdPlacement): boolean {
+  return false;
 }
 
 export function isAdSenseEligibleHost(hostname: string = window.location.hostname): boolean {
