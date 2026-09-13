@@ -7,8 +7,9 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ROOT / "app" / "public"
-SOURCE = PUBLIC / "station-logo-source.png"
-FALLBACK_SOURCE = PUBLIC / "station-logo.png"
+LOGO_SOURCE = PUBLIC / "station-logo-source.png"
+LOGO_FALLBACK = PUBLIC / "station-logo.png"
+ICON_SOURCE = PUBLIC / "station-icon-source.png"
 
 # Brand purple (matches sticky bar / theme)
 BRAND_PURPLE = (59, 7, 100, 255)  # #3b0764
@@ -62,18 +63,24 @@ def fit_on_square(
     return canvas
 
 
+def load_star_mark() -> Image.Image:
+    """Use dedicated star icon when present; otherwise crop from horizontal logo."""
+    if ICON_SOURCE.exists():
+        return remove_black_background(Image.open(ICON_SOURCE))
+
+    logo_path = LOGO_SOURCE if LOGO_SOURCE.exists() else LOGO_FALLBACK
+    if not logo_path.exists():
+        raise SystemExit(f"Missing icon source: {ICON_SOURCE} or logo: {LOGO_SOURCE}")
+    return crop_star_mark(remove_black_background(Image.open(logo_path)))
+
+
 def main() -> None:
-    source_path = SOURCE if SOURCE.exists() else FALLBACK_SOURCE
-    if not source_path.exists():
-        raise SystemExit(f"Missing source logo: {SOURCE}")
+    logo_path = LOGO_SOURCE if LOGO_SOURCE.exists() else LOGO_FALLBACK
+    if logo_path.exists():
+        transparent = remove_black_background(Image.open(logo_path))
+        transparent.save(PUBLIC / "station-logo.png", optimize=True)
 
-    master = Image.open(source_path)
-    transparent = remove_black_background(master)
-
-    # Full horizontal logo for in-app header (transparent bg)
-    transparent.save(PUBLIC / "station-logo.png", optimize=True)
-
-    star = crop_star_mark(transparent)
+    star = load_star_mark()
     bg = (*BRAND_PURPLE[:3], 255)
 
     sizes = {
