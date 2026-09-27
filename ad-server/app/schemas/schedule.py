@@ -1,7 +1,9 @@
 """Pydantic schemas for radio schedule API."""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.schedule_days import SCHEDULE_DAY_KEYS, ScheduleDayKey
 
 
 class ScheduleShow(BaseModel):
@@ -20,23 +22,35 @@ class ScheduleShow(BaseModel):
         return value.strip()
 
 
+class ScheduleByDay(BaseModel):
+    mon_thu: list[ScheduleShow] = Field(default_factory=list)
+    fri: list[ScheduleShow] = Field(default_factory=list)
+    sat: list[ScheduleShow] = Field(default_factory=list)
+    sun: list[ScheduleShow] = Field(default_factory=list)
+
+    def all_items(self) -> list[ScheduleShow]:
+        return [item for key in SCHEDULE_DAY_KEYS for item in getattr(self, key)]
+
+
 class ScheduleResponse(BaseModel):
-    items: list[ScheduleShow]
+    days: ScheduleByDay
 
 
 class ScheduleUpdateRequest(BaseModel):
-    items: list[ScheduleShow] = Field(..., min_length=1, max_length=100)
+    days: ScheduleByDay
 
-    @field_validator("items")
-    @classmethod
-    def unique_ids(cls, items: list[ScheduleShow]) -> list[ScheduleShow]:
-        ids = [item.id for item in items]
+    @model_validator(mode="after")
+    def unique_ids_across_days(self) -> ScheduleUpdateRequest:
+        ids = [item.id for item in self.days.all_items()]
         if len(ids) != len(set(ids)):
-            raise ValueError("Schedule item ids must be unique")
-        return items
+            raise ValueError("Schedule item ids must be unique across all day tabs")
+        total = len(ids)
+        if total > 400:
+            raise ValueError("Schedule is too large (max 400 slots total)")
+        return self
 
 
 class ScheduleUpdateResponse(BaseModel):
     ok: bool = True
     updated_items: int
-    items: list[ScheduleShow]
+    days: ScheduleByDay

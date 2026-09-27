@@ -18,6 +18,15 @@ export interface ScheduleShow {
   current: boolean;
 }
 
+export type ScheduleDayKey = 'mon_thu' | 'fri' | 'sat' | 'sun';
+
+export interface ScheduleByDay {
+  mon_thu: ScheduleShow[];
+  fri: ScheduleShow[];
+  sat: ScheduleShow[];
+  sun: ScheduleShow[];
+}
+
 export type StationEventStatus = "upcoming" | "live" | "past";
 
 export interface StationEvent {

@@ -1,3 +1,5 @@
+import type { ScheduleDayKey } from '../types';
+
 /** Parse a clock label like "10:00 AM" into minutes from midnight. */
 export function parseScheduleClockTime(timeStr: string): number {
   const [time, period] = timeStr.trim().split(' ');
@@ -14,18 +16,48 @@ export function getScheduleStartTimeLabel(timeRange: string): string {
   return timeRange.split(' - ')[0].trim();
 }
 
-/** Next daily occurrence of a show start, strictly after `from`. */
-export function getNextShowStartAt(timeRange: string, from: Date = new Date()): Date {
-  const minutes = parseScheduleClockTime(getScheduleStartTimeLabel(timeRange));
-  const result = new Date(from);
-  result.setSeconds(0, 0);
-  result.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+function isScheduleDayKeyActive(dayKey: ScheduleDayKey, date: Date): boolean {
+  const weekday = date.getDay();
+  if (dayKey === 'sun') return weekday === 0;
+  if (dayKey === 'fri') return weekday === 5;
+  if (dayKey === 'sat') return weekday === 6;
+  return weekday >= 1 && weekday <= 4;
+}
 
-  if (result.getTime() <= from.getTime()) {
-    result.setDate(result.getDate() + 1);
+function setClockOnDate(date: Date, minutesFromMidnight: number): Date {
+  const result = new Date(date);
+  result.setSeconds(0, 0);
+  result.setHours(Math.floor(minutesFromMidnight / 60), minutesFromMidnight % 60, 0, 0);
+  return result;
+}
+
+/** Next occurrence of a show start on its day tab, strictly after `from`. */
+export function getNextShowStartForDayGroup(
+  timeRange: string,
+  dayKey: ScheduleDayKey,
+  from: Date = new Date(),
+): Date {
+  const minutes = parseScheduleClockTime(getScheduleStartTimeLabel(timeRange));
+  const candidate = setClockOnDate(from, minutes);
+
+  if (isScheduleDayKeyActive(dayKey, candidate) && candidate.getTime() > from.getTime()) {
+    return candidate;
   }
 
-  return result;
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const day = new Date(from);
+    day.setDate(from.getDate() + offset);
+    if (!isScheduleDayKeyActive(dayKey, day)) continue;
+    const next = setClockOnDate(day, minutes);
+    if (next.getTime() > from.getTime()) return next;
+  }
+
+  return setClockOnDate(new Date(from.getTime() + 24 * 60 * 60 * 1000), minutes);
+}
+
+/** Next daily occurrence of a show start, strictly after `from`. */
+export function getNextShowStartAt(timeRange: string, from: Date = new Date()): Date {
+  return getNextShowStartForDayGroup(timeRange, 'mon_thu', from);
 }
 
 /** Following daily occurrence after a show start that already passed. */

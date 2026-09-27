@@ -21,17 +21,23 @@ import { AD_PLACEMENTS } from './constants/adPlacements';
 import { PRIVACY_POLICY_URL } from './constants/privacy';
 import { ABOUT_URL, STATION_ABOUT_SUMMARY } from './constants/site';
 import { SiteFooter } from './components/SiteFooter';
-import type { ScheduleShow, StationEvent } from './types';
+import type { ScheduleDayKey, ScheduleByDay, StationEvent } from './types';
 
 import {
   RADIO_CONFIG,
-  DEFAULT_SCHEDULE,
+  DEFAULT_SCHEDULE_BY_DAY,
   DEFAULT_EVENTS,
   STORAGE_KEYS,
   getScheduleUrl,
   getEventsUrl,
   resolveStationEventImageUrl,
 } from './constants';
+import {
+  getScheduleDayKeyForDate,
+  SCHEDULE_DAY_KEYS,
+  SCHEDULE_DAY_LABELS,
+} from './constants/scheduleDays';
+import { normalizeSchedulePayload } from './utils/scheduleNormalize';
 import {
   buildGoogleCalendarUrl,
   buildIcsContent,
@@ -165,9 +171,14 @@ const RadioStreamingApp = () => {
       return false;
     }
   });
-  const [schedule, setSchedule] = useState<ScheduleShow[]>(() =>
-    applyCurrentScheduleFlags([...DEFAULT_SCHEDULE]),
-  );
+  const [scheduleByDay, setScheduleByDay] = useState<ScheduleByDay>(() => ({
+    mon_thu: [...DEFAULT_SCHEDULE_BY_DAY.mon_thu],
+    fri: [...DEFAULT_SCHEDULE_BY_DAY.fri],
+    sat: [...DEFAULT_SCHEDULE_BY_DAY.sat],
+    sun: [...DEFAULT_SCHEDULE_BY_DAY.sun],
+  }));
+  const [scheduleTab, setScheduleTab] = useState<ScheduleDayKey>(() => getScheduleDayKeyForDate());
+  const [scheduleClockTick, setScheduleClockTick] = useState(0);
   const [eventsList, setEventsList] = useState<StationEvent[]>([]);
   const [eventsListenerCountry, setEventsListenerCountry] = useState<string | null>(null);
   const [eventsPublishedCount, setEventsPublishedCount] = useState<number | null>(null);
@@ -212,9 +223,27 @@ const RadioStreamingApp = () => {
 
   const effectiveEventsCountry = eventsListenerCountry ?? listenerGeo.country;
 
+  const scheduleDayToday = useMemo(
+    () => getScheduleDayKeyForDate(),
+    [scheduleClockTick],
+  );
+
+  const todaySchedule = useMemo(
+    () => applyCurrentScheduleFlags(scheduleByDay[scheduleDayToday] ?? []),
+    [scheduleByDay, scheduleDayToday, scheduleClockTick],
+  );
+
+  const scheduleModalSlots = useMemo(() => {
+    const rows = scheduleByDay[scheduleTab] ?? [];
+    if (scheduleTab === scheduleDayToday) {
+      return applyCurrentScheduleFlags(rows);
+    }
+    return rows.map((slot) => ({ ...slot, current: false }));
+  }, [scheduleByDay, scheduleTab, scheduleDayToday, scheduleClockTick]);
+
   const currentScheduleSlot = useMemo(
-    () => schedule.find((slot) => slot.current),
-    [schedule],
+    () => todaySchedule.find((slot) => slot.current),
+    [todaySchedule],
   );
 
   const djInitials = useMemo(() => {
@@ -238,16 +267,23 @@ const RadioStreamingApp = () => {
 
   // Load schedule from external source (API, JSON file, or local storage)
   const loadSchedule = useCallback(async () => {
-    const applyAndSet = (items: ScheduleShow[]) => {
-      setSchedule(applyCurrentScheduleFlags(items));
+    const applyAndSet = (days: ScheduleByDay) => {
+      setScheduleByDay(days);
     };
 
     try {
       const response = await fetch(getScheduleUrl());
       if (response.ok) {
-        const payload = await response.json() as { items?: ScheduleShow[] };
-        if (Array.isArray(payload.items) && payload.items.length > 0) {
-          applyAndSet(payload.items);
+        const payload = await response.json();
+        const days = normalizeSchedulePayload(payload);
+        const total = SCHEDULE_DAY_KEYS.reduce((n, key) => n + days[key].length, 0);
+        if (total > 0) {
+          applyAndSet(days);
+          try {
+            localStorage.setItem(STORAGE_KEYS.SCHEDULE, JSON.stringify({ days }));
+          } catch {
+            /* ignore */
+          }
           console.log('📅 Schedule loaded from ad server');
           return;
         }
@@ -255,17 +291,30 @@ const RadioStreamingApp = () => {
 
       const savedSchedule = localStorage.getItem(STORAGE_KEYS.SCHEDULE);
       if (savedSchedule) {
-        const parsedSchedule: ScheduleShow[] = JSON.parse(savedSchedule);
-        applyAndSet(parsedSchedule);
-        console.log('📅 Schedule fallback loaded from localStorage');
-        return;
+        const days = normalizeSchedulePayload(JSON.parse(savedSchedule));
+        const total = SCHEDULE_DAY_KEYS.reduce((n, key) => n + days[key].length, 0);
+        if (total > 0) {
+          applyAndSet(days);
+          console.log('📅 Schedule fallback loaded from localStorage');
+          return;
+        }
       }
 
       console.log('📅 Schedule fallback using defaults');
-      applyAndSet([...DEFAULT_SCHEDULE]);
+      applyAndSet({
+        mon_thu: [...DEFAULT_SCHEDULE_BY_DAY.mon_thu],
+        fri: [...DEFAULT_SCHEDULE_BY_DAY.fri],
+        sat: [...DEFAULT_SCHEDULE_BY_DAY.sat],
+        sun: [...DEFAULT_SCHEDULE_BY_DAY.sun],
+      });
     } catch (error) {
       console.error('❌ Failed to load schedule:', error);
-      applyAndSet([...DEFAULT_SCHEDULE]);
+      applyAndSet({
+        mon_thu: [...DEFAULT_SCHEDULE_BY_DAY.mon_thu],
+        fri: [...DEFAULT_SCHEDULE_BY_DAY.fri],
+        sat: [...DEFAULT_SCHEDULE_BY_DAY.sat],
+        sun: [...DEFAULT_SCHEDULE_BY_DAY.sun],
+      });
     }
   }, []);
 
@@ -369,15 +418,9 @@ const RadioStreamingApp = () => {
     }
   }, [listenerGeo.country, listenerGeo.loading, loadEvents]);
 
-  // Refresh which schedule slot is ON AIR (hero card + schedule modal)
+  // Refresh ON AIR highlighting (hero card + today's schedule tab)
   useEffect(() => {
-    const tick = () => {
-      setSchedule((prev) => {
-        const next = applyCurrentScheduleFlags(prev);
-        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
-      });
-    };
-
+    const tick = () => setScheduleClockTick((n) => n + 1);
     tick();
     const interval = setInterval(tick, RADIO_CONFIG.SCHEDULE_UPDATE_INTERVAL);
     return () => clearInterval(interval);
@@ -582,7 +625,10 @@ const RadioStreamingApp = () => {
             <button
               type="button"
               data-testid="open-schedule"
-              onClick={() => setShowSchedule(true)}
+              onClick={() => {
+                setScheduleTab(getScheduleDayKeyForDate());
+                setShowSchedule(true);
+              }}
               className="bg-white/20 hover:bg-white/30 rounded-xl p-3 sm:p-4 flex flex-col items-center space-y-1.5 sm:space-y-2 transition-all"
             >
               <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -649,10 +695,42 @@ const RadioStreamingApp = () => {
               </p>
             ) : null}
 
+            <div
+              className="flex flex-wrap gap-2 mb-4 sm:mb-5"
+              role="tablist"
+              aria-label="Schedule day"
+            >
+              {SCHEDULE_DAY_KEYS.map((key) => {
+                const active = scheduleTab === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    data-testid={`schedule-tab-${key}`}
+                    onClick={() => setScheduleTab(key)}
+                    className={`rounded-full px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-pink-600 text-white'
+                        : 'bg-white/10 text-gray-200 hover:bg-white/20'
+                    }`}
+                  >
+                    {SCHEDULE_DAY_LABELS[key]}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="space-y-3 sm:space-y-4">
-              {schedule.map((slot, index) => (
+              {scheduleModalSlots.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">
+                  No shows listed for {SCHEDULE_DAY_LABELS[scheduleTab]}. Check back soon.
+                </p>
+              ) : null}
+              {scheduleModalSlots.map((slot) => (
                 <div 
-                  key={index} 
+                  key={`${scheduleTab}-${slot.id}`}
                   className={`rounded-lg p-3 sm:p-4 ${slot.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'}`}
                 >
                   <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2">
@@ -671,16 +749,16 @@ const RadioStreamingApp = () => {
                     <div className="flex flex-col items-end gap-1.5 sm:gap-2 shrink-0">
                       <p className="text-gray-400 text-xs sm:text-sm font-mono text-right">{slot.time}</p>
                       {(() => {
-                        const reminded = isShowReminded(slot.id);
+                        const reminded = isShowReminded(scheduleTab, slot.id);
                         const onAirNow = Boolean(slot.current);
                         return (
                           <button
                             type="button"
-                            data-testid={`show-reminder-${slot.id}`}
+                            data-testid={`show-reminder-${scheduleTab}-${slot.id}`}
                             disabled={onAirNow}
                             title={onAirNow ? 'This show is on air now' : 'Notify 15 minutes before start'}
                             onClick={() => {
-                              void toggleShowReminder(slot).then((result) => {
+                              void toggleShowReminder(slot, scheduleTab).then((result) => {
                                 if (result === 'added') {
                                   setReminderFeedback(
                                     `Reminder set for "${slot.show}" — notification 15 minutes before it starts.`,

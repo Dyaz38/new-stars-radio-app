@@ -1,4 +1,4 @@
-import type { StationEvent } from "../types";
+import type { ScheduleByDay, StationEvent } from "../types";
 
 // Configuration constants for better maintainability
 
@@ -111,7 +111,7 @@ export const GRADIENT_CLASSES = [
   'from-pink-500 to-rose-500'
 ] as const;
 
-export const DEFAULT_SCHEDULE = [
+const DEFAULT_SCHEDULE_MON_THU = [
   { id: 1, time: "12:00 AM - 5:00 AM", show: "Overnight Stars Mix", dj: "Auto DJ", description: "Non-stop overnight rotation of rising Hip-Hop, R&B, and Smooth Jazz artists.", current: false },
   { id: 2, time: "5:00 AM - 7:00 AM", show: "Sunrise Smooth Jazz", dj: "DJ Marcus", description: "Ease into the day with mellow jazz and soulful instrumentals.", current: false },
   { id: 3, time: "7:00 AM - 10:00 AM", show: "Morning Hip-Hop Rise", dj: "DJ Kaya", description: "Fresh bars and beats from tomorrow's stars — news and community shout-outs.", current: false },
@@ -120,6 +120,16 @@ export const DEFAULT_SCHEDULE = [
   { id: 6, time: "6:00 PM - 9:00 PM", show: "Drive Time Heat", dj: "DJ Apex", description: "Peak-hour energy — Hip-Hop and R&B anthems for the commute home.", current: false },
   { id: 7, time: "9:00 PM - 12:00 AM", show: "Late Night Lounge", dj: "DJ Nova", description: "Smooth Jazz and slow R&B to wind down the evening.", current: false },
 ];
+
+export const DEFAULT_SCHEDULE_BY_DAY: ScheduleByDay = {
+  mon_thu: DEFAULT_SCHEDULE_MON_THU,
+  fri: [],
+  sat: [],
+  sun: [],
+};
+
+/** @deprecated Use DEFAULT_SCHEDULE_BY_DAY — kept for tests referencing a single day. */
+export const DEFAULT_SCHEDULE = DEFAULT_SCHEDULE_MON_THU;
 
 /** Fallback when the events API is unavailable — empty; house promo card handles empty state. */
 export const DEFAULT_EVENTS: StationEvent[] = [];

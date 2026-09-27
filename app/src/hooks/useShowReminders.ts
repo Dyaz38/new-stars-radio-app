@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ScheduleShow } from '../types';
+import type { ScheduleDayKey, ScheduleShow } from '../types';
 import { REMINDER_LEAD_MS } from '../utils/eventReminders';
-import { getFollowingShowStartAt, getNextShowStartAt } from '../utils/scheduleTime';
+import { getNextShowStartForDayGroup } from '../utils/scheduleTime';
 import {
   readShowReminders,
   showShowReminderNotification,
@@ -14,8 +14,10 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 export type ShowReminderToggleResult = 'added' | 'removed' | 'denied';
 
 export function useShowReminders() {
-  const [remindedIds, setRemindedIds] = useState<Set<number>>(
-    () => new Set(readShowReminders().map((r) => r.showId)),
+  const reminderKey = (dayKey: ScheduleDayKey, showId: number) => `${dayKey}:${showId}`;
+
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(
+    () => new Set(readShowReminders().map((r) => reminderKey(r.dayKey ?? 'mon_thu', r.showId))),
   );
 
   const fireDueReminders = useCallback(() => {
@@ -25,13 +27,19 @@ export function useShowReminders() {
 
     const updated = items.flatMap((reminder) => {
       let current = reminder;
-      const start = new Date(current.startsAt).getTime();
-      if (Number.isNaN(start)) return [current];
+      const startAt = new Date(current.startsAt);
+      const startMs = startAt.getTime();
+      if (Number.isNaN(startMs)) return [current];
 
-      if (!current.notifiedAt && now >= start) {
+      if (!current.notifiedAt && now >= startMs) {
+        const dayKey = current.dayKey ?? 'mon_thu';
         current = {
           ...current,
-          startsAt: getFollowingShowStartAt(current.timeLabel, new Date(start)).toISOString(),
+          startsAt: getNextShowStartForDayGroup(
+            current.timeLabel,
+            dayKey,
+            new Date(startMs + 1000),
+          ).toISOString(),
           notifiedAt: null,
         };
         changed = true;
@@ -40,14 +48,18 @@ export function useShowReminders() {
       if (current.notifiedAt) return [current];
 
       const notifyAt = new Date(current.startsAt).getTime() - REMINDER_LEAD_MS;
-      if (now >= notifyAt && now < start + 30 * 60 * 1000) {
+      if (now >= notifyAt && now < startMs + 30 * 60 * 1000) {
         showShowReminderNotification(current);
         changed = true;
         return [
           {
             ...current,
             notifiedAt: new Date().toISOString(),
-            startsAt: getFollowingShowStartAt(current.timeLabel, new Date(start)).toISOString(),
+            startsAt: getNextShowStartForDayGroup(
+              current.timeLabel,
+              current.dayKey ?? 'mon_thu',
+              new Date(startMs + 1000),
+            ).toISOString(),
           },
         ];
       }
@@ -92,20 +104,24 @@ export function useShowReminders() {
   }, [remindedIds, fireDueReminders]);
 
   const isShowReminded = useCallback(
-    (showId: number) => remindedIds.has(showId),
+    (dayKey: ScheduleDayKey, showId: number) => remindedIds.has(reminderKey(dayKey, showId)),
     [remindedIds],
   );
 
   const toggleShowReminder = useCallback(
-    async (slot: ScheduleShow): Promise<ShowReminderToggleResult> => {
+    async (slot: ScheduleShow, dayKey: ScheduleDayKey): Promise<ShowReminderToggleResult> => {
       const items = readShowReminders();
-      const existing = items.find((r) => r.showId === slot.id);
+      const existing = items.find(
+        (r) => r.showId === slot.id && (r.dayKey ?? 'mon_thu') === dayKey,
+      );
 
       if (existing) {
-        writeShowReminders(items.filter((r) => r.showId !== slot.id));
+        writeShowReminders(
+          items.filter((r) => !(r.showId === slot.id && (r.dayKey ?? 'mon_thu') === dayKey)),
+        );
         setRemindedIds((prev) => {
           const next = new Set(prev);
-          next.delete(slot.id);
+          next.delete(reminderKey(dayKey, slot.id));
           return next;
         });
         return 'removed';
@@ -120,16 +136,17 @@ export function useShowReminders() {
 
       const record: StoredShowReminder = {
         showId: slot.id,
+        dayKey,
         title: slot.show,
         dj: slot.dj,
         timeLabel: slot.time,
-        startsAt: getNextShowStartAt(slot.time).toISOString(),
+        startsAt: getNextShowStartForDayGroup(slot.time, dayKey).toISOString(),
         remindedAt: new Date().toISOString(),
         notifiedAt: null,
       };
 
       writeShowReminders([...items, record]);
-      setRemindedIds((prev) => new Set(prev).add(slot.id));
+      setRemindedIds((prev) => new Set(prev).add(reminderKey(dayKey, slot.id)));
       fireDueReminders();
       return 'added';
     },

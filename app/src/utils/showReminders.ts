@@ -1,8 +1,10 @@
 import { STORAGE_KEYS } from '../constants';
+import type { ScheduleDayKey } from '../types';
 import { remindersEnabledInSettings } from './eventReminders';
 
 export interface StoredShowReminder {
   showId: number;
+  dayKey: ScheduleDayKey;
   title: string;
   dj: string;
   timeLabel: string;
@@ -40,8 +42,8 @@ export function showShowReminderNotification(reminder: StoredShowReminder): void
     body,
     icon: '/station-icon-192.png',
     badge: '/station-icon-192.png',
-    tag: `show-reminder-${reminder.showId}`,
-    data: { type: 'show-reminder', showId: reminder.showId },
+    tag: `show-reminder-${reminder.dayKey}-${reminder.showId}`,
+    data: { type: 'show-reminder', showId: reminder.showId, dayKey: reminder.dayKey },
   };
 
   if ('serviceWorker' in navigator) {
