@@ -41,7 +41,7 @@ const EMPTY_DAYS = (): ScheduleByDay => ({
 /** Same defaults as the ad-server schedule endpoint (first save seeds the file). */
 const DEFAULT_SCHEDULE_TEMPLATE: ScheduleByDay = {
   mon_thu: [
-    { id: 1, time: "12:00 AM - 5:00 AM", show: "Overnight Stars Mix", dj: "Auto DJ", description: "Non-stop overnight rotation of rising Hip-Hop, R&B, and Smooth Jazz artists.", current: false },
+    { id: 1, time: "12:00 AM - 5:00 AM", show: "Overnight Stars Mix", dj: "Automated Programme", description: "Non-stop overnight rotation of rising Hip-Hop and R&B artists.", current: false },
     { id: 2, time: "5:00 AM - 7:00 AM", show: "Sunrise Smooth Jazz", dj: "DJ Marcus", description: "Ease into the day with mellow jazz and soulful instrumentals.", current: false },
     { id: 3, time: "7:00 AM - 10:00 AM", show: "Morning Hip-Hop Rise", dj: "DJ Kaya", description: "Fresh bars and beats from tomorrow's stars — news and community shout-outs.", current: false },
     { id: 4, time: "10:00 AM - 2:00 PM", show: "Midday R&B Flow", dj: "DJ Lila", description: "Midday grooves and new voices in R&B — perfect for work or the road.", current: false },
@@ -179,7 +179,7 @@ export default function SchedulePage() {
           id: nextId,
           time: "12:00 PM - 1:00 PM",
           show: "New show",
-          dj: "DJ name",
+          dj: "Automated Programme",
           description: "Description",
           current: false,
         },

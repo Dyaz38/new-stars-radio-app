@@ -9,7 +9,7 @@ NEW_STARS_SCHEDULE: list[ScheduleShow] = [
         id=1,
         time="12:00 AM - 5:00 AM",
         show="Overnight Stars Mix",
-        dj="Auto DJ",
+        dj="Automated Programme",
         description="Non-stop overnight rotation of rising Hip-Hop, R&B, and Smooth Jazz artists.",
         current=False,
     ),

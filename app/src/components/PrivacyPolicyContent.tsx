@@ -21,7 +21,7 @@ export function PrivacyPolicyContent({ className = '' }: PrivacyPolicyContentPro
       <section>
         <h2 className="text-base font-semibold text-pink-300 mb-2">Who we are</h2>
         <p>
-          {RADIO_CONFIG.STATION_NAME} operates an online radio station focused on Hip-Hop, R&amp;B, and Smooth Jazz.
+          {RADIO_CONFIG.STATION_NAME} operates an online radio station focused on Hip-Hop and R&amp;B.
           For privacy questions or requests, contact us at{' '}
           <a
             href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=Privacy%20request`}

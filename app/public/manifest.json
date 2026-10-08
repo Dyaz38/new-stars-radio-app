@@ -1,7 +1,7 @@
 {
   "name": "New Stars Radio",
   "short_name": "NS Radio",
-  "description": "Tomorrow's Stars, Today — Hip-Hop, R'n'B and Smooth Jazz live 24/7",
+  "description": "Tomorrow's Stars, Today — Hip-Hop and R'n'B live 24/7 from Namibia",
   "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",

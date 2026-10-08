@@ -46,6 +46,7 @@ import {
   getThisWeekSegment,
 } from './utils/eventCalendar';
 import { filterEventsForCountry } from './utils/eventGeo';
+import { formatScheduleHostLabel, getScheduleHostInitials } from './utils/scheduleHost';
 import { applyCurrentScheduleFlags } from './utils/scheduleTime';
 import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
 import { EventPosterImage } from './components/EventPosterImage';
@@ -246,17 +247,10 @@ const RadioStreamingApp = () => {
     [todaySchedule],
   );
 
-  const djInitials = useMemo(() => {
-    const name = (currentScheduleSlot?.dj ?? '').trim();
-    if (!name) return '?';
-    if (/^auto\s+dj$/i.test(name)) return '♪';
-    const withoutPrefix = name.replace(/^DJ\s+/i, '').trim();
-    const words = (withoutPrefix || name).split(/\s+/).filter(Boolean);
-    if (words.length >= 2) {
-      return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
-    }
-    return words[0].slice(0, 2).toUpperCase();
-  }, [currentScheduleSlot?.dj]);
+  const djInitials = useMemo(
+    () => getScheduleHostInitials(currentScheduleSlot?.dj),
+    [currentScheduleSlot?.dj],
+  );
 
   // Optimized helper functions with useCallback
   const shareCurrentSong = useCallback(() => {
@@ -571,7 +565,9 @@ const RadioStreamingApp = () => {
                 ) : null}
               </div>
               <p className="text-sm sm:text-base text-gray-300 truncate">
-                {currentScheduleSlot ? `with ${currentScheduleSlot.dj}` : 'Loading schedule…'}
+                {currentScheduleSlot
+                  ? `with ${formatScheduleHostLabel(currentScheduleSlot.dj)}`
+                  : 'Loading schedule…'}
               </p>
               <p className="text-xs sm:text-sm text-gray-400">
                 {currentScheduleSlot?.time ?? '—'}
@@ -722,6 +718,10 @@ const RadioStreamingApp = () => {
               })}
             </div>
 
+            <p className="text-xs text-gray-400 mb-4">
+              All show times are <strong className="text-gray-300">Namibia (Windhoek, CAT)</strong>.
+            </p>
+
             <div className="space-y-3 sm:space-y-4">
               {scheduleModalSlots.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-8">
@@ -734,6 +734,12 @@ const RadioStreamingApp = () => {
                   className={`rounded-lg p-3 sm:p-4 ${slot.current ? 'bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30' : 'bg-white/10'}`}
                 >
                   <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2">
+                    <div
+                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-purple-600/35 border border-white/10 flex items-center justify-center shrink-0 text-sm font-bold text-white"
+                      aria-hidden
+                    >
+                      {getScheduleHostInitials(slot.dj)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-1">
                         <h4 className="font-bold text-base sm:text-lg line-clamp-2 leading-snug">{slot.show}</h4>
@@ -743,7 +749,9 @@ const RadioStreamingApp = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-pink-300 font-semibold text-xs sm:text-sm truncate">with {slot.dj}</p>
+                      <p className="text-pink-300 font-semibold text-xs sm:text-sm truncate">
+                        with {formatScheduleHostLabel(slot.dj)}
+                      </p>
                       <p className="text-gray-300 text-xs sm:text-sm mt-1 line-clamp-3">{slot.description}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 sm:gap-2 shrink-0">
@@ -1110,7 +1118,7 @@ const RadioStreamingApp = () => {
                 <p className="text-base sm:text-lg font-bold">{RADIO_CONFIG.STATION_NAME}</p>
                 <p className="text-xs sm:text-sm text-gray-300 mt-1">{RADIO_CONFIG.TAGLINE}</p>
                 <p className="text-gray-400 text-xs sm:text-sm mt-2">
-                  New Stars Radio is your #1 stop for up and coming artists in Hip-Hop, R&apos;n&apos;B and Smooth Jazz. We are committed to finding great unknown artists and bringing them to your eardrums.
+                  New Stars Radio is your #1 stop for up and coming artists in Hip-Hop and R&apos;n&apos;B. We are committed to finding great unknown artists and bringing them to your eardrums.
                 </p>
               </section>
 

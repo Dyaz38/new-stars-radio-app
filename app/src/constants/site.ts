@@ -1,6 +1,12 @@
 /** Public site pages and contact — used in footer, About, and crawler-visible copy. */
 export const ABOUT_URL = '/about';
+/** Advertising, events, and general business enquiries */
 export const CONTACT_EMAIL = 'sales@newstarsradio.com';
+/** Unsigned artists submitting tracks for airplay consideration */
+export const MUSIC_SUBMISSION_EMAIL = 'music@newstarsradio.com';
+
+export const musicSubmissionMailto = (subject = 'Track submission for New Stars Radio') =>
+  `mailto:${MUSIC_SUBMISSION_EMAIL}?subject=${encodeURIComponent(subject)}`;
 
 export const STATION_ABOUT_SUMMARY =
   'New Stars Radio (NSR) is a live online station from Windhoek, Namibia, founded by Dyaz to discover and promote undiscovered Hip-Hop and R&B artists. Listen 24/7, browse the weekly schedule, and explore station events from any device.';
@@ -26,7 +32,7 @@ export const STATION_ABOUT_STORY_SECTIONS: readonly AboutStorySection[] = [
     title: 'What promotion means to me',
     paragraphs: [
       'It is discovering as many new artists as possible and pushing their music on my station to listeners in a way that mainstream radio would not — or could not — for whatever reason.',
-      'If you are an artist looking for airtime or a partner who wants to reach that audience, get in touch by email below.',
+      'If you are an artist looking for airtime, email music@newstarsradio.com with your track. Partners who want to reach our audience can contact sales@newstarsradio.com.',
     ],
   },
 ] as const;

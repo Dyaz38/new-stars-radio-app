@@ -1,6 +1,6 @@
 import { RADIO_CONFIG } from '../constants';
 import { PRIVACY_POLICY_URL } from '../constants/privacy';
-import { ABOUT_URL, CONTACT_EMAIL } from '../constants/site';
+import { ABOUT_URL, CONTACT_EMAIL, musicSubmissionMailto } from '../constants/site';
 
 interface SiteFooterProps {
   className?: string;
@@ -18,6 +18,9 @@ export function SiteFooter({ className = '' }: SiteFooterProps) {
         </a>
         <a href={PRIVACY_POLICY_URL} className="text-pink-300 hover:text-pink-200 underline">
           Privacy Policy
+        </a>
+        <a href={musicSubmissionMailto()} className="text-pink-300 hover:text-pink-200 underline">
+          Submit music
         </a>
         <a
           href={`mailto:${CONTACT_EMAIL}?subject=New%20Stars%20Radio%20enquiry`}

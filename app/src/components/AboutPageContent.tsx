@@ -1,5 +1,10 @@
 import { RADIO_CONFIG } from '../constants';
-import { CONTACT_EMAIL, STATION_ABOUT_STORY_SECTIONS } from '../constants/site';
+import {
+  CONTACT_EMAIL,
+  MUSIC_SUBMISSION_EMAIL,
+  musicSubmissionMailto,
+  STATION_ABOUT_STORY_SECTIONS,
+} from '../constants/site';
 import { PRIVACY_POLICY_URL } from '../constants/privacy';
 
 interface AboutPageContentProps {
@@ -42,15 +47,23 @@ export function AboutPageContent({ className = '' }: AboutPageContentProps) {
 
       <section>
         <h2 className="text-base font-semibold text-pink-300 mb-2">Contact</h2>
+        <p className="mb-3">
+          <strong className="text-gray-200">Artists — submit your music:</strong>{' '}
+          <a href={musicSubmissionMailto()} className="text-pink-300 hover:text-pink-200 underline">
+            {MUSIC_SUBMISSION_EMAIL}
+          </a>
+          . Send a streaming link or download (MP3/WAV), artist name, track title, and a short note. A submit form in
+          the app may come later.
+        </p>
         <p>
-          Email us at{' '}
+          <strong className="text-gray-200">Advertising, events, and general enquiries:</strong>{' '}
           <a
             href={`mailto:${CONTACT_EMAIL}?subject=New%20Stars%20Radio%20enquiry`}
             className="text-pink-300 hover:text-pink-200 underline"
           >
             {CONTACT_EMAIL}
-          </a>{' '}
-          for artist submissions, advertising, event listings, or general questions.
+          </a>
+          .
         </p>
       </section>
 
