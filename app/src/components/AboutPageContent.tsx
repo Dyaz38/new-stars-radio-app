@@ -1,11 +1,8 @@
 import { RADIO_CONFIG } from '../constants';
-import {
-  CONTACT_EMAIL,
-  MUSIC_SUBMISSION_EMAIL,
-  musicSubmissionMailto,
-  STATION_ABOUT_STORY_SECTIONS,
-} from '../constants/site';
+import { CONTACT_EMAIL, STATION_ABOUT_STORY_SECTIONS } from '../constants/site';
 import { PRIVACY_POLICY_URL } from '../constants/privacy';
+import { AboutForArtistsSection } from './AboutForArtistsSection';
+import { AboutProgrammeShowsSection } from './AboutProgrammeShowsSection';
 
 interface AboutPageContentProps {
   className?: string;
@@ -35,6 +32,10 @@ export function AboutPageContent({ className = '' }: AboutPageContentProps) {
         </section>
       ))}
 
+      <AboutProgrammeShowsSection />
+
+      <AboutForArtistsSection />
+
       <section>
         <h2 className="text-base font-semibold text-pink-300 mb-2">What you can do here</h2>
         <ul className="list-disc pl-5 space-y-2">
@@ -47,13 +48,12 @@ export function AboutPageContent({ className = '' }: AboutPageContentProps) {
 
       <section>
         <h2 className="text-base font-semibold text-pink-300 mb-2">Contact</h2>
-        <p className="mb-3">
-          <strong className="text-gray-200">Artists — submit your music:</strong>{' '}
-          <a href={musicSubmissionMailto()} className="text-pink-300 hover:text-pink-200 underline">
-            {MUSIC_SUBMISSION_EMAIL}
-          </a>
-          . Send a streaming link or download (MP3/WAV), artist name, track title, and a short note. A submit form in
-          the app may come later.
+        <p className="mb-2">
+          <strong className="text-gray-200">Artists:</strong>{' '}
+          <a href="#for-artists" className="text-pink-300 hover:text-pink-200 underline">
+            Submit your music
+          </a>{' '}
+          (see For artists above).
         </p>
         <p>
           <strong className="text-gray-200">Advertising, events, and general enquiries:</strong>{' '}

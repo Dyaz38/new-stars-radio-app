@@ -16,6 +16,9 @@ export function SiteFooter({ className = '' }: SiteFooterProps) {
         <a href={ABOUT_URL} className="text-pink-300 hover:text-pink-200 underline">
           About
         </a>
+        <a href={`${ABOUT_URL}#for-artists`} className="text-pink-300 hover:text-pink-200 underline">
+          For artists
+        </a>
         <a href={PRIVACY_POLICY_URL} className="text-pink-300 hover:text-pink-200 underline">
           Privacy Policy
         </a>

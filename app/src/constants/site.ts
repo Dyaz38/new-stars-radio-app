@@ -32,10 +32,83 @@ export const STATION_ABOUT_STORY_SECTIONS: readonly AboutStorySection[] = [
     title: 'What promotion means to me',
     paragraphs: [
       'It is discovering as many new artists as possible and pushing their music on my station to listeners in a way that mainstream radio would not — or could not — for whatever reason.',
-      'If you are an artist looking for airtime, email music@newstarsradio.com with your track. Partners who want to reach our audience can contact sales@newstarsradio.com.',
+      'Partners who want to reach our audience can contact sales@newstarsradio.com. If you are an unsigned artist, see For artists below.',
     ],
   },
 ] as const;
+
+/** Crawler-friendly block for unsigned artist submissions (AdSense / discovery). */
+export const FOR_ARTISTS_SECTION = {
+  title: 'For artists',
+  intro:
+    'New Stars Radio exists to spotlight undiscovered Hip-Hop and R&B talent. If you are building your name and want airplay on a station that prioritizes new voices, we want to hear from you.',
+  genresNote: 'We focus on Hip-Hop and R&B. Send your best work — clean or explicit versions are fine if they are clearly labelled.',
+  submitViaEmail:
+    'Email us your track for rotation consideration. A dedicated submit form in the app may come later; email is how submissions work today.',
+  includeInEmail: [
+    'Artist or stage name',
+    'Track title',
+    'Link to stream (YouTube, SoundCloud, Dropbox, Google Drive, etc.) or attach an MP3/WAV',
+    'One or two sentences about you and the song (optional but helpful)',
+    'Social handle (optional)',
+  ] as const,
+  afterYouSend:
+    'We listen to every submission we can. We cannot reply to every email, and airplay is not guaranteed — but matching tracks may be added to our automated programme rotation and heard by listeners worldwide.',
+  notAcceptedNote:
+    'Please do not send copyrighted material you do not own. By submitting, you confirm you have the rights to share the recording for broadcast consideration.',
+} as const;
+
+export type ProgrammeShowBlurb = {
+  name: string;
+  /** Matches the in-app schedule row (Windhoek, CAT). */
+  time: string;
+  blurb: string;
+};
+
+/** Flagship dayparts for About / crawlers — keep names in sync with admin schedule when you rename shows. */
+export const PROGRAMME_SHOWS_SECTION = {
+  title: 'Programme highlights',
+  intro:
+    'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B. On Mon–Thu the day is split into named blocks so you know the mood before you tune in. Open the Schedule tab in the app for the full grid, on-air indicator, and reminders — all times are Windhoek (CAT).',
+  shows: [
+    {
+      name: 'Overnight Stars Mix',
+      time: '12:00 AM – 5:00 AM',
+      blurb:
+        'Non-stop overnight rotation of rising Hip-Hop and R&B — deep listens while the world sleeps, with room for tracks we are breaking before daytime listeners catch up.',
+    },
+    {
+      name: 'Morning Hip-Hop Rise',
+      time: '7:00 AM – 10:00 AM',
+      blurb:
+        'Fresh bars and beats from tomorrow’s stars to start your morning — high-energy Hip-Hop focused on new voices, not yesterday’s playlist.',
+    },
+    {
+      name: 'Midday R&B Flow',
+      time: '10:00 AM – 2:00 PM',
+      blurb:
+        'Midday grooves and newer R&B cuts that fit work, study, or the road — smooth enough to focus, still rooted in artists you have not heard on mainstream radio yet.',
+    },
+    {
+      name: 'Afternoon Discovery',
+      time: '2:00 PM – 6:00 PM',
+      blurb:
+        'Deep cuts and debut tracks from unsigned artists we want listeners to discover first — the block most aligned with why NSR exists.',
+    },
+    {
+      name: 'Drive Time Heat',
+      time: '6:00 PM – 9:00 PM',
+      blurb:
+        'Peak-hour Hip-Hop and R&B energy for the commute home — anthems and newcomers side by side when you want the volume up.',
+    },
+    {
+      name: 'Late Night Lounge',
+      time: '9:00 PM – 12:00 AM',
+      blurb:
+        'Slow R&B and mellow late-night Hip-Hop to wind down — still centred on rising talent, with a softer tempo for the end of the day.',
+    },
+  ] satisfies readonly ProgrammeShowBlurb[],
+} as const;
 
 /** @deprecated Use STATION_ABOUT_STORY_SECTIONS — kept for imports that expect flat paragraphs. */
 export const STATION_ABOUT_PARAGRAPHS = STATION_ABOUT_STORY_SECTIONS.flatMap((s) => s.paragraphs);
