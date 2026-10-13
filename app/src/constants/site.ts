@@ -25,7 +25,7 @@ export const STATION_ABOUT_STORY_SECTIONS: readonly AboutStorySection[] = [
       'I have a long love for that genre of music, ever since I was a kid growing up in the 90s in Windhoek, Namibia. My older sister would play R&B tracks in the background while my twin brother and I would hang out in her room — artists like Babyface, Mariah Carey, Toni Braxton, Michael Bolton, Biggie, 2Pac, and more. That was how I slowly fell in love with Hip-Hop and R&B.',
       'Later on in life I got the opportunity to work at one of the biggest urban radio stations in Namibia, Radio 100FM. That is where I got my taste for media, particularly radio broadcasting. I got to see artists walk into the station to try and get their music played on air; some had well-produced tracks, while others did not.',
       'After seeing a fair few of these undiscovered artists get turned down, I decided to take a chance and start my own radio station that prioritizes the promotion of those types of artists.',
-      'After a soft launch in 2022 that lasted for about a month, I pulled the app from the store and rebuilt it to a stronger standard — the listener experience you use today at newstarsradio.com.',
+      'After a soft launch in 2022 that lasted for about a month, I pulled the mobile app from the store and rebuilt the listener experience to a stronger standard — what you use today at newstarsradio.com.',
     ],
   },
   {
@@ -69,7 +69,7 @@ export type ProgrammeShowBlurb = {
 export const PROGRAMME_SHOWS_SECTION = {
   title: 'Programme highlights',
   intro:
-    'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B. On Mon–Thu the day is split into named blocks so you know the mood before you tune in. Open the Schedule tab in the app for the full grid, on-air indicator, and reminders — all times are Windhoek (CAT).',
+    'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B artists. On Mon–Thu the day is split into named blocks. Open the Schedule tab in the app for the full grid and reminders — all times are Windhoek (CAT).',
   shows: [
     {
       name: 'Overnight Stars Mix',
