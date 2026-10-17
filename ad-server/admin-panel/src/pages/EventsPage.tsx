@@ -121,7 +121,8 @@ function formatEventsLoadError(err: unknown): string {
 
 export default function EventsPage() {
   const queryClient = useQueryClient();
-  const [editorRows, setEditorRows] = useState<StationEvent[]>([]);
+  /** `null` = show server data; `[]` = user removed all rows (must not fall back to server). */
+  const [editorRows, setEditorRows] = useState<StationEvent[] | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const [newPlaceInput, setNewPlaceInput] = useState("");
@@ -184,7 +185,7 @@ export default function EventsPage() {
     [presetPlaces],
   );
 
-  const rows = editorRows.length > 0 ? editorRows : data?.items ?? [];
+  const rows = editorRows !== null ? editorRows : (data?.items ?? []);
 
   const errorMessage = useMemo(() => {
     if (!error) return null;
@@ -193,7 +194,7 @@ export default function EventsPage() {
 
   const updateRow = (id: number, patch: Partial<StationEvent>) => {
     setEditorRows((prev) => {
-      const base = prev.length > 0 ? prev : data?.items ?? [];
+      const base = prev ?? data?.items ?? [];
       return base.map((row) => (row.id === id ? { ...row, ...patch } : row));
     });
   };
@@ -208,14 +209,14 @@ export default function EventsPage() {
   };
 
   const resetEdits = () => {
-    setEditorRows(data?.items ? [...data.items] : []);
+    setEditorRows(null);
     setCustomLocationIds(new Set());
     setFeedback(null);
   };
 
   const addRow = () => {
     setEditorRows((prev) => {
-      const base = prev.length > 0 ? prev : data?.items ?? [];
+      const base = prev ?? data?.items ?? [];
       const nextId = base.length === 0 ? 1 : Math.max(...base.map((r) => r.id)) + 1;
       return [...base.map((r) => ({ ...r })), { ...EMPTY_TEMPLATE, id: nextId }];
     });
@@ -223,10 +224,11 @@ export default function EventsPage() {
 
   const removeRow = (id: number) => {
     setEditorRows((prev) => {
-      const base = prev.length > 0 ? prev : data?.items ?? [];
+      const base = prev ?? data?.items ?? [];
       return base.filter((r) => r.id !== id).map((r) => ({ ...r }));
     });
     setRowCustomLocation(id, false);
+    setFeedback('Event removed from the list — click Save events to publish.');
   };
 
   const saveAll = () => {
