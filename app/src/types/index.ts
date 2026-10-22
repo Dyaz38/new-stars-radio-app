@@ -46,6 +46,11 @@ export interface StationEvent {
   imageUrl?: string | null;
   /** ISO 3166-1 alpha-2; empty = worldwide */
   countryCode?: string | null;
+  /** ISO 8601 — doors open (optional, may be before startsAt) */
+  doorsAt?: string | null;
+  ticketUrl?: string | null;
+  /** Display string e.g. "N$150" or "Free" */
+  ticketPrice?: string | null;
 }
 
 export interface Post {

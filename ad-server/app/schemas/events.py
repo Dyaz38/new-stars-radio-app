@@ -25,11 +25,36 @@ class StationEvent(BaseModel):
     image_url: str | None = Field(default=None, max_length=2000)
     # ISO 3166-1 alpha-2 — empty/null = show in all countries; else IP country must match
     country_code: str | None = Field(default=None, max_length=2)
+    # Doors open (often before starts_at) — shown in app and calendar details
+    doors_at: datetime | None = None
+    ticket_url: str | None = Field(default=None, max_length=2000)
+    ticket_price: str | None = Field(default=None, max_length=120)
 
     @field_validator("title", "date_label", "location", "description")
     @classmethod
     def strip_text_fields(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("ticket_price")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        s = value.strip()
+        return s or None
+
+    @field_validator("ticket_url")
+    @classmethod
+    def normalize_ticket_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        s = value.strip()
+        if not s:
+            return None
+        lower = s.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
+            raise ValueError("ticket_url must start with http:// or https://")
+        return s
 
     @field_validator("image_url")
     @classmethod

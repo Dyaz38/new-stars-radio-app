@@ -14,6 +14,9 @@ export type EventApiRow = {
   ends_at?: string | null;
   image_url?: string | null;
   country_code?: string | null;
+  doors_at?: string | null;
+  ticket_url?: string | null;
+  ticket_price?: string | null;
 };
 
 /** Map API snake_case row to listener app event shape. Skips legacy placeholder seed rows. */
@@ -34,6 +37,9 @@ export function mapEventFromApi(row: EventApiRow): StationEvent | null {
     endsAt: row.ends_at ?? null,
     imageUrl: sanitizeEventImageUrl(row.image_url),
     countryCode: row.country_code ?? null,
+    doorsAt: row.doors_at ?? null,
+    ticketUrl: row.ticket_url?.trim() || null,
+    ticketPrice: row.ticket_price?.trim() || null,
   };
 }
 export function normalizeStoredEvent(raw: unknown): StationEvent | null {
@@ -68,6 +74,15 @@ export function normalizeStoredEvent(raw: unknown): StationEvent | null {
     endsAt: (row.endsAt ?? row.ends_at ?? null) as string | null,
     imageUrl,
     countryCode,
+    doorsAt: (row.doorsAt ?? row.doors_at ?? null) as string | null,
+    ticketUrl:
+      typeof (row.ticketUrl ?? row.ticket_url) === 'string'
+        ? String(row.ticketUrl ?? row.ticket_url).trim() || null
+        : null,
+    ticketPrice:
+      typeof (row.ticketPrice ?? row.ticket_price) === 'string'
+        ? String(row.ticketPrice ?? row.ticket_price).trim() || null
+        : null,
   };
 }
 

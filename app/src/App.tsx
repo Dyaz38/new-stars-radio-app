@@ -46,6 +46,7 @@ import {
   getThisWeekSegment,
 } from './utils/eventCalendar';
 import { filterEventsForCountry } from './utils/eventGeo';
+import { filterListenerEvents, formatDoorsAtLabel } from './utils/eventVisibility';
 import { formatScheduleHostLabel, getScheduleHostInitials } from './utils/scheduleHost';
 import { applyCurrentScheduleFlags } from './utils/scheduleTime';
 import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
@@ -189,7 +190,7 @@ const RadioStreamingApp = () => {
     return `🎵 Currently listening to "${currentSong.title}" by ${currentSong.artist} on ${RADIO_CONFIG.STATION_NAME}! 📻`;
   }, [currentSong.title, currentSong.artist]);
   const filteredEvents = useMemo(() => {
-    let list = eventsList;
+    let list = filterListenerEvents(eventsList);
     if (eventFilter === 'mon-thu')
       list = list.filter((event) => getThisWeekSegment(event) === 'mon-thu');
     else if (eventFilter === 'weekend')
@@ -995,7 +996,37 @@ const RadioStreamingApp = () => {
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-pink-300 mb-2">{event.location}</p>
+                  {(() => {
+                    const doorsLabel = formatDoorsAtLabel(event.doorsAt);
+                    if (!doorsLabel && !event.ticketPrice) return null;
+                    return (
+                      <p className="text-xs sm:text-sm text-gray-400 mb-2">
+                        {doorsLabel ? (
+                          <>
+                            <span className="text-gray-300">Doors:</span> {doorsLabel}
+                          </>
+                        ) : null}
+                        {doorsLabel && event.ticketPrice ? ' · ' : null}
+                        {event.ticketPrice ? (
+                          <>
+                            <span className="text-gray-300">Price:</span> {event.ticketPrice}
+                          </>
+                        ) : null}
+                      </p>
+                    );
+                  })()}
                   <p className="text-xs sm:text-sm text-gray-300 line-clamp-4 sm:line-clamp-none">{event.description}</p>
+                  {event.ticketUrl ? (
+                    <a
+                      href={event.ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-2 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-pink-600/90 hover:bg-pink-600 text-white font-semibold transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden />
+                      Get tickets
+                    </a>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2 items-center">
                     {(() => {
                       const range = getEventTimeRange(event);

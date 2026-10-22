@@ -1,5 +1,6 @@
 import type { StationEvent } from '../types';
 import { RADIO_CONFIG } from '../constants';
+import { formatDoorsAtLabel } from './eventVisibility';
 
 const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
 
@@ -69,21 +70,27 @@ function icsEscapeText(text: string): string {
     .replace(/,/g, '\\,');
 }
 
+function eventCalendarDetails(event: StationEvent): string {
+  const doors = formatDoorsAtLabel(event.doorsAt);
+  return [
+    event.description,
+    doors ? `Doors: ${doors}` : null,
+    event.ticketPrice ? `Price: ${event.ticketPrice}` : null,
+    event.ticketUrl ? `Tickets: ${event.ticketUrl}` : null,
+    `When: ${event.dateLabel}`,
+    RADIO_CONFIG.STATION_NAME,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 export function buildGoogleCalendarUrl(
   event: StationEvent,
   start: Date,
   end: Date,
 ): string {
   const text = encodeURIComponent(event.title);
-  const details = encodeURIComponent(
-    [
-      event.description,
-      `When: ${event.dateLabel}`,
-      RADIO_CONFIG.STATION_NAME,
-    ]
-      .filter(Boolean)
-      .join('\n\n'),
-  );
+  const details = encodeURIComponent(eventCalendarDetails(event));
   const loc = encodeURIComponent(event.location);
   const dates = `${toGoogleUtc(start)}/${toGoogleUtc(end)}`;
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${loc}`;
@@ -105,7 +112,7 @@ export function buildIcsContent(event: StationEvent, start: Date, end: Date): st
     `DTSTART:${toGoogleUtc(start)}`,
     `DTEND:${toGoogleUtc(end)}`,
     `SUMMARY:${icsEscapeText(event.title)}`,
-    `DESCRIPTION:${icsEscapeText([event.description, `When: ${event.dateLabel}`].filter(Boolean).join('\\n'))}`,
+    `DESCRIPTION:${icsEscapeText(eventCalendarDetails(event).replace(/\n/g, '\\n'))}`,
     `LOCATION:${icsEscapeText(event.location)}`,
     'END:VEVENT',
     'END:VCALENDAR',

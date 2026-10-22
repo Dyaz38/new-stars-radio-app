@@ -20,6 +20,9 @@ interface StationEvent {
   image_url?: string | null;
   /** ISO 3166-1 alpha-2 — empty = worldwide; else listeners must match by IP */
   country_code?: string | null;
+  doors_at?: string | null;
+  ticket_url?: string | null;
+  ticket_price?: string | null;
 }
 
 interface EventsResponse {
@@ -56,6 +59,9 @@ const EMPTY_TEMPLATE: StationEvent = {
   ends_at: null,
   image_url: null,
   country_code: null,
+  doors_at: null,
+  ticket_url: null,
+  ticket_price: null,
 };
 
 function isoToDatetimeLocal(iso: string | null | undefined): string {
@@ -275,7 +281,9 @@ export default function EventsPage() {
           <p className="text-gray-600">
             Published to the public events API (GET /api/v1/events/). Listeners only see events for their
             detected country (by IP) plus worldwide events with no country set. Use <strong>Global (all countries)</strong>{' '}
-            on each event unless it should be limited to one country (e.g. Namibia only).
+            on each event unless it should be limited to one country (e.g. Namibia only). Events disappear from the app
+            automatically after their end time (or two hours after start if no end is set). Past rows stay here for
+            your records until you remove them.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -429,6 +437,13 @@ export default function EventsPage() {
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                       End (optional)
                     </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                      Doors open
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[9rem]">
+                      Ticket URL
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                       Country
@@ -443,7 +458,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="px-6 py-10 text-center text-gray-600">
+                      <td colSpan={15} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-4">No events yet. Click <strong>Add event</strong>, fill in the fields, then <strong>Save events</strong>.</p>
                         <button
                           type="button"
@@ -558,6 +573,39 @@ export default function EventsPage() {
                           }
                           className="min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
                           title="Leave empty for a 2-hour default length"
+                        />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <input
+                          type="datetime-local"
+                          value={isoToDatetimeLocal(row.doors_at)}
+                          onChange={(e) =>
+                            updateRow(row.id, { doors_at: datetimeLocalToIso(e.target.value) })
+                          }
+                          className="min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          title="Optional — shown as Doors in the listener app"
+                        />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <input
+                          type="url"
+                          placeholder="https://…"
+                          value={row.ticket_url ?? ""}
+                          onChange={(e) =>
+                            updateRow(row.id, { ticket_url: e.target.value.trim() || null })
+                          }
+                          className="w-44 min-w-[11rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <input
+                          type="text"
+                          placeholder="e.g. N$150 or Free"
+                          value={row.ticket_price ?? ""}
+                          onChange={(e) =>
+                            updateRow(row.id, { ticket_price: e.target.value.trim() || null })
+                          }
+                          className="w-28 min-w-[7rem] rounded-lg border border-gray-300 px-2 py-2 text-sm"
                         />
                       </td>
                       <td className="px-3 py-3 align-top">

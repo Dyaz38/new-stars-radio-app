@@ -25,6 +25,7 @@ from app.schemas.events import (
 from app.seed.station_content import NEW_STARS_EVENT_LOCATIONS, NEW_STARS_EVENTS
 from app.services.storage import upload_station_event_image
 from app.services.event_geo import filter_events_for_country
+from app.services.event_visibility import refresh_event_status, visible_to_listeners
 from app.services.geoip import resolve_request_geo
 
 logger = logging.getLogger(__name__)
@@ -70,20 +71,24 @@ def _write_events(items: list[StationEvent]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _normalize_events(items: list[StationEvent]) -> list[StationEvent]:
+    return [refresh_event_status(item) for item in items]
+
+
 def _read_events() -> list[StationEvent]:
     path = _events_file_path()
     if not path.exists():
         _write_events(DEFAULT_EVENTS)
-        return DEFAULT_EVENTS
+        return _normalize_events(DEFAULT_EVENTS)
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         parsed = EventsResponse.model_validate(raw)
-        return _sanitize_events(parsed.items)
+        return _normalize_events(_sanitize_events(parsed.items))
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.warning("Invalid events file detected (%s). Resetting to defaults.", exc)
         _write_events(DEFAULT_EVENTS)
-        return DEFAULT_EVENTS
+        return _normalize_events(DEFAULT_EVENTS)
 
 
 def _locations_file_path() -> Path:
@@ -152,11 +157,12 @@ async def get_events(
     if current_user is not None:
         return EventsResponse(items=items, listener_country=None, published_count=None)
     geo = await resolve_request_geo(http_request)
-    filtered = filter_events_for_country(items, geo.country)
+    upcoming = [e for e in items if visible_to_listeners(e)]
+    filtered = filter_events_for_country(upcoming, geo.country)
     return EventsResponse(
         items=filtered,
         listener_country=geo.country,
-        published_count=len(items),
+        published_count=len(upcoming),
     )
 
 
@@ -197,6 +203,7 @@ async def update_events(
     body: EventsUpdateRequest,
     _: User = Depends(get_current_user),
 ):
-    _write_events(body.items)
-    logger.info("station events updated: items=%s", len(body.items))
-    return EventsUpdateResponse(updated_items=len(body.items), items=body.items)
+    normalized = _normalize_events(body.items)
+    _write_events(normalized)
+    logger.info("station events updated: items=%s", len(normalized))
+    return EventsUpdateResponse(updated_items=len(normalized), items=normalized)
