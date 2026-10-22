@@ -6,38 +6,38 @@
         "time": "12:00 AM - 5:00 AM",
         "show": "Overnight Stars Mix",
         "dj": "Automated Programme",
-        "description": "Non-stop overnight rotation of rising Hip-Hop, R&B, and Smooth Jazz artists.",
+        "description": "Non-stop overnight rotation of rising Hip-Hop and R&B artists.",
         "current": false
       },
       {
         "id": 2,
         "time": "5:00 AM - 7:00 AM",
-        "show": "Sunrise Smooth Jazz",
-        "dj": "DJ Marcus",
-        "description": "Ease into the day with mellow jazz and soulful instrumentals.",
+        "show": "Sunrise R&B Warmup",
+        "dj": "Automated Programme",
+        "description": "Easy morning R&B and mellow Hip-Hop from rising artists — a soft start before the day builds.",
         "current": false
       },
       {
         "id": 3,
         "time": "7:00 AM - 10:00 AM",
         "show": "Morning Hip-Hop Rise",
-        "dj": "DJ Kaya",
-        "description": "Fresh bars and beats from tomorrow's stars — news and community shout-outs.",
+        "dj": "Automated Programme",
+        "description": "Fresh bars and beats from tomorrow's stars — high-energy Hip-Hop focused on new voices.",
         "current": false
       },
       {
         "id": 4,
         "time": "10:00 AM - 2:00 PM",
         "show": "Midday R&B Flow",
-        "dj": "DJ Lila",
-        "description": "Midday grooves and new voices in R&B — perfect for work or the road.",
+        "dj": "Automated Programme",
+        "description": "Midday grooves and newer R&B cuts for work, study, or the road.",
         "current": false
       },
       {
         "id": 5,
         "time": "2:00 PM - 6:00 PM",
         "show": "Afternoon Discovery",
-        "dj": "New Stars Team",
+        "dj": "Automated Programme",
         "description": "Deep cuts and debut tracks from unsigned artists we're breaking first.",
         "current": false
       },
@@ -45,16 +45,16 @@
         "id": 6,
         "time": "6:00 PM - 9:00 PM",
         "show": "Drive Time Heat",
-        "dj": "DJ Apex",
-        "description": "Peak-hour energy — Hip-Hop and R&B anthems for the commute home.",
+        "dj": "Automated Programme",
+        "description": "Peak-hour Hip-Hop and R&B energy for the commute home.",
         "current": false
       },
       {
         "id": 7,
         "time": "9:00 PM - 12:00 AM",
         "show": "Late Night Lounge",
-        "dj": "DJ Nova",
-        "description": "Smooth Jazz and slow R&B to wind down the evening.",
+        "dj": "Automated Programme",
+        "description": "Slow R&B and mellow late-night Hip-Hop to wind down.",
         "current": false
       }
     ],

@@ -78,6 +78,12 @@ export const PROGRAMME_SHOWS_SECTION = {
         'Non-stop overnight rotation of rising Hip-Hop and R&B — deep listens while the world sleeps, with room for tracks we are breaking before daytime listeners catch up.',
     },
     {
+      name: 'Sunrise R&B Warmup',
+      time: '5:00 AM – 7:00 AM',
+      blurb:
+        'Easy morning R&B and mellow Hip-Hop from rising artists — a soft start before the day builds.',
+    },
+    {
       name: 'Morning Hip-Hop Rise',
       time: '7:00 AM – 10:00 AM',
       blurb:
