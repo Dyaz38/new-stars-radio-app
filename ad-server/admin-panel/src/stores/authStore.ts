@@ -6,6 +6,8 @@ interface User {
   full_name: string
   role: string
   is_active: boolean
+  advertiser_id?: string | null
+  advertiser_ids?: string[]
 }
 
 interface AuthStore {

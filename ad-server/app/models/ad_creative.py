@@ -15,6 +15,7 @@ class CreativeStatus(str, enum.Enum):
     """Ad creative status enumeration."""
     ACTIVE = "active"
     INACTIVE = "inactive"
+    PENDING_REVIEW = "pending_review"
 
 
 class AdCreative(Base):

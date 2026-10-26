@@ -7,7 +7,7 @@ from typing import List
 from uuid import UUID
 
 from app.core.database import get_db
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_staff_user
 from app.schemas.advertiser import AdvertiserCreate, AdvertiserUpdate, AdvertiserResponse
 from app.models.advertiser import Advertiser, AdvertiserStatus
 from app.models.user import User
@@ -19,7 +19,7 @@ router = APIRouter()
 async def create_advertiser(
     advertiser_data: AdvertiserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Create a new advertiser."""
     # Check if email already exists
@@ -50,7 +50,7 @@ async def list_advertisers(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """List all advertisers."""
     advertisers = db.query(Advertiser).offset(skip).limit(limit).all()
@@ -61,7 +61,7 @@ async def list_advertisers(
 async def get_advertiser(
     advertiser_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Get a specific advertiser."""
     advertiser = db.query(Advertiser).filter(Advertiser.id == advertiser_id).first()
@@ -78,7 +78,7 @@ async def update_advertiser(
     advertiser_id: UUID,
     advertiser_data: AdvertiserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Update an advertiser."""
     advertiser = db.query(Advertiser).filter(Advertiser.id == advertiser_id).first()
@@ -105,7 +105,7 @@ async def update_advertiser(
 async def delete_advertiser(
     advertiser_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Delete an advertiser."""
     advertiser = db.query(Advertiser).filter(Advertiser.id == advertiser_id).first()

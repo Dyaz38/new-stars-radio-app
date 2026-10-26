@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, status, Uploa
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_staff_user
 from app.core.database import get_db
 from app.models.ad_creative import AdCreative, CreativeStatus
 from app.models.campaign import Campaign, CampaignStatus
@@ -58,7 +58,7 @@ async def create_creative(
     alt_text: Optional[str] = Form(None),
     image_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Create a new ad creative with image upload."""
     logger.info("create_creative: campaign_id=%s name=%r", campaign_id, name)
@@ -125,7 +125,7 @@ async def create_creative(
 async def create_creative_with_url(
     creative_data: CreativeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Create a new ad creative with image URL (no file upload)."""
     campaign = db.query(Campaign).filter(Campaign.id == creative_data.campaign_id).first()
@@ -174,7 +174,7 @@ async def list_creatives(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """List ad creatives, optionally filtered by campaign."""
     query = db.query(AdCreative)
@@ -189,7 +189,7 @@ async def list_creatives(
 @router.get("/maintenance/click-url-audit")
 async def click_url_audit(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """List active creatives on active campaigns that still use placeholder click URLs."""
     issues = audit_active_creative_click_urls(db)
@@ -213,7 +213,7 @@ async def click_url_audit(
 async def generate_mobile_banners_endpoint(
     dry_run: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """
     Create 320×50 creatives from each active campaign's 728×90 desktop banner.
@@ -242,7 +242,7 @@ async def generate_mobile_banners_endpoint(
 async def get_creative(
     creative_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Get a specific ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
@@ -259,7 +259,7 @@ async def replace_creative_image(
     creative_id: UUID,
     image_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Replace a creative's image file (updates URL and detected dimensions)."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
@@ -299,7 +299,7 @@ async def update_creative(
     creative_id: UUID,
     creative_data: CreativeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Update an ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()
@@ -348,7 +348,7 @@ async def update_creative(
 async def delete_creative(
     creative_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Delete an ad creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()

@@ -24,6 +24,7 @@ export default function AdvertisersPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAdvertiser, setEditingAdvertiser] = useState<Advertiser | null>(null);
+  const [portalLoginAdvertiserIds, setPortalLoginAdvertiserIds] = useState<string[] | null>(null);
 
   const { data: advertisers, isLoading } = useQuery({
     queryKey: ["advertisers"],
@@ -83,12 +84,21 @@ export default function AdvertisersPage() {
           <p className="text-gray-600">
             Manage advertiser accounts and information
           </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-          >
-            ➕ Add Advertiser
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setPortalLoginAdvertiserIds([])}
+              className="px-4 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 font-medium text-sm"
+            >
+              Agency portal login
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+            >
+              ➕ Add Advertiser
+            </button>
+          </div>
         </div>
 
         {/* Advertisers Table */}
@@ -145,6 +155,13 @@ export default function AdvertisersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
+                        type="button"
+                        onClick={() => setPortalLoginAdvertiserIds([advertiser.id])}
+                        className="text-emerald-700 hover:text-emerald-900 mr-4"
+                      >
+                        Portal login
+                      </button>
+                      <button
                         onClick={() => setEditingAdvertiser(advertiser)}
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
@@ -195,6 +212,164 @@ export default function AdvertisersPage() {
           isLoading={updateMutation.isPending}
         />
       )}
+
+      {portalLoginAdvertiserIds !== null && (
+        <PortalLoginModal
+          initialAdvertiserIds={portalLoginAdvertiserIds}
+          onClose={() => setPortalLoginAdvertiserIds(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PortalLoginModal({
+  initialAdvertiserIds,
+  onClose,
+}: {
+  initialAdvertiserIds: string[];
+  onClose: () => void;
+}) {
+  const { data: allAdvertisers = [] } = useQuery({
+    queryKey: ["advertisers"],
+    queryFn: async () => {
+      const response = await api.get<Advertiser[]>("/advertisers");
+      return response.data;
+    },
+  });
+  const preset = allAdvertisers.find((a) => initialAdvertiserIds.includes(a.id));
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialAdvertiserIds);
+  const [email, setEmail] = useState(preset?.email ?? "");
+  const [fullName, setFullName] = useState(preset?.name ?? "");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const toggleClient = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (selectedIds.length === 0) {
+      setError("Select at least one client advertiser.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await api.post("/auth/advertiser-users", {
+        email,
+        full_name: fullName,
+        password,
+        advertiser_ids: selectedIds,
+      });
+      setSuccess(
+        selectedIds.length > 1
+          ? "Agency portal account created with access to the selected clients."
+          : "Portal account created. Share the email and password securely — same Ad Manager login page.",
+      );
+      setPassword("");
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Could not create portal login.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Advertiser portal login</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Upload-only access. Select one client or many for an <strong>agency</strong> account.
+        </p>
+        {error ? (
+          <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+        ) : null}
+        {success ? (
+          <p className="mb-3 text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            {success}
+          </p>
+        ) : null}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Login email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Display name</label>
+            <input
+              type="text"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Temporary password</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <p className="block text-sm font-medium text-gray-700 mb-2">Clients this login can manage</p>
+            <ul className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {allAdvertisers.map((a) => (
+                <li key={a.id}>
+                  <label className="flex items-start gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(a.id)}
+                      onChange={() => toggleClient(a.id)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">{a.name}</span>
+                      {a.company_name ? (
+                        <span className="block text-xs text-gray-500">{a.company_name}</span>
+                      ) : null}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isLoading ? "Creating…" : "Create login"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.password_policy import validate_new_password
 from app.core.security import verify_password, create_access_token, get_password_hash
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_admin, get_current_user
+from app.models.advertiser import Advertiser
+from app.models.user import UserRole
+from app.schemas.advertiser_user import AdvertiserUserCreate, AdvertiserUserResponse
 from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -26,6 +29,7 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.models.user import User
+from app.services.portal_advertiser_access import list_portal_advertiser_ids, sync_user_advertiser_assignments
 from app.services.password_reset_email import (
     hash_password_reset_token,
     send_password_reset_email,
@@ -46,6 +50,26 @@ _NO_STORE_HEADERS = {
 }
 
 router = APIRouter()
+
+
+def _user_payload(user: User, db: Session | None = None) -> dict:
+    advertiser_ids: list[str] = []
+    if db is not None and user.role == UserRole.ADVERTISER:
+        advertiser_ids = [str(aid) for aid in list_portal_advertiser_ids(db, user)]
+    elif user.advertiser_id:
+        advertiser_ids = [str(user.advertiser_id)]
+    default_id = advertiser_ids[0] if advertiser_ids else (
+        str(user.advertiser_id) if user.advertiser_id else None
+    )
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role.value,
+        "is_active": user.is_active,
+        "advertiser_id": default_id,
+        "advertiser_ids": advertiser_ids,
+    }
 
 
 @router.post("/login")
@@ -80,29 +104,77 @@ async def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role.value,
-            "is_active": user.is_active
-        }
+        "user": _user_payload(user, db),
     }
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Get current user information.
     """
-    return UserResponse(
-        id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=current_user.role.value,
-        is_active=current_user.is_active
+    return UserResponse(**_user_payload(current_user, db))
+
+
+@router.post(
+    "/advertiser-users",
+    response_model=AdvertiserUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_advertiser_portal_user(
+    body: AdvertiserUserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """Create a login for an advertiser to upload creatives (admin only)."""
+    try:
+        normalized_password = validate_new_password(body.password)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    for aid in body.advertiser_ids:
+        advertiser = db.query(Advertiser).filter(Advertiser.id == aid).first()
+        if not advertiser:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Advertiser not found: {aid}",
+            )
+
+    existing = db.query(User).filter(User.email == body.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email already exists",
+        )
+
+    user = User(
+        email=body.email.strip().lower(),
+        full_name=body.full_name.strip(),
+        hashed_password=get_password_hash(normalized_password),
+        role=UserRole.ADVERTISER,
+        advertiser_id=body.advertiser_ids[0],
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    sync_user_advertiser_assignments(db, user, body.advertiser_ids)
+    db.commit()
+    db.refresh(user)
+    payload = _user_payload(user, db)
+    return AdvertiserUserResponse(
+        id=payload["id"],
+        email=payload["email"],
+        full_name=payload["full_name"],
+        role=payload["role"],
+        advertiser_id=payload["advertiser_id"] or "",
+        advertiser_ids=payload["advertiser_ids"],
+        is_active=payload["is_active"],
     )
 
 

@@ -9,7 +9,7 @@ from uuid import UUID
 from datetime import datetime
 
 from app.core.database import get_db
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_staff_user
 from app.schemas.report import (
     CampaignStats,
     CreativeStats,
@@ -70,7 +70,7 @@ def _campaign_stats_row(
 @router.get("/overview", response_model=DashboardOverview)
 async def get_dashboard_overview(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Aggregated dashboard metrics and top campaigns."""
     campaigns = db.query(Campaign).all()
@@ -110,7 +110,7 @@ async def get_all_campaigns_stats(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Get statistics for all campaigns."""
     campaigns = db.query(Campaign).all()
@@ -122,7 +122,7 @@ async def export_all_campaigns_csv(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Download CSV summary for all campaigns."""
     csv_text = build_campaigns_csv(db, start_date, end_date)
@@ -140,7 +140,7 @@ async def get_campaign_stats(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Get statistics for a specific campaign."""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
@@ -155,7 +155,7 @@ async def get_campaign_report_detail_endpoint(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Detailed campaign report with creative breakdown."""
     return get_campaign_report_detail(db, campaign_id, start_date, end_date)
@@ -167,7 +167,7 @@ async def export_campaign_csv(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Download CSV report for one campaign."""
     csv_text = build_campaign_csv(db, campaign_id, start_date, end_date)
@@ -186,7 +186,7 @@ async def create_campaign_share_link(
     campaign_id: UUID,
     days_valid: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Create a shareable read-only report link for an advertiser."""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
@@ -214,7 +214,7 @@ async def get_creative_stats(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """Get statistics for a specific creative."""
     creative = db.query(AdCreative).filter(AdCreative.id == creative_id).first()

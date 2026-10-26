@@ -8,8 +8,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.services.portal_advertiser_access import list_portal_advertiser_ids
 from app.core.security import verify_token
-from app.models.user import User
+from app.models.user import User, UserRole
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -55,6 +56,39 @@ async def get_optional_current_user(
         return user
     except Exception:
         return None
+
+
+def _is_staff(user: User) -> bool:
+    return user.role in (UserRole.ADMIN, UserRole.SALES_REP)
+
+
+async def get_current_staff_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Admin panel access (not advertiser portal accounts)."""
+    if not _is_staff(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff access required",
+        )
+    return current_user
+
+
+async def get_current_advertiser_user(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    if current_user.role != UserRole.ADVERTISER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advertiser portal access required",
+        )
+    if not list_portal_advertiser_ids(db, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not linked to an advertiser. Contact New Stars Radio.",
+        )
+    return current_user
 
 
 async def get_current_admin(

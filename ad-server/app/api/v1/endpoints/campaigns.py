@@ -7,7 +7,7 @@ from typing import List
 from uuid import UUID
 
 from app.core.database import get_db
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_staff_user
 from app.schemas.campaign import CampaignCreate, CampaignUpdate, CampaignResponse
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.advertiser import Advertiser
@@ -21,7 +21,7 @@ router = APIRouter()
 async def create_campaign(
     campaign_data: CampaignCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Create a new campaign."""
     # Verify advertiser exists
@@ -72,7 +72,7 @@ async def list_campaigns(
     status_filter: str = None,
     advertiser_id: UUID = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """List campaigns with optional filters."""
     query = db.query(Campaign)
@@ -98,7 +98,7 @@ async def list_campaigns(
 async def pause_test_campaigns_endpoint(
     dry_run: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_staff_user),
 ):
     """
     Pause sample/test campaigns (Starline, example.com click URLs).
@@ -128,7 +128,7 @@ async def pause_test_campaigns_endpoint(
 async def get_campaign(
     campaign_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Get a specific campaign."""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
@@ -145,7 +145,7 @@ async def update_campaign(
     campaign_id: UUID,
     campaign_data: CampaignUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Update a campaign."""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
@@ -192,7 +192,7 @@ async def update_campaign(
 async def delete_campaign(
     campaign_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_staff_user)
 ):
     """Delete a campaign."""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()

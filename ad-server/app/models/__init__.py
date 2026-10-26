@@ -8,6 +8,7 @@ from app.models.ad_creative import AdCreative
 from app.models.impression import Impression
 from app.models.click import Click
 from app.models.song_like import SongLikeRecord
+from app.models.user_advertiser_access import UserAdvertiserAccess
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "Impression",
     "Click",
     "SongLikeRecord",
+    "UserAdvertiserAccess",
 ]

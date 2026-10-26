@@ -29,6 +29,8 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    advertiser_id: str | None = None
+    advertiser_ids: list[str] = []
     
     class Config:
         from_attributes = True

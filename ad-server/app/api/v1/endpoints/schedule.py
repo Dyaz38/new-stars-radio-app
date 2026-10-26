@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_staff_user
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.schedule import (
@@ -92,7 +92,7 @@ async def get_schedule():
 )
 async def update_schedule(
     body: ScheduleUpdateRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_staff_user),
 ):
     _write_schedule(body.days)
     count = len(body.days.all_items())

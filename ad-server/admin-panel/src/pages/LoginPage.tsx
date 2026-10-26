@@ -41,7 +41,7 @@ export default function LoginPage() {
       const { access_token, user } = response.data;
       
       login(access_token, user);
-      navigate("/dashboard");
+      navigate(user.role === "advertiser" ? "/portal" : "/dashboard");
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Invalid credentials. Please try again."

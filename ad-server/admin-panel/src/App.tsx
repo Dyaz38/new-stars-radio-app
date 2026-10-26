@@ -13,13 +13,31 @@ import SchedulePage from "./pages/SchedulePage";
 import EventsPage from "./pages/EventsPage";
 import ReportsPage from "./pages/ReportsPage";
 import PublicCampaignReportPage from "./pages/PublicCampaignReportPage";
+import AdvertiserPortalPage from "./pages/AdvertiserPortalPage";
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const StaffRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.user?.role);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  if (role === "advertiser") {
+    return <Navigate to="/portal" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AdvertiserRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.user?.role);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (role !== "advertiser") {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -34,65 +52,74 @@ function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       
       <Route
+        path="/portal"
+        element={
+          <AdvertiserRoute>
+            <AdvertiserPortalPage />
+          </AdvertiserRoute>
+        }
+      />
+
+      <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <DashboardPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/advertisers"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <AdvertisersPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/campaigns"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <CampaignsPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/creatives"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <CreativesPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/settings"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <SettingsPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/song-likes"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <SongLikesPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/schedule"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <SchedulePage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
@@ -101,18 +128,18 @@ function App() {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <ReportsPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 
       <Route
         path="/events"
         element={
-          <ProtectedRoute>
+          <StaffRoute>
             <EventsPage />
-          </ProtectedRoute>
+          </StaffRoute>
         }
       />
 

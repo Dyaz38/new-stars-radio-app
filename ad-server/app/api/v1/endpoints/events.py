@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 
-from app.api.dependencies import get_current_user, get_optional_current_user
+from app.api.dependencies import get_current_staff_user, get_optional_current_user
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.event_locations import (
@@ -137,7 +137,7 @@ async def get_event_locations():
 )
 async def update_event_locations(
     body: EventLocationsUpdateRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_staff_user),
 ):
     _write_locations(body.places)
     logger.info("station event locations updated: count=%s", len(body.places))
@@ -173,7 +173,7 @@ async def get_events(
 )
 async def upload_event_image(
     image_file: UploadFile = File(...),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_staff_user),
 ):
     effective_filename = (image_file.filename or "").strip() or "image.jpg"
     file_ext = Path(effective_filename).suffix.lower()
@@ -201,7 +201,7 @@ async def upload_event_image(
 )
 async def update_events(
     body: EventsUpdateRequest,
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_staff_user),
 ):
     normalized = _normalize_events(body.items)
     _write_events(normalized)
