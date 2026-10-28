@@ -19,3 +19,10 @@ class AdvertiserUserResponse(BaseModel):
     advertiser_id: str
     advertiser_ids: list[str]
     is_active: bool
+
+
+class AdvertiserUserUpdate(BaseModel):
+    full_name: str | None = Field(None, min_length=1, max_length=255)
+    advertiser_ids: list[UUID] | None = Field(None, min_length=1, max_length=50)
+    password: str | None = Field(None, min_length=8, max_length=128)
+    is_active: bool | None = None

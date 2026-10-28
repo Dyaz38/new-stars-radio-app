@@ -84,6 +84,16 @@ export async function createCampaignShareLink(
   return response.data;
 }
 
+export async function createPortalCampaignShareLink(
+  campaignId: string,
+  daysValid = 30,
+): Promise<{ token: string; expires_at: string; days_valid: number }> {
+  const response = await api.post(`/advertiser-portal/campaigns/${campaignId}/report-link`, null, {
+    params: { days_valid: daysValid },
+  });
+  return response.data;
+}
+
 export async function fetchSharedCampaignReport(token: string): Promise<CampaignReportDetail> {
   const base = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined);
   const response = await axios.get(`${base}/reports/share`, {

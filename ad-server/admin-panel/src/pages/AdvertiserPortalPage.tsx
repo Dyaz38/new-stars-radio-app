@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
+import { buildShareReportUrl, createPortalCampaignShareLink } from "../lib/reports";
 import { useAuthStore } from "../stores/authStore";
 
 interface PortalClient {
@@ -71,6 +72,8 @@ export default function AdvertiserPortalPage() {
   const [file, setFile] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [reportLinkBusyId, setReportLinkBusyId] = useState<string | null>(null);
+  const [reportLinkMessage, setReportLinkMessage] = useState<string | null>(null);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["advertiser-portal-clients"],
@@ -155,6 +158,21 @@ export default function AdvertiserPortalPage() {
     [campaigns],
   );
 
+  const copyReportLink = async (campaignId: string, campaignName: string) => {
+    setReportLinkMessage(null);
+    setReportLinkBusyId(campaignId);
+    try {
+      const { token } = await createPortalCampaignShareLink(campaignId);
+      const url = buildShareReportUrl(token);
+      await navigator.clipboard.writeText(url);
+      setReportLinkMessage(`Report link copied for “${campaignName}” (valid 30 days).`);
+    } catch {
+      setReportLinkMessage("Could not create report link. Try again or email sales@newstarsradio.com.");
+    } finally {
+      setReportLinkBusyId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -237,6 +255,48 @@ export default function AdvertiserPortalPage() {
             {feedback}
           </div>
         ) : null}
+
+        {reportLinkMessage ? (
+          <div
+            className={`p-4 rounded-lg text-sm border ${
+              reportLinkMessage.includes("Could not")
+                ? "bg-red-50 border-red-200 text-red-800"
+                : "bg-green-50 border-green-200 text-green-800"
+            }`}
+          >
+            {reportLinkMessage}
+          </div>
+        ) : null}
+
+        <section className="rounded-lg bg-white border border-gray-200 p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Campaign reports</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Copy a read-only performance link to share with your team. Links expire after 30 days; generate a new one
+            anytime.
+          </p>
+          {sortedCampaigns.length === 0 ? (
+            <p className="text-sm text-gray-600">No campaigns yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+              {sortedCampaigns.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                    <p className="text-xs text-gray-500 capitalize">{c.status}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={reportLinkBusyId === c.id}
+                    onClick={() => void copyReportLink(c.id, c.name)}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                  >
+                    {reportLinkBusyId === c.id ? "Creating…" : "Copy report link"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className="rounded-lg bg-white border border-gray-200 p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload creative</h2>

@@ -20,11 +20,21 @@ interface AdvertiserForm {
   company_name?: string;
 }
 
+interface PortalUser {
+  id: string;
+  email: string;
+  full_name: string;
+  advertiser_ids: string[];
+  is_active: boolean;
+}
+
 export default function AdvertisersPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAdvertiser, setEditingAdvertiser] = useState<Advertiser | null>(null);
   const [portalLoginAdvertiserIds, setPortalLoginAdvertiserIds] = useState<string[] | null>(null);
+  const [showPortalLogins, setShowPortalLogins] = useState(false);
+  const [editingPortalUser, setEditingPortalUser] = useState<PortalUser | null>(null);
 
   const { data: advertisers, isLoading } = useQuery({
     queryKey: ["advertisers"],
@@ -85,6 +95,13 @@ export default function AdvertisersPage() {
             Manage advertiser accounts and information
           </p>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPortalLogins(true)}
+              className="px-4 py-2 border border-emerald-700 text-emerald-800 rounded-lg hover:bg-emerald-50 font-medium text-sm"
+            >
+              Manage portal logins
+            </button>
             <button
               type="button"
               onClick={() => setPortalLoginAdvertiserIds([])}
@@ -219,6 +236,122 @@ export default function AdvertisersPage() {
           onClose={() => setPortalLoginAdvertiserIds(null)}
         />
       )}
+
+      {showPortalLogins ? (
+        <PortalLoginsModal
+          onClose={() => setShowPortalLogins(false)}
+          onCreate={() => {
+            setShowPortalLogins(false);
+            setPortalLoginAdvertiserIds([]);
+          }}
+          onEdit={(user) => {
+            setShowPortalLogins(false);
+            setEditingPortalUser(user);
+          }}
+        />
+      ) : null}
+
+      {editingPortalUser ? (
+        <PortalLoginModal
+          initialAdvertiserIds={editingPortalUser.advertiser_ids}
+          editUser={editingPortalUser}
+          onClose={() => {
+            setEditingPortalUser(null);
+            setShowPortalLogins(true);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PortalLoginsModal({
+  onClose,
+  onCreate,
+  onEdit,
+}: {
+  onClose: () => void;
+  onCreate: () => void;
+  onEdit: (user: PortalUser) => void;
+}) {
+  const { data: portalUsers = [], isLoading } = useQuery({
+    queryKey: ["advertiser-portal-users"],
+    queryFn: async () => {
+      const response = await api.get<PortalUser[]>("/auth/advertiser-users");
+      return response.data;
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Portal logins</h2>
+            <p className="text-sm text-gray-600 mt-1">Advertiser upload accounts — edit client access anytime.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="px-3 py-2 text-sm font-medium text-white bg-emerald-700 rounded-lg hover:bg-emerald-800"
+          >
+            New login
+          </button>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : portalUsers.length === 0 ? (
+          <p className="text-sm text-gray-600">No portal logins yet.</p>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-gray-500 border-b">
+                <th className="py-2 pr-4">Email</th>
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Clients</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {portalUsers.map((u) => (
+                <tr key={u.id}>
+                  <td className="py-3 pr-4 text-gray-900">{u.email}</td>
+                  <td className="py-3 pr-4 text-gray-700">{u.full_name}</td>
+                  <td className="py-3 pr-4 text-gray-700">{u.advertiser_ids.length}</td>
+                  <td className="py-3 pr-4">
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        u.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {u.is_active ? "active" : "inactive"}
+                    </span>
+                  </td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(u)}
+                      className="text-indigo-600 hover:text-indigo-900 font-medium"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -226,10 +359,13 @@ export default function AdvertisersPage() {
 function PortalLoginModal({
   initialAdvertiserIds,
   onClose,
+  editUser,
 }: {
   initialAdvertiserIds: string[];
   onClose: () => void;
+  editUser?: PortalUser;
 }) {
+  const queryClient = useQueryClient();
   const { data: allAdvertisers = [] } = useQuery({
     queryKey: ["advertisers"],
     queryFn: async () => {
@@ -238,10 +374,14 @@ function PortalLoginModal({
     },
   });
   const preset = allAdvertisers.find((a) => initialAdvertiserIds.includes(a.id));
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialAdvertiserIds);
-  const [email, setEmail] = useState(preset?.email ?? "");
-  const [fullName, setFullName] = useState(preset?.name ?? "");
+  const isEdit = Boolean(editUser);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    editUser?.advertiser_ids ?? initialAdvertiserIds,
+  );
+  const [email, setEmail] = useState(editUser?.email ?? preset?.email ?? "");
+  const [fullName, setFullName] = useState(editUser?.full_name ?? preset?.name ?? "");
   const [password, setPassword] = useState("");
+  const [isActive, setIsActive] = useState(editUser?.is_active ?? true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -260,19 +400,41 @@ function PortalLoginModal({
       setError("Select at least one client advertiser.");
       return;
     }
+    if (!isEdit && !password) {
+      setError("Password is required for new logins.");
+      return;
+    }
     setIsLoading(true);
     try {
-      await api.post("/auth/advertiser-users", {
-        email,
-        full_name: fullName,
-        password,
-        advertiser_ids: selectedIds,
-      });
-      setSuccess(
-        selectedIds.length > 1
-          ? "Agency portal account created with access to the selected clients."
-          : "Portal account created. Share the email and password securely — same Ad Manager login page.",
-      );
+      if (isEdit && editUser) {
+        const body: {
+          full_name: string;
+          advertiser_ids: string[];
+          is_active: boolean;
+          password?: string;
+        } = {
+          full_name: fullName,
+          advertiser_ids: selectedIds,
+          is_active: isActive,
+        };
+        if (password.trim()) body.password = password;
+        await api.patch(`/auth/advertiser-users/${editUser.id}`, body);
+        setSuccess("Portal login updated.");
+        void queryClient.invalidateQueries({ queryKey: ["advertiser-portal-users"] });
+      } else {
+        await api.post("/auth/advertiser-users", {
+          email,
+          full_name: fullName,
+          password,
+          advertiser_ids: selectedIds,
+        });
+        setSuccess(
+          selectedIds.length > 1
+            ? "Agency portal account created with access to the selected clients."
+            : "Portal account created. Share the email and password securely — same Ad Manager login page.",
+        );
+        void queryClient.invalidateQueries({ queryKey: ["advertiser-portal-users"] });
+      }
       setPassword("");
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
@@ -285,7 +447,9 @@ function PortalLoginModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Advertiser portal login</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">
+          {isEdit ? "Edit portal login" : "Advertiser portal login"}
+        </h2>
         <p className="text-sm text-gray-600 mb-4">
           Upload-only access. Select one client or many for an <strong>agency</strong> account.
         </p>
@@ -303,9 +467,10 @@ function PortalLoginModal({
             <input
               type="email"
               required
+              readOnly={isEdit}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${isEdit ? "bg-gray-50 text-gray-600" : ""}`}
             />
           </div>
           <div>
@@ -319,16 +484,29 @@ function PortalLoginModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Temporary password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isEdit ? "New password (optional)" : "Temporary password"}
+            </label>
             <input
               type="password"
-              required
+              required={!isEdit}
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder={isEdit ? "Leave blank to keep current password" : undefined}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          {isEdit ? (
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+              />
+              Account active (can sign in)
+            </label>
+          ) : null}
           <div>
             <p className="block text-sm font-medium text-gray-700 mb-2">Clients this login can manage</p>
             <ul className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
@@ -365,7 +543,7 @@ function PortalLoginModal({
               disabled={isLoading}
               className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
-              {isLoading ? "Creating…" : "Create login"}
+              {isLoading ? "Saving…" : isEdit ? "Save changes" : "Create login"}
             </button>
           </div>
         </form>

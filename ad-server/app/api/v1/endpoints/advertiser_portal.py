@@ -21,6 +21,8 @@ from app.schemas.advertiser_portal import (
     AdvertiserPortalOverview,
 )
 from app.schemas.creative import CreativeResponse
+from app.schemas.report import ReportShareResponse
+from app.services.report_service import create_share_link_for_campaign
 from app.services.image_upload import buffer_image_upload
 from app.services.portal_advertiser_access import (
     list_portal_advertiser_ids,
@@ -182,6 +184,27 @@ async def portal_creatives(
             )
         )
     return result
+
+
+@router.post(
+    "/campaigns/{campaign_id}/report-link",
+    response_model=ReportShareResponse,
+)
+async def portal_campaign_report_link(
+    campaign_id: UUID,
+    days_valid: int = Query(30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_advertiser_user),
+):
+    """Read-only campaign report link the advertiser can share (same as staff share links)."""
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign or not user_can_access_advertiser(db, current_user, campaign.advertiser_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found for your account.",
+        )
+    share = create_share_link_for_campaign(campaign_id, days_valid=days_valid)
+    return ReportShareResponse(**share)
 
 
 @router.post("/creatives", response_model=CreativeResponse, status_code=status.HTTP_201_CREATED)

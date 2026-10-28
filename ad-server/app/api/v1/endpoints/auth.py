@@ -7,6 +7,9 @@ import random
 import secrets
 from datetime import datetime, timedelta
 
+from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
@@ -18,7 +21,11 @@ from app.core.security import verify_password, create_access_token, get_password
 from app.api.dependencies import get_current_admin, get_current_user
 from app.models.advertiser import Advertiser
 from app.models.user import UserRole
-from app.schemas.advertiser_user import AdvertiserUserCreate, AdvertiserUserResponse
+from app.schemas.advertiser_user import (
+    AdvertiserUserCreate,
+    AdvertiserUserResponse,
+    AdvertiserUserUpdate,
+)
 from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -70,6 +77,19 @@ def _user_payload(user: User, db: Session | None = None) -> dict:
         "advertiser_id": default_id,
         "advertiser_ids": advertiser_ids,
     }
+
+
+def _advertiser_user_response(user: User, db: Session) -> AdvertiserUserResponse:
+    payload = _user_payload(user, db)
+    return AdvertiserUserResponse(
+        id=payload["id"],
+        email=payload["email"],
+        full_name=payload["full_name"],
+        role=payload["role"],
+        advertiser_id=payload["advertiser_id"] or "",
+        advertiser_ids=payload["advertiser_ids"],
+        is_active=payload["is_active"],
+    )
 
 
 @router.post("/login")
@@ -166,16 +186,65 @@ async def create_advertiser_portal_user(
     sync_user_advertiser_assignments(db, user, body.advertiser_ids)
     db.commit()
     db.refresh(user)
-    payload = _user_payload(user, db)
-    return AdvertiserUserResponse(
-        id=payload["id"],
-        email=payload["email"],
-        full_name=payload["full_name"],
-        role=payload["role"],
-        advertiser_id=payload["advertiser_id"] or "",
-        advertiser_ids=payload["advertiser_ids"],
-        is_active=payload["is_active"],
+    return _advertiser_user_response(user, db)
+
+
+@router.get("/advertiser-users", response_model=List[AdvertiserUserResponse])
+async def list_advertiser_portal_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """List portal logins (admin only)."""
+    users = (
+        db.query(User)
+        .filter(User.role == UserRole.ADVERTISER)
+        .order_by(User.email)
+        .all()
     )
+    return [_advertiser_user_response(u, db) for u in users]
+
+
+@router.patch("/advertiser-users/{user_id}", response_model=AdvertiserUserResponse)
+async def update_advertiser_portal_user(
+    user_id: UUID,
+    body: AdvertiserUserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """Update portal client access, name, password, or active flag."""
+    user = db.query(User).filter(User.id == user_id, User.role == UserRole.ADVERTISER).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portal user not found")
+
+    if body.full_name is not None:
+        user.full_name = body.full_name.strip()
+
+    if body.is_active is not None:
+        user.is_active = body.is_active
+
+    if body.advertiser_ids is not None:
+        for aid in body.advertiser_ids:
+            advertiser = db.query(Advertiser).filter(Advertiser.id == aid).first()
+            if not advertiser:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Advertiser not found: {aid}",
+                )
+        sync_user_advertiser_assignments(db, user, body.advertiser_ids)
+
+    if body.password is not None:
+        try:
+            normalized_password = validate_new_password(body.password)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from e
+        user.hashed_password = get_password_hash(normalized_password)
+
+    db.commit()
+    db.refresh(user)
+    return _advertiser_user_response(user, db)
 
 
 @router.post("/change-password")
