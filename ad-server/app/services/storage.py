@@ -156,17 +156,11 @@ def _upload_bytes_to_local(content: bytes, filename: str) -> str:
     return f"/static/{rel.as_posix()}"
 
 
-def upload_station_event_image(file: UploadFile, effective_filename: str) -> str:
+def upload_station_event_bytes(content: bytes, effective_filename: str) -> str:
     """
     Upload a station event banner/image; returns URL for JSON storage.
     R2: full public URL. Local: path /static/events/...
     """
-    file_body = file.file
-    if file_body is None:
-        raise ValueError("Upload file has no body")
-
-    file_body.seek(0)
-    content = file_body.read()
     if not content:
         raise ValueError("Uploaded file is empty.")
     if len(content) > settings.MAX_UPLOAD_SIZE:
@@ -184,3 +178,13 @@ def upload_station_event_image(file: UploadFile, effective_filename: str) -> str
     events_dir.mkdir(parents=True, exist_ok=True)
     (events_dir / storage_name).write_bytes(content)
     return f"/static/events/{storage_name}"
+
+
+def upload_station_event_image(file: UploadFile, effective_filename: str) -> str:
+    file_body = file.file
+    if file_body is None:
+        raise ValueError("Upload file has no body")
+
+    file_body.seek(0)
+    content = file_body.read()
+    return upload_station_event_bytes(content, effective_filename)

@@ -23,6 +23,8 @@ interface StationEvent {
   doors_at?: string | null;
   ticket_url?: string | null;
   ticket_price?: string | null;
+  review_status?: "published" | "pending_review";
+  submitted_by_user_id?: string | null;
 }
 
 interface EventsResponse {
@@ -62,6 +64,7 @@ const EMPTY_TEMPLATE: StationEvent = {
   doors_at: null,
   ticket_url: null,
   ticket_price: null,
+  review_status: "published",
 };
 
 function isoToDatetimeLocal(iso: string | null | undefined): string {
@@ -133,12 +136,28 @@ export default function EventsPage() {
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const [newPlaceInput, setNewPlaceInput] = useState("");
   const [customLocationIds, setCustomLocationIds] = useState<Set<number>>(() => new Set());
+  const [showPromoterLogins, setShowPromoterLogins] = useState(false);
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["station-events"],
     queryFn: async () => {
       const response = await api.get<EventsResponse>("/events/");
       return response.data;
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (eventId: number) => {
+      const response = await api.post<StationEvent>(`/events/${eventId}/approve`);
+      return response.data;
+    },
+    onSuccess: () => {
+      setFeedback("Event approved — visible in the listener app.");
+      void queryClient.invalidateQueries({ queryKey: ["station-events"] });
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setFeedback(e.response?.data?.detail || "Approve failed.");
     },
   });
 
@@ -283,9 +302,17 @@ export default function EventsPage() {
             detected country (by IP) plus worldwide events with no country set. Use <strong>Global (all countries)</strong>{' '}
             on each event unless it should be limited to one country (e.g. Namibia only). Events disappear from the app
             automatically after their end time (or two hours after start if no end is set). Past rows stay here for
-            your records until you remove them.
+            your records until you remove them. Promoter submissions appear as <strong>pending review</strong> until you
+            approve them.
           </p>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPromoterLogins(true)}
+              className="px-4 py-2 text-sm font-medium text-violet-800 border border-violet-700 rounded-lg hover:bg-violet-50"
+            >
+              Promoter logins
+            </button>
             <button
               type="button"
               onClick={() => refetch()}
@@ -451,6 +478,7 @@ export default function EventsPage() {
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Online</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">This week</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Review</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Remove</th>
                   </tr>
@@ -458,7 +486,7 @@ export default function EventsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={15} className="px-6 py-10 text-center text-gray-600">
+                      <td colSpan={16} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-4">No events yet. Click <strong>Add event</strong>, fill in the fields, then <strong>Save events</strong>.</p>
                         <button
                           type="button"
@@ -699,6 +727,25 @@ export default function EventsPage() {
                           <option value="past">past</option>
                         </select>
                       </td>
+                      <td className="px-3 py-3 align-top whitespace-nowrap">
+                        {(row.review_status ?? "published") === "pending_review" ? (
+                          <div className="space-y-1">
+                            <span className="text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                              pending
+                            </span>
+                            <button
+                              type="button"
+                              disabled={approveMutation.isPending}
+                              onClick={() => approveMutation.mutate(row.id)}
+                              className="block text-xs font-medium text-emerald-700 hover:text-emerald-900"
+                            >
+                              Approve
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500">published</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3">
                         <textarea
                           value={row.description}
@@ -724,6 +771,203 @@ export default function EventsPage() {
           </div>
         )}
       </main>
+
+      {showPromoterLogins ? <PromoterLoginsModal onClose={() => setShowPromoterLogins(false)} /> : null}
     </div>
+  );
+}
+
+interface PromoterUser {
+  id: string;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+}
+
+function PromoterLoginsModal({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [editUser, setEditUser] = useState<PromoterUser | null>(null);
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["promoter-portal-users"],
+    queryFn: async () => {
+      const response = await api.get<PromoterUser[]>("/auth/promoter-users");
+      return response.data;
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start gap-3 mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Promoter portal logins</h2>
+            <p className="text-sm text-gray-600">Event promoters submit listings at /portal/events after login.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setCreating(true);
+              setEditUser(null);
+            }}
+            className="text-sm font-medium text-white bg-violet-700 px-3 py-2 rounded-lg hover:bg-violet-800"
+          >
+            New login
+          </button>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-gray-600">No promoter logins yet.</p>
+        ) : (
+          <table className="min-w-full text-sm mb-4">
+            <thead>
+              <tr className="text-left text-xs uppercase text-gray-500 border-b">
+                <th className="py-2 pr-4">Email</th>
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td className="py-3 pr-4">{u.email}</td>
+                  <td className="py-3 pr-4">{u.full_name}</td>
+                  <td className="py-3 pr-4">{u.is_active ? "active" : "inactive"}</td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      className="text-indigo-600 font-medium"
+                      onClick={() => {
+                        setEditUser(u);
+                        setCreating(false);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">
+          Close
+        </button>
+        {creating || editUser ? (
+          <PromoterLoginForm
+            user={editUser}
+            onDone={() => {
+              setCreating(false);
+              setEditUser(null);
+              void queryClient.invalidateQueries({ queryKey: ["promoter-portal-users"] });
+            }}
+            onCancel={() => {
+              setCreating(false);
+              setEditUser(null);
+            }}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PromoterLoginForm({
+  user,
+  onDone,
+  onCancel,
+}: {
+  user: PromoterUser | null;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const isEdit = Boolean(user);
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [fullName, setFullName] = useState(user?.full_name ?? "");
+  const [password, setPassword] = useState("");
+  const [isActive, setIsActive] = useState(user?.is_active ?? true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!isEdit && password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (isEdit && user) {
+        const body: { full_name: string; is_active: boolean; password?: string } = {
+          full_name: fullName,
+          is_active: isActive,
+        };
+        if (password.trim()) body.password = password;
+        await api.patch(`/auth/promoter-users/${user.id}`, body);
+      } else {
+        await api.post("/auth/promoter-users", { email, full_name: fullName, password });
+      }
+      onDone();
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-4 border-t pt-4 space-y-3">
+      <h3 className="font-semibold text-gray-900">{isEdit ? "Edit login" : "Create login"}</h3>
+      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      <input
+        type="email"
+        required
+        readOnly={isEdit}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+      />
+      <input
+        type="text"
+        required
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        placeholder="Display name"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+      />
+      <input
+        type="password"
+        required={!isEdit}
+        minLength={8}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder={isEdit ? "New password (optional)" : "Temporary password"}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+      />
+      {isEdit ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+          Account active
+        </label>
+      ) : null}
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="px-3 py-2 text-sm border rounded-lg">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={busy}
+          className="px-3 py-2 text-sm text-white bg-indigo-600 rounded-lg disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </form>
   );
 }

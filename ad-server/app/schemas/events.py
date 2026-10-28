@@ -29,6 +29,8 @@ class StationEvent(BaseModel):
     doors_at: datetime | None = None
     ticket_url: str | None = Field(default=None, max_length=2000)
     ticket_price: str | None = Field(default=None, max_length=120)
+    review_status: Literal["published", "pending_review"] = "published"
+    submitted_by_user_id: str | None = Field(default=None, max_length=36)
 
     @field_validator("title", "date_label", "location", "description")
     @classmethod

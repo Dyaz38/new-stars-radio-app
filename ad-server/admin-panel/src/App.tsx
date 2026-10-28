@@ -14,6 +14,7 @@ import EventsPage from "./pages/EventsPage";
 import ReportsPage from "./pages/ReportsPage";
 import PublicCampaignReportPage from "./pages/PublicCampaignReportPage";
 import AdvertiserPortalPage from "./pages/AdvertiserPortalPage";
+import PromoterPortalPage from "./pages/PromoterPortalPage";
 
 const StaffRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -24,6 +25,9 @@ const StaffRoute = ({ children }: { children: React.ReactNode }) => {
   }
   if (role === "advertiser") {
     return <Navigate to="/portal" replace />;
+  }
+  if (role === "promoter") {
+    return <Navigate to="/portal/events" replace />;
   }
 
   return <>{children}</>;
@@ -37,6 +41,20 @@ const AdvertiserRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
   if (role !== "advertiser") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const PromoterRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.user?.role);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (role !== "promoter") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -57,6 +75,15 @@ function App() {
           <AdvertiserRoute>
             <AdvertiserPortalPage />
           </AdvertiserRoute>
+        }
+      />
+
+      <Route
+        path="/portal/events"
+        element={
+          <PromoterRoute>
+            <PromoterPortalPage />
+          </PromoterRoute>
         }
       />
 

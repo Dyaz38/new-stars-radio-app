@@ -26,6 +26,11 @@ from app.schemas.advertiser_user import (
     AdvertiserUserResponse,
     AdvertiserUserUpdate,
 )
+from app.schemas.promoter_user import (
+    PromoterUserCreate,
+    PromoterUserResponse,
+    PromoterUserUpdate,
+)
 from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
@@ -245,6 +250,99 @@ async def update_advertiser_portal_user(
     db.commit()
     db.refresh(user)
     return _advertiser_user_response(user, db)
+
+
+def _promoter_user_response(user: User) -> PromoterUserResponse:
+    return PromoterUserResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        is_active=user.is_active,
+    )
+
+
+@router.post(
+    "/promoter-users",
+    response_model=PromoterUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_promoter_portal_user(
+    body: PromoterUserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    """Create a login for an event promoter (admin only)."""
+    try:
+        normalized_password = validate_new_password(body.password)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    existing = db.query(User).filter(User.email == body.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email already exists",
+        )
+
+    user = User(
+        email=body.email.strip().lower(),
+        full_name=body.full_name.strip(),
+        hashed_password=get_password_hash(normalized_password),
+        role=UserRole.PROMOTER,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _promoter_user_response(user)
+
+
+@router.get("/promoter-users", response_model=List[PromoterUserResponse])
+async def list_promoter_portal_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    users = (
+        db.query(User)
+        .filter(User.role == UserRole.PROMOTER)
+        .order_by(User.email)
+        .all()
+    )
+    return [_promoter_user_response(u) for u in users]
+
+
+@router.patch("/promoter-users/{user_id}", response_model=PromoterUserResponse)
+async def update_promoter_portal_user(
+    user_id: UUID,
+    body: PromoterUserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+):
+    user = db.query(User).filter(User.id == user_id, User.role == UserRole.PROMOTER).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promoter user not found")
+
+    if body.full_name is not None:
+        user.full_name = body.full_name.strip()
+    if body.is_active is not None:
+        user.is_active = body.is_active
+    if body.password is not None:
+        try:
+            normalized_password = validate_new_password(body.password)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from e
+        user.hashed_password = get_password_hash(normalized_password)
+
+    db.commit()
+    db.refresh(user)
+    return _promoter_user_response(user)
 
 
 @router.post("/change-password")

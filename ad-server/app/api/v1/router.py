@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     auth,
     advertisers,
     advertiser_portal,
+    promoter_portal,
     campaigns,
     creatives,
     events,
@@ -34,6 +35,11 @@ api_router.include_router(
     advertiser_portal.router,
     prefix="/advertiser-portal",
     tags=["Advertiser Portal"],
+)
+api_router.include_router(
+    promoter_portal.router,
+    prefix="/promoter-portal",
+    tags=["Promoter Portal"],
 )
 api_router.include_router(campaigns.router, prefix="/campaigns", tags=["Campaigns"])
 api_router.include_router(creatives.router, prefix="/creatives", tags=["Creatives"])
