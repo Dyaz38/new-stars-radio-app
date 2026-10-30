@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.schemas.events import EventsResponse, StationEvent
 from app.seed.station_content import NEW_STARS_EVENTS
 from app.services.event_visibility import refresh_event_status, visible_to_listeners
+from app.services.json_file_store import write_json_atomic
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,10 @@ def events_file_path() -> Path:
 
 
 def write_events(items: list[StationEvent]) -> None:
-    path = events_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"items": [item.model_dump(mode="json") for item in items]}
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_json_atomic(
+        events_file_path(),
+        {"items": [item.model_dump(mode="json") for item in items]},
+    )
 
 
 def normalize_events(items: list[StationEvent]) -> list[StationEvent]:

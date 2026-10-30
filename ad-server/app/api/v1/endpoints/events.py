@@ -32,6 +32,7 @@ from app.services.station_events_store import (
     write_events,
 )
 from app.services.geoip import resolve_request_geo
+from app.services.json_file_store import write_json_atomic
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -63,10 +64,8 @@ def _read_locations() -> list[str]:
 
 
 def _write_locations(places: list[str]) -> None:
-    path = _locations_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
     payload = EventLocationsResponse(places=places).model_dump(mode="json")
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    write_json_atomic(_locations_file_path(), payload)
 
 
 @router.get(

@@ -141,6 +141,8 @@ export default function SchedulePage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const draftRef = useRef<ScheduleByDay | null>(null);
+  const activeTabRef = useRef<ScheduleDayKey>(activeTab);
+  activeTabRef.current = activeTab;
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["radio-schedule"],
@@ -201,8 +203,9 @@ export default function SchedulePage() {
   };
 
   const updateRow = (id: number, patch: Partial<ScheduleShow>) => {
+    const tab = activeTabRef.current;
     withDraft((base) => {
-      base[activeTab] = base[activeTab].map((row) => (row.id === id ? { ...row, ...patch } : row));
+      base[tab] = base[tab].map((row) => (row.id === id ? { ...row, ...patch } : row));
       return base;
     });
   };
@@ -225,10 +228,11 @@ export default function SchedulePage() {
   };
 
   const addRow = () => {
+    const tab = activeTabRef.current;
     withDraft((base) => {
       const nextId = maxScheduleId(base) + 1;
-      base[activeTab] = [
-        ...base[activeTab],
+      base[tab] = [
+        ...base[tab],
         {
           id: nextId,
           time: "12:00 PM - 1:00 PM",
@@ -243,24 +247,26 @@ export default function SchedulePage() {
   };
 
   const removeRow = (id: number) => {
+    const tab = activeTabRef.current;
     withDraft((base) => {
-      base[activeTab] = base[activeTab].filter((r) => r.id !== id);
+      base[tab] = base[tab].filter((r) => r.id !== id);
       return base;
     });
   };
 
   const copyMonThuToActiveTab = () => {
-    if (activeTab === "mon_thu") return;
+    const tab = activeTabRef.current;
+    if (tab === "mon_thu") return;
     withDraft((base) => {
       let nextId = maxScheduleId(base);
-      base[activeTab] = base.mon_thu.map((row) => {
+      base[tab] = base.mon_thu.map((row) => {
         nextId += 1;
         return { ...row, id: nextId, current: false };
       });
       return base;
     });
     setFeedback(
-      `Copied Mon–Thu into ${SCHEDULE_DAY_LABELS[activeTab]}. Edit as needed, then click Save schedule.`,
+      `Copied Mon–Thu into ${SCHEDULE_DAY_LABELS[tab]}. Edit as needed, then click Save schedule.`,
     );
   };
 
@@ -379,7 +385,7 @@ export default function SchedulePage() {
             className={`mb-4 p-4 rounded-lg text-sm ${
               feedback.startsWith("Saved")
                 ? "bg-green-50 border border-green-200 text-green-800"
-                : feedback.startsWith("Template:")
+                : feedback.startsWith("Template:") || feedback.startsWith("Copied")
                 ? "bg-blue-50 border border-blue-200 text-blue-900"
                 : "bg-red-50 border border-red-200 text-red-700"
             }`}

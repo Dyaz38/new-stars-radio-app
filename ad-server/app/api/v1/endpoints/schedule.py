@@ -18,6 +18,7 @@ from app.schemas.schedule import (
     ScheduleUpdateResponse,
 )
 from app.seed.station_content import NEW_STARS_SCHEDULE
+from app.services.json_file_store import write_json_atomic
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -33,14 +34,7 @@ def _schedule_file_path() -> Path:
 
 
 def _write_schedule(days: ScheduleByDay) -> None:
-    path = _schedule_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"days": days.model_dump()}
-    text = json.dumps(payload, indent=2, ensure_ascii=False)
-    # Atomic replace so a crash mid-write cannot leave a truncated file.
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(text, encoding="utf-8")
-    tmp_path.replace(path)
+    write_json_atomic(_schedule_file_path(), {"days": days.model_dump()})
 
 
 def _parse_legacy_items(raw: dict) -> ScheduleByDay | None:
@@ -58,10 +52,11 @@ def _parse_legacy_items(raw: dict) -> ScheduleByDay | None:
     return ScheduleByDay(mon_thu=items)
 
 
-def _read_schedule() -> ScheduleByDay:
+def _read_schedule(*, repair: bool = True) -> ScheduleByDay:
     path = _schedule_file_path()
     if not path.exists():
-        _write_schedule(DEFAULT_SCHEDULE_DAYS)
+        if repair:
+            _write_schedule(DEFAULT_SCHEDULE_DAYS)
         return DEFAULT_SCHEDULE_DAYS
 
     try:
@@ -71,12 +66,24 @@ def _read_schedule() -> ScheduleByDay:
             return parsed.days
         legacy = _parse_legacy_items(raw) if isinstance(raw, dict) else None
         if legacy is not None:
-            _write_schedule(legacy)
+            if repair:
+                _write_schedule(legacy)
             return legacy
     except Exception as exc:  # pragma: no cover - defensive fallback
-        logger.warning("Invalid schedule file detected (%s). Resetting to defaults.", exc)
+        logger.warning("Invalid schedule file detected (%s).", exc)
+        if repair:
+            bak = path.with_suffix(path.suffix + ".bak")
+            try:
+                path.replace(bak)
+                logger.warning("Moved unreadable schedule to %s", bak)
+            except Exception:
+                logger.warning("Could not back up unreadable schedule at %s", path)
+            _write_schedule(DEFAULT_SCHEDULE_DAYS)
+            return DEFAULT_SCHEDULE_DAYS
+        raise
 
-    _write_schedule(DEFAULT_SCHEDULE_DAYS)
+    if repair:
+        _write_schedule(DEFAULT_SCHEDULE_DAYS)
     return DEFAULT_SCHEDULE_DAYS
 
 
@@ -99,7 +106,12 @@ async def update_schedule(
     _: User = Depends(get_current_staff_user),
 ):
     _write_schedule(body.days)
-    persisted = _read_schedule()
+    # Re-read without auto-repair so a parse glitch cannot overwrite the save with defaults.
+    try:
+        persisted = _read_schedule(repair=False)
+    except Exception as exc:
+        logger.exception("Schedule re-read failed after write: %s", exc)
+        persisted = body.days
     count = len(persisted.all_items())
     logger.info(
         "radio schedule updated: items=%s path=%s fri=%s sat=%s sun=%s",
