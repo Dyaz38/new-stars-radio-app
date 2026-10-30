@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import api, { normalizeApiBaseUrl } from "../lib/api";
@@ -94,11 +94,33 @@ function maxScheduleId(days: ScheduleByDay): number {
   return ids.length === 0 ? 0 : Math.max(...ids);
 }
 
+function formatApiDetail(detail: unknown): string | null {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail.map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object" && "msg" in item) {
+        const loc = "loc" in item && Array.isArray((item as { loc: unknown }).loc)
+          ? (item as { loc: unknown[] }).loc.join(".")
+          : "";
+        const msg = String((item as { msg: unknown }).msg);
+        return loc ? `${loc}: ${msg}` : msg;
+      }
+      return null;
+    }).filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }
+  return null;
+}
+
 function formatScheduleLoadError(err: unknown): string {
   if (axios.isAxiosError(err)) {
     if (err.response?.data && typeof err.response.data === "object" && "detail" in err.response.data) {
-      const d = (err.response.data as { detail: unknown }).detail;
-      if (typeof d === "string") return d;
+      const formatted = formatApiDetail((err.response.data as { detail: unknown }).detail);
+      if (formatted) return formatted;
+    }
+    if (err.response?.status === 403) {
+      return "You don’t have permission to edit the schedule. Log in with an admin or sales account.";
     }
     if (err.response?.status) {
       return `Server returned ${err.response.status}. Check that Railway is running the latest API with /api/v1/schedule.`;
@@ -117,6 +139,7 @@ export default function SchedulePage() {
   const [activeTab, setActiveTab] = useState<ScheduleDayKey>("mon_thu");
   const [editorDays, setEditorDays] = useState<ScheduleByDay | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["radio-schedule"],
@@ -126,6 +149,12 @@ export default function SchedulePage() {
     },
   });
 
+  // Keep a local editable draft so typing isn’t fighting React Query refetches.
+  useEffect(() => {
+    if (!data || isDirty) return;
+    setEditorDays(cloneDays(data));
+  }, [data, isDirty]);
+
   const saveMutation = useMutation({
     mutationFn: async (days: ScheduleByDay) => {
       const response = await api.put<ScheduleUpdateResponse>("/schedule/", { days });
@@ -134,11 +163,11 @@ export default function SchedulePage() {
     onSuccess: (res) => {
       setFeedback(`Saved ${res.updated_items} schedule entries across all day tabs.`);
       setEditorDays(cloneDays(res.days));
+      setIsDirty(false);
       void queryClient.invalidateQueries({ queryKey: ["radio-schedule"] });
     },
     onError: (err: unknown) => {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setFeedback(e.response?.data?.detail || "Failed to save schedule.");
+      setFeedback(formatScheduleLoadError(err));
     },
   });
 
@@ -150,9 +179,17 @@ export default function SchedulePage() {
     return formatScheduleLoadError(error);
   }, [error]);
 
-  const updateRow = (id: number, patch: Partial<ScheduleShow>) => {
+  const withDraft = (updater: (base: ScheduleByDay) => ScheduleByDay) => {
     setEditorDays((prev) => {
       const base = cloneDays(prev ?? data ?? EMPTY_DAYS());
+      return updater(base);
+    });
+    setIsDirty(true);
+    setFeedback(null);
+  };
+
+  const updateRow = (id: number, patch: Partial<ScheduleShow>) => {
+    withDraft((base) => {
       base[activeTab] = base[activeTab].map((row) => (row.id === id ? { ...row, ...patch } : row));
       return base;
     });
@@ -160,18 +197,19 @@ export default function SchedulePage() {
 
   const resetEdits = () => {
     setEditorDays(data ? cloneDays(data) : null);
+    setIsDirty(false);
     setFeedback(null);
   };
 
   const startFromTemplate = () => {
     setEditorDays(cloneDays(DEFAULT_SCHEDULE_TEMPLATE));
+    setIsDirty(true);
     setActiveTab("mon_thu");
     setFeedback("Template: Loaded Mon–Thu default shows. Add Friday, Saturday, and Sunday tabs as needed, then Save schedule.");
   };
 
   const addRow = () => {
-    setEditorDays((prev) => {
-      const base = cloneDays(prev ?? data ?? EMPTY_DAYS());
+    withDraft((base) => {
       const nextId = maxScheduleId(base) + 1;
       base[activeTab] = [
         ...base[activeTab],
@@ -189,11 +227,25 @@ export default function SchedulePage() {
   };
 
   const removeRow = (id: number) => {
-    setEditorDays((prev) => {
-      const base = cloneDays(prev ?? data ?? EMPTY_DAYS());
+    withDraft((base) => {
       base[activeTab] = base[activeTab].filter((r) => r.id !== id);
       return base;
     });
+  };
+
+  const copyMonThuToActiveTab = () => {
+    if (activeTab === "mon_thu") return;
+    withDraft((base) => {
+      let nextId = maxScheduleId(base);
+      base[activeTab] = base.mon_thu.map((row) => {
+        nextId += 1;
+        return { ...row, id: nextId, current: false };
+      });
+      return base;
+    });
+    setFeedback(
+      `Copied Mon–Thu into ${SCHEDULE_DAY_LABELS[activeTab]}. Edit as needed, then click Save schedule.`,
+    );
   };
 
   const saveAll = () => {
@@ -214,13 +266,18 @@ export default function SchedulePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap gap-2 items-center justify-between">
           <p className="text-gray-600">
-            Use the tabs to manage Mon–Thu, Friday, Saturday, and Sunday line-ups. The listener app shows the tab that matches today.
+            Use the tabs to manage Mon–Thu, Friday, Saturday, and Sunday line-ups. Edit the fields, then click{" "}
+            <strong>Save schedule</strong> — changes are not published until you save.
+            {isDirty ? (
+              <span className="ml-2 text-amber-700 font-medium">Unsaved changes</span>
+            ) : null}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => refetch()}
-              disabled={isFetching}
+              disabled={isFetching || isDirty}
+              title={isDirty ? "Save or reset edits before refreshing" : undefined}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               {isFetching ? "Refreshing..." : "Refresh"}
@@ -241,10 +298,20 @@ export default function SchedulePage() {
             >
               Add row
             </button>
+            {activeTab !== "mon_thu" ? (
+              <button
+                type="button"
+                onClick={copyMonThuToActiveTab}
+                disabled={saveMutation.isPending || days.mon_thu.length === 0}
+                className="px-4 py-2 text-sm font-medium text-violet-800 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 disabled:opacity-50"
+              >
+                Copy Mon–Thu to this day
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={resetEdits}
-              disabled={isLoading || saveMutation.isPending}
+              disabled={isLoading || saveMutation.isPending || !isDirty}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Reset edits
@@ -252,7 +319,7 @@ export default function SchedulePage() {
             <button
               type="button"
               onClick={saveAll}
-              disabled={isLoading || saveMutation.isPending}
+              disabled={isLoading || saveMutation.isPending || !editorDays}
               className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
               {saveMutation.isPending ? "Saving..." : "Save schedule"}
@@ -343,15 +410,27 @@ export default function SchedulePage() {
                       <td colSpan={5} className="px-6 py-10 text-center text-gray-600">
                         <p className="mb-3">No shows for {SCHEDULE_DAY_LABELS[activeTab]} yet.</p>
                         <p className="mb-4 text-sm">
-                          Click <strong>Add row</strong> to create slots, or copy from another day tab after saving.
+                          Click <strong>Add row</strong>, or <strong>Copy Mon–Thu to this day</strong> if you want the
+                          weekday lineup as a starting point. Then click <strong>Save schedule</strong>.
                         </p>
-                        <button
-                          type="button"
-                          onClick={addRow}
-                          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                        >
-                          Add row
-                        </button>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={addRow}
+                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                          >
+                            Add row
+                          </button>
+                          {activeTab !== "mon_thu" && days.mon_thu.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={copyMonThuToActiveTab}
+                              className="px-4 py-2 text-sm font-medium text-violet-800 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100"
+                            >
+                              Copy Mon–Thu to this day
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   )}
