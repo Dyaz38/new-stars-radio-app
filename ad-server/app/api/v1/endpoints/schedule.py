@@ -36,7 +36,11 @@ def _write_schedule(days: ScheduleByDay) -> None:
     path = _schedule_file_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"days": days.model_dump()}
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    text = json.dumps(payload, indent=2, ensure_ascii=False)
+    # Atomic replace so a crash mid-write cannot leave a truncated file.
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(text, encoding="utf-8")
+    tmp_path.replace(path)
 
 
 def _parse_legacy_items(raw: dict) -> ScheduleByDay | None:
@@ -95,6 +99,14 @@ async def update_schedule(
     _: User = Depends(get_current_staff_user),
 ):
     _write_schedule(body.days)
-    count = len(body.days.all_items())
-    logger.info("radio schedule updated: items=%s", count)
-    return ScheduleUpdateResponse(updated_items=count, days=body.days)
+    persisted = _read_schedule()
+    count = len(persisted.all_items())
+    logger.info(
+        "radio schedule updated: items=%s path=%s fri=%s sat=%s sun=%s",
+        count,
+        _schedule_file_path(),
+        len(persisted.fri),
+        len(persisted.sat),
+        len(persisted.sun),
+    )
+    return ScheduleUpdateResponse(updated_items=count, days=persisted)

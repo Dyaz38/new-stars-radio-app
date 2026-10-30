@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import api, { normalizeApiBaseUrl } from "../lib/api";
@@ -140,6 +140,7 @@ export default function SchedulePage() {
   const [editorDays, setEditorDays] = useState<ScheduleByDay | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const draftRef = useRef<ScheduleByDay | null>(null);
 
   const { data, isLoading, error, isFetching, refetch } = useQuery({
     queryKey: ["radio-schedule"],
@@ -149,22 +150,27 @@ export default function SchedulePage() {
     },
   });
 
-  // Keep a local editable draft so typing isn’t fighting React Query refetches.
+  // Seed local draft once from the server. Do not re-apply query data while editing or
+  // right after save — that was wiping Fri/Sat/Sun (and other edits) with a stale cache.
   useEffect(() => {
-    if (!data || isDirty) return;
-    setEditorDays(cloneDays(data));
-  }, [data, isDirty]);
+    if (!data || editorDays !== null) return;
+    const seeded = cloneDays(data);
+    draftRef.current = seeded;
+    setEditorDays(seeded);
+  }, [data, editorDays]);
 
   const saveMutation = useMutation({
-    mutationFn: async (days: ScheduleByDay) => {
-      const response = await api.put<ScheduleUpdateResponse>("/schedule/", { days });
+    mutationFn: async (daysToSave: ScheduleByDay) => {
+      const response = await api.put<ScheduleUpdateResponse>("/schedule/", { days: daysToSave });
       return response.data;
     },
     onSuccess: (res) => {
-      setFeedback(`Saved ${res.updated_items} schedule entries across all day tabs.`);
-      setEditorDays(cloneDays(res.days));
+      const saved = normalizeScheduleResponse({ days: res.days });
+      draftRef.current = saved;
+      setEditorDays(saved);
       setIsDirty(false);
-      void queryClient.invalidateQueries({ queryKey: ["radio-schedule"] });
+      queryClient.setQueryData(["radio-schedule"], saved);
+      setFeedback(`Saved ${res.updated_items} schedule entries across all day tabs.`);
     },
     onError: (err: unknown) => {
       setFeedback(formatScheduleLoadError(err));
@@ -174,6 +180,10 @@ export default function SchedulePage() {
   const days = editorDays ?? data ?? EMPTY_DAYS();
   const rows = days[activeTab];
 
+  useEffect(() => {
+    draftRef.current = editorDays;
+  }, [editorDays]);
+
   const errorMessage = useMemo(() => {
     if (!error) return null;
     return formatScheduleLoadError(error);
@@ -181,8 +191,10 @@ export default function SchedulePage() {
 
   const withDraft = (updater: (base: ScheduleByDay) => ScheduleByDay) => {
     setEditorDays((prev) => {
-      const base = cloneDays(prev ?? data ?? EMPTY_DAYS());
-      return updater(base);
+      const base = cloneDays(prev ?? draftRef.current ?? data ?? EMPTY_DAYS());
+      const next = updater(base);
+      draftRef.current = next;
+      return next;
     });
     setIsDirty(true);
     setFeedback(null);
@@ -196,13 +208,17 @@ export default function SchedulePage() {
   };
 
   const resetEdits = () => {
-    setEditorDays(data ? cloneDays(data) : null);
+    const reset = data ? cloneDays(data) : null;
+    draftRef.current = reset;
+    setEditorDays(reset);
     setIsDirty(false);
     setFeedback(null);
   };
 
   const startFromTemplate = () => {
-    setEditorDays(cloneDays(DEFAULT_SCHEDULE_TEMPLATE));
+    const templated = cloneDays(DEFAULT_SCHEDULE_TEMPLATE);
+    draftRef.current = templated;
+    setEditorDays(templated);
     setIsDirty(true);
     setActiveTab("mon_thu");
     setFeedback("Template: Loaded Mon–Thu default shows. Add Friday, Saturday, and Sunday tabs as needed, then Save schedule.");
@@ -250,7 +266,29 @@ export default function SchedulePage() {
 
   const saveAll = () => {
     setFeedback(null);
-    saveMutation.mutate(days);
+    const payload = draftRef.current ?? editorDays ?? data;
+    if (!payload) {
+      setFeedback("Nothing to save yet — wait for the schedule to load.");
+      return;
+    }
+    // Guard: empty description/time fields fail API validation and look like “didn’t save”.
+    for (const key of SCHEDULE_DAY_KEYS) {
+      for (const row of payload[key]) {
+        if (!row.time.trim() || row.time.trim().length < 3) {
+          setFeedback(`Fix time on “${row.show || "untitled"}” (${SCHEDULE_DAY_LABELS[key]}) before saving.`);
+          setActiveTab(key);
+          return;
+        }
+        if (!row.show.trim() || !row.dj.trim() || !row.description.trim()) {
+          setFeedback(
+            `Every row needs show, DJ, and description. Check ${SCHEDULE_DAY_LABELS[key]} before saving.`,
+          );
+          setActiveTab(key);
+          return;
+        }
+      }
+    }
+    saveMutation.mutate(cloneDays(payload));
   };
 
   const apiBaseHint = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined);
@@ -275,7 +313,16 @@ export default function SchedulePage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => refetch()}
+              onClick={() => {
+                void refetch().then((result) => {
+                  if (result.data) {
+                    const fresh = cloneDays(result.data);
+                    draftRef.current = fresh;
+                    setEditorDays(fresh);
+                    setIsDirty(false);
+                  }
+                });
+              }}
               disabled={isFetching || isDirty}
               title={isDirty ? "Save or reset edits before refreshing" : undefined}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
