@@ -17,10 +17,10 @@ from app.schemas.promoter_portal import (
 )
 from app.services.event_visibility import refresh_event_status
 from app.services.station_events_store import (
+    EventsStoreError,
+    mutate_events,
     next_event_id,
-    normalize_events,
     read_events,
-    write_events,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,14 +62,23 @@ def _build_event(
         "review_status": "pending_review",
         "submitted_by_user_id": _owner_id(user),
     }
-    return refresh_event_status(StationEvent.model_validate(merged))
+    try:
+        return refresh_event_status(StationEvent.model_validate(merged))
+    except Exception as exc:
+        raise ValueError(str(exc)) from exc
 
 
 @router.get("/events", response_model=PromoterEventsListResponse)
 async def list_promoter_events(
     current_user: User = Depends(get_current_promoter_user),
 ):
-    items = _promoter_events(read_events(), current_user)
+    try:
+        items = _promoter_events(read_events(), current_user)
+    except EventsStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     return PromoterEventsListResponse(items=items)
 
 
@@ -78,13 +87,33 @@ async def create_promoter_event(
     body: PromoterEventCreate,
     current_user: User = Depends(get_current_promoter_user),
 ):
-    all_items = read_events()
-    event_id = next_event_id(all_items)
-    event = _build_event(body, event_id=event_id, user=current_user)
-    all_items.append(event)
-    write_events(normalize_events(all_items))
-    logger.info("Promoter event submitted: user=%s event_id=%s", current_user.email, event_id)
-    return event
+    created_holder: dict[str, StationEvent] = {}
+
+    def _create(all_items: list[StationEvent]) -> list[StationEvent]:
+        event_id = next_event_id(all_items)
+        try:
+            event = _build_event(body, event_id=event_id, user=current_user)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+        created_holder["event"] = event
+        return [*all_items, event]
+
+    try:
+        mutate_events(_create)
+    except EventsStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    logger.info(
+        "Promoter event submitted: user=%s event_id=%s",
+        current_user.email,
+        created_holder["event"].id,
+    )
+    return created_holder["event"]
 
 
 @router.put("/events/{event_id}", response_model=StationEvent)
@@ -93,16 +122,31 @@ async def update_promoter_event(
     body: PromoterEventUpdate,
     current_user: User = Depends(get_current_promoter_user),
 ):
-    all_items = read_events()
-    existing = _find_owned(all_items, event_id, current_user)
-    if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    updated_holder: dict[str, StationEvent] = {}
 
-    updated = _build_event(body, event_id=event_id, user=current_user, existing=existing)
-    replaced = [updated if e.id == event_id else e for e in all_items]
-    write_events(normalize_events(replaced))
+    def _update(all_items: list[StationEvent]) -> list[StationEvent]:
+        existing = _find_owned(all_items, event_id, current_user)
+        if not existing:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+        try:
+            updated = _build_event(body, event_id=event_id, user=current_user, existing=existing)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+        updated_holder["event"] = updated
+        return [updated if e.id == event_id else e for e in all_items]
+
+    try:
+        mutate_events(_update)
+    except EventsStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     logger.info("Promoter event updated: user=%s event_id=%s", current_user.email, event_id)
-    return updated
+    return updated_holder["event"]
 
 
 @router.post("/upload-image", response_model=EventImageUploadResponse)

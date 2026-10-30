@@ -26,7 +26,9 @@ from app.seed.station_content import NEW_STARS_EVENT_LOCATIONS
 from app.services.storage import upload_station_event_image
 from app.services.event_geo import filter_events_for_country
 from app.services.station_events_store import (
+    EventsStoreError,
     events_for_public_listeners,
+    mutate_events,
     normalize_events,
     read_events,
     write_events,
@@ -100,7 +102,13 @@ async def get_events(
     http_request: Request,
     current_user: User | None = Depends(get_optional_current_user),
 ):
-    items = read_events()
+    try:
+        items = read_events()
+    except EventsStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     if current_user is not None and current_user.role in (UserRole.ADMIN, UserRole.SALES_REP):
         return EventsResponse(items=items, listener_country=None, published_count=None)
     geo = await resolve_request_geo(http_request)
@@ -150,24 +158,34 @@ async def approve_event(
     event_id: int,
     _: User = Depends(get_current_staff_user),
 ):
-    all_items = read_events()
-    target: StationEvent | None = None
-    for item in all_items:
-        if item.id == event_id:
-            target = item
-            break
-    if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    if target.review_status != "pending_review":
+    updated_holder: dict[str, StationEvent] = {}
+
+    def _approve(all_items: list[StationEvent]) -> list[StationEvent]:
+        target: StationEvent | None = None
+        for item in all_items:
+            if item.id == event_id:
+                target = item
+                break
+        if not target:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+        if target.review_status != "pending_review":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only pending_review events can be approved.",
+            )
+        updated = target.model_copy(update={"review_status": "published"})
+        updated_holder["event"] = updated
+        return [updated if e.id == event_id else e for e in all_items]
+
+    try:
+        mutate_events(_approve)
+    except EventsStoreError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only pending_review events can be approved.",
-        )
-    updated = target.model_copy(update={"review_status": "published"})
-    replaced = [updated if e.id == event_id else e for e in all_items]
-    write_events(normalize_events(replaced))
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     logger.info("Event approved for listeners: id=%s", event_id)
-    return updated
+    return updated_holder["event"]
 
 
 @router.put(
@@ -179,7 +197,13 @@ async def update_events(
     body: EventsUpdateRequest,
     _: User = Depends(get_current_staff_user),
 ):
-    normalized = normalize_events(body.items)
-    write_events(normalized)
+    try:
+        normalized = normalize_events(body.items)
+        write_events(normalized)
+    except EventsStoreError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     logger.info("station events updated: items=%s", len(normalized))
     return EventsUpdateResponse(updated_items=len(normalized), items=normalized)

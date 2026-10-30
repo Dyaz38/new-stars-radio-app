@@ -3,7 +3,11 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
+import { useAuthStore } from './stores/authStore'
 import './index.css'
+
+// Restore session from localStorage before the first route guard runs.
+useAuthStore.getState().initialize()
 
 // Create a client
 const queryClient = new QueryClient({

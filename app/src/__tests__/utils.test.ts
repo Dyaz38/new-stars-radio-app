@@ -145,11 +145,14 @@ describe('Utility Functions', () => {
 
   describe('Song Title Parsing', () => {
     const parseSongTitle = (trackInfo: string): { artist: string; title: string } => {
-      if (trackInfo.includes(' - ')) {
-        const [artist, title] = trackInfo.split(' - ', 2);
-        return { artist: artist.trim(), title: title.trim() };
-      }
-      return { artist: 'New Stars Radio', title: trackInfo.trim() };
+      // Keep in sync with parseArtistTitle (JS split(..., 2) does not work like Python).
+      const sep = ' - ';
+      const idx = trackInfo.indexOf(sep);
+      if (idx === -1) return { artist: 'New Stars Radio', title: trackInfo.trim() };
+      return {
+        artist: trackInfo.slice(0, idx).trim(),
+        title: trackInfo.slice(idx + sep.length).trim(),
+      };
     };
 
     it('should parse artist and title from combined string', () => {

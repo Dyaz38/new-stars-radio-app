@@ -30,9 +30,11 @@ export function useShowReminders() {
       const startAt = new Date(current.startsAt);
       const startMs = startAt.getTime();
       if (Number.isNaN(startMs)) return [current];
+      const dayKey = current.dayKey ?? 'mon_thu';
 
-      if (!current.notifiedAt && now >= startMs) {
-        const dayKey = current.dayKey ?? 'mon_thu';
+      // After a show's notify window, roll forward to the next occurrence and clear the flag
+      // so weekly reminders can fire again.
+      if (current.notifiedAt && now >= startMs) {
         current = {
           ...current,
           startsAt: getNextShowStartForDayGroup(
@@ -45,21 +47,18 @@ export function useShowReminders() {
         changed = true;
       }
 
+      const nextStartMs = new Date(current.startsAt).getTime();
+      if (Number.isNaN(nextStartMs)) return [current];
       if (current.notifiedAt) return [current];
 
-      const notifyAt = new Date(current.startsAt).getTime() - REMINDER_LEAD_MS;
-      if (now >= notifyAt && now < startMs + 30 * 60 * 1000) {
+      const notifyAt = nextStartMs - REMINDER_LEAD_MS;
+      if (now >= notifyAt && now < nextStartMs + 30 * 60 * 1000) {
         showShowReminderNotification(current);
         changed = true;
         return [
           {
             ...current,
             notifiedAt: new Date().toISOString(),
-            startsAt: getNextShowStartForDayGroup(
-              current.timeLabel,
-              current.dayKey ?? 'mon_thu',
-              new Date(startMs + 1000),
-            ).toISOString(),
           },
         ];
       }
@@ -127,7 +126,13 @@ export function useShowReminders() {
         return 'removed';
       }
 
-      if ('Notification' in window && Notification.permission === 'default') {
+      if (!('Notification' in window)) {
+        return 'denied';
+      }
+      if (Notification.permission === 'denied') {
+        return 'denied';
+      }
+      if (Notification.permission === 'default') {
         const result = await Notification.requestPermission();
         if (result !== 'granted') {
           return 'denied';

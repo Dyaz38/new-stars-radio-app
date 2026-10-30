@@ -99,7 +99,13 @@ export function useEventReminders() {
         return 'removed';
       }
 
-      if ('Notification' in window && Notification.permission === 'default') {
+      if (!('Notification' in window)) {
+        return 'denied';
+      }
+      if (Notification.permission === 'denied') {
+        return 'denied';
+      }
+      if (Notification.permission === 'default') {
         const result = await Notification.requestPermission();
         if (result !== 'granted') {
           return 'denied';

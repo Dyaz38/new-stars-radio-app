@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Song, AirtimeApiResponse, MusicBrainzSearchResponse, CoverArtArchiveResponse, ArtworkResult } from '../types';
 import { API_ENDPOINTS, getMetadataUrls, RADIO_CONFIG, GRADIENT_CLASSES, MUSICBRAINZ_CONFIG, getStreamListenersUrl } from '../constants';
 import { normalizeAirtimeLiveInfo } from '../api/airtimeLiveInfo';
 import { decodeHtmlEntities } from '../utils/decodeHtmlEntities';
+import { parseArtistTitle } from '../utils/parseTrackTitle';
 
 export const useMetadata = () => {
   const [currentSong, setCurrentSong] = useState<Song>({
@@ -20,10 +21,9 @@ export const useMetadata = () => {
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   /** Live Icecast count from ad-server proxy; null until first successful fetch. */
   const [listeners, setListeners] = useState<number | null>(null);
-  const [artworkCache, setArtworkCache] = useState<Map<string, string>>(new Map());
-
-  // Rate limiter for MusicBrainz API (1 call per second max)
-  const [lastMusicBrainzCall, setLastMusicBrainzCall] = useState<number>(0);
+  // Refs avoid recreating fetchMetadata on every cache/rate-limit update (which restarted the poll loop).
+  const artworkCacheRef = useRef<Map<string, string>>(new Map());
+  const lastMusicBrainzCallRef = useRef(0);
   
   
   // iTunes API - Fast and reliable fallback
@@ -69,14 +69,14 @@ export const useMetadata = () => {
     try {
       // Enforce rate limiting: wait at least 1.1 seconds between calls
       const now = Date.now();
-      const timeSinceLastCall = now - lastMusicBrainzCall;
+      const timeSinceLastCall = now - lastMusicBrainzCallRef.current;
       if (timeSinceLastCall < MUSICBRAINZ_CONFIG.RATE_LIMIT_DELAY) {
         const waitTime = MUSICBRAINZ_CONFIG.RATE_LIMIT_DELAY - timeSinceLastCall;
         console.log(`⏱️ MusicBrainz rate limit: waiting ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
-      setLastMusicBrainzCall(Date.now());
+      lastMusicBrainzCallRef.current = Date.now();
       
       // Try multiple search strategies
       const searchStrategies = [
@@ -167,7 +167,7 @@ export const useMetadata = () => {
       console.log('MusicBrainz API failed:', error);
     }
     return null;
-  }, [lastMusicBrainzCall]);
+  }, []);
 
 
   // Enhanced cover art fetching with MusicBrainz only
@@ -182,8 +182,8 @@ export const useMetadata = () => {
     const cacheKey = `${cleanArtist}-${cleanTitle}`;
     
     // Check cache first (unless forcing refresh)
-    if (!forceRefresh && artworkCache.has(cacheKey)) {
-      const cachedArt = artworkCache.get(cacheKey)!;
+    if (!forceRefresh && artworkCacheRef.current.has(cacheKey)) {
+      const cachedArt = artworkCacheRef.current.get(cacheKey)!;
       console.log(`🎨 Using cached cover art for: "${cleanArtist}" - "${cleanTitle}"`);
       return cachedArt;
     }
@@ -200,8 +200,7 @@ export const useMetadata = () => {
         console.log(`✅ 🎵 Selected MUSICBRAINZ cover art (${musicBrainzResult.width}x${musicBrainzResult.height})`);
         console.log(`🖼️ URL: ${musicBrainzResult.url}`);
         
-        // Cache the result
-        setArtworkCache(prev => new Map(prev.set(cacheKey, musicBrainzResult.url)));
+        artworkCacheRef.current.set(cacheKey, musicBrainzResult.url);
         
         return musicBrainzResult.url;
       } else {
@@ -220,8 +219,7 @@ export const useMetadata = () => {
         console.log(`✅ 🍎 Selected ITUNES cover art (${iTunesResult.width}x${iTunesResult.height})`);
         console.log(`🖼️ URL: ${iTunesResult.url}`);
         
-        // Cache the result
-        setArtworkCache(prev => new Map(prev.set(cacheKey, iTunesResult.url)));
+        artworkCacheRef.current.set(cacheKey, iTunesResult.url);
         
         return iTunesResult.url;
       } else {
@@ -236,11 +234,10 @@ export const useMetadata = () => {
     const fallbackArt = `gradient-${colorIndex}`;
     console.log(`🎨 Using colorful placeholder for: ${cleanArtist} - ${cleanTitle}`);
     
-    // Cache the fallback too
-    setArtworkCache(prev => new Map(prev.set(cacheKey, fallbackArt)));
+    artworkCacheRef.current.set(cacheKey, fallbackArt);
     
     return fallbackArt;
-  }, [fetchMusicBrainzArtwork, artworkCache]);
+  }, [fetchMusicBrainzArtwork, fetchITunesArtwork]);
 
   // Helper function to get gradient class for placeholder artwork
   const getGradientClass = useCallback((identifier: string): string => {
@@ -279,6 +276,7 @@ export const useMetadata = () => {
             let title = 'Live Stream';
             let trackInfo = null;
             let genre: string | undefined;
+            let updatedCurrent = false;
             
             if (currentTrack) {
               // Airtime Pro live-info format
@@ -311,11 +309,10 @@ export const useMetadata = () => {
                   coverArt,
                   ...(genre ? { genre } : {}),
                 });
+                updatedCurrent = true;
               } else if (trackInfo) {
-                // Parse combined format "Artist - Title"
-                const [parsedArtist, parsedTitle] = trackInfo.includes(' - ') 
-                  ? trackInfo.split(' - ', 2)
-                  : ['New Stars Radio', trackInfo];
+                // Parse combined format "Artist - Title" (title may contain further " - ")
+                const { artist: parsedArtist, title: parsedTitle } = parseArtistTitle(trackInfo);
                 
                 const coverArt = await getEnhancedCoverArt(parsedArtist, parsedTitle);
                 setCurrentSong({
@@ -325,6 +322,7 @@ export const useMetadata = () => {
                   coverArt,
                   ...(genre ? { genre } : {}),
                 });
+                updatedCurrent = true;
               }
               
               // Handle next song if available
@@ -345,11 +343,9 @@ export const useMetadata = () => {
                 // Fallback: parse the name field
                 else if (nextTrack.name) {
                   const nextTrackInfo = decodeHtmlEntities(nextTrack.name);
-                  const [artist, title] = nextTrackInfo.includes(' - ') 
-                    ? nextTrackInfo.split(' - ', 2)
-                    : ['New Stars Radio', nextTrackInfo];
-                  nextArtist = artist;
-                  nextTitle = title;
+                  const parsed = parseArtistTitle(nextTrackInfo);
+                  nextArtist = parsed.artist;
+                  nextTitle = parsed.title;
                   if (nextTrack.metadata?.genre) {
                     nextGenre = decodeHtmlEntities(String(nextTrack.metadata.genre));
                   }
@@ -377,9 +373,10 @@ export const useMetadata = () => {
               }
             }
             
-            if (currentTrack || trackInfo) {
+            // Only stop polling URLs after a real parse — empty `current: {}` must fall through.
+            if (updatedCurrent) {
               console.log(`🎶 Updated: "${artist}" - "${title}"`);
-              return; // Success, exit loop
+              return;
             }
           }
         } catch (error) {

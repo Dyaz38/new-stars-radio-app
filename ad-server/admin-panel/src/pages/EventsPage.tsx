@@ -151,13 +151,19 @@ export default function EventsPage() {
       const response = await api.post<StationEvent>(`/events/${eventId}/approve`);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (approved) => {
       setFeedback("Event approved — visible in the listener app.");
+      // Keep the local draft in sync so a later Save cannot overwrite with pending_review.
+      setEditorRows((prev) => {
+        const base = prev ?? data?.items ?? [];
+        return base.map((row) => (row.id === approved.id ? { ...row, ...approved } : row));
+      });
       void queryClient.invalidateQueries({ queryKey: ["station-events"] });
     },
     onError: (err: unknown) => {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setFeedback(e.response?.data?.detail || "Approve failed.");
+      const e = err as { response?: { data?: { detail?: unknown } } };
+      const detail = e.response?.data?.detail;
+      setFeedback(typeof detail === "string" ? detail : "Approve failed.");
     },
   });
 
@@ -315,7 +321,13 @@ export default function EventsPage() {
             </button>
             <button
               type="button"
-              onClick={() => refetch()}
+              onClick={() => {
+                // Drop local draft so Refresh cannot leave stale pending_review over approved rows.
+                setEditorRows(null);
+                setCustomLocationIds(new Set());
+                setFeedback(null);
+                void refetch();
+              }}
               disabled={isFetching}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >

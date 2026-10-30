@@ -46,14 +46,18 @@ export type ThisWeekSegment = 'mon-thu' | 'weekend';
  */
 export function getThisWeekSegment(event: StationEvent, now = new Date()): ThisWeekSegment | null {
   const range = getEventTimeRange(event);
-  if (!range) return null;
-  const start = range.start;
-  const weekStart = startOfWeekMondayLocal(now);
-  const weekEnd = endOfWeekSundayLocal(weekStart);
-  if (start < weekStart || start > weekEnd) return null;
-  const dow = start.getDay();
-  if (dow >= 1 && dow <= 4) return 'mon-thu';
-  if (dow === 0 || dow === 5 || dow === 6) return 'weekend';
+  if (range) {
+    const start = range.start;
+    const weekStart = startOfWeekMondayLocal(now);
+    const weekEnd = endOfWeekSundayLocal(weekStart);
+    if (start < weekStart || start > weekEnd) return null;
+    const dow = start.getDay();
+    if (dow >= 1 && dow <= 4) return 'mon-thu';
+    if (dow === 0 || dow === 5 || dow === 6) return 'weekend';
+    return null;
+  }
+  // Legacy rows without startsAt: honor the admin "this week" flag as weekday inventory.
+  if (event.isThisWeek) return 'mon-thu';
   return null;
 }
 
@@ -112,7 +116,7 @@ export function buildIcsContent(event: StationEvent, start: Date, end: Date): st
     `DTSTART:${toGoogleUtc(start)}`,
     `DTEND:${toGoogleUtc(end)}`,
     `SUMMARY:${icsEscapeText(event.title)}`,
-    `DESCRIPTION:${icsEscapeText(eventCalendarDetails(event).replace(/\n/g, '\\n'))}`,
+    `DESCRIPTION:${icsEscapeText(eventCalendarDetails(event))}`,
     `LOCATION:${icsEscapeText(event.location)}`,
     'END:VEVENT',
     'END:VCALENDAR',

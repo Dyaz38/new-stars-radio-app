@@ -27,14 +27,19 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle auth errors
+// Handle auth errors (skip login/register — those 401s are bad credentials, not expired sessions)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      const url = String(error.config?.url || '')
+      const isCredentialAttempt =
+        url.includes('/auth/login') || url.includes('/auth/register')
+      if (!isCredentialAttempt) {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

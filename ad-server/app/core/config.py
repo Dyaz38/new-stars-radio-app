@@ -94,7 +94,8 @@ class Settings(BaseSettings):
     EVENTS_STORAGE_PATH: str = "data/station_events.json"
 
     # Preset towns/cities for event location dropdown (admin-managed JSON)
-    EVENT_LOCATIONS_STORAGE_PATH: str = "data/station_event_locations.json"
+    # Must match the shipped seed file under ad-server/data/
+    EVENT_LOCATIONS_STORAGE_PATH: str = "data/event_locations.json"
 
     # Admin panel public URL (password reset links in emails)
     FRONTEND_ADMIN_URL: str = "https://newstarsadminpanel.vercel.app"

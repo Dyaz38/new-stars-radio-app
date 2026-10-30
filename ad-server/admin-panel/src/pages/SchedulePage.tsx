@@ -219,12 +219,21 @@ export default function SchedulePage() {
   };
 
   const startFromTemplate = () => {
-    const templated = cloneDays(DEFAULT_SCHEDULE_TEMPLATE);
+    const current = draftRef.current ?? data ?? EMPTY_DAYS();
+    // Keep any existing weekend tabs; only refresh Mon–Thu from the template.
+    const templated = cloneDays({
+      ...DEFAULT_SCHEDULE_TEMPLATE,
+      fri: current.fri,
+      sat: current.sat,
+      sun: current.sun,
+    });
     draftRef.current = templated;
     setEditorDays(templated);
     setIsDirty(true);
     setActiveTab("mon_thu");
-    setFeedback("Template: Loaded Mon–Thu default shows. Add Friday, Saturday, and Sunday tabs as needed, then Save schedule.");
+    setFeedback(
+      "Template: Loaded Mon–Thu default shows (weekend tabs kept). Edit Fri/Sat/Sun as needed, then Save schedule.",
+    );
   };
 
   const addRow = () => {

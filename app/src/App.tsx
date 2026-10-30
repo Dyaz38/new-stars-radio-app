@@ -401,9 +401,18 @@ const RadioStreamingApp = () => {
     void loadSchedule();
   }, [loadSchedule]);
 
-  // Load schedule on component mount
+  // Load schedule on mount, on focus, and periodically (admin publishes without requiring a full reload)
   useEffect(() => {
     void loadSchedule();
+    const interval = setInterval(() => void loadSchedule(), 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadSchedule();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadSchedule]);
 
   // Reload events when IP country is detected (server filters by country)
@@ -412,6 +421,20 @@ const RadioStreamingApp = () => {
       void loadEvents();
     }
   }, [listenerGeo.country, listenerGeo.loading, loadEvents]);
+
+  // Refresh events periodically / on tab focus so new approvals show without a full reload
+  useEffect(() => {
+    if (listenerGeo.loading) return;
+    const interval = setInterval(() => void loadEvents(), 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadEvents();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [listenerGeo.loading, loadEvents]);
 
   // Refresh ON AIR highlighting (hero card + today's schedule tab)
   useEffect(() => {

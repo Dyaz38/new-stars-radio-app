@@ -44,10 +44,22 @@ export default function LoginPage() {
       if (user.role === "advertiser") navigate("/portal");
       else if (user.role === "promoter") navigate("/portal/events");
       else navigate("/dashboard");
-    } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "Invalid credentials. Please try again."
-      );
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail;
+      if (typeof detail === "string") {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const parts = detail
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object" && "msg" in item) return String((item as { msg: unknown }).msg);
+            return null;
+          })
+          .filter(Boolean);
+        setError(parts.length ? parts.join(" · ") : "Invalid credentials. Please try again.");
+      } else {
+        setError("Invalid credentials. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -141,8 +141,28 @@ export default function PromoterPortalPage() {
       void queryClient.invalidateQueries({ queryKey: ["promoter-portal-events"] });
     },
     onError: (err: unknown) => {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setFeedback(e.response?.data?.detail || "Could not save. Check required fields.");
+      const e = err as { response?: { data?: { detail?: unknown } } };
+      const detail = e.response?.data?.detail;
+      if (typeof detail === "string") {
+        setFeedback(detail);
+        return;
+      }
+      if (Array.isArray(detail)) {
+        const parts = detail
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object" && "msg" in item) {
+              return String((item as { msg: unknown }).msg);
+            }
+            return null;
+          })
+          .filter(Boolean);
+        if (parts.length) {
+          setFeedback(parts.join(" · "));
+          return;
+        }
+      }
+      setFeedback("Could not save. Check required fields.");
     },
   });
 

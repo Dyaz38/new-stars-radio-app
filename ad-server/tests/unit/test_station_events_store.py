@@ -24,3 +24,12 @@ def test_pending_review_hidden_from_listeners():
     visible = events_for_public_listeners([pending, published])
     assert len(visible) == 1
     assert visible[0].id == 2
+
+
+def test_placeholder_image_cleared_but_event_kept():
+    from app.services.station_events_store import _sanitize_events
+
+    with_placeholder = _event(image_url="https://picsum.photos/200")
+    cleaned = _sanitize_events([with_placeholder])
+    assert len(cleaned) == 1
+    assert cleaned[0].image_url is None
