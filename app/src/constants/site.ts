@@ -70,48 +70,42 @@ export const PROGRAMME_SHOWS_SECTION = {
   title: 'Programme highlights',
   intro:
     'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B artists. On Mon–Thu the day is split into named blocks. Open the Schedule tab in the app for the full grid and reminders — all times are Windhoek (CAT).',
+  // First 7 Mon–Thu slots from the live admin schedule (keep in sync when those rename).
   shows: [
     {
-      name: 'Overnight Stars Mix',
-      time: '12:00 AM – 5:00 AM',
-      blurb:
-        'Non-stop overnight rotation of rising Hip-Hop and R&B — deep listens while the world sleeps, with room for tracks we are breaking before daytime listeners catch up.',
+      name: 'Da Morning Buzz',
+      time: '6:00 AM – 7:30 AM',
+      blurb: 'A show with a great mix of Hip-Hop and RnB to get your morning started.',
     },
     {
-      name: 'Sunrise R&B Warmup',
-      time: '5:00 AM – 7:00 AM',
-      blurb:
-        'Easy morning R&B and mellow Hip-Hop from rising artists — a soft start before the day builds.',
+      name: 'Jus 4 Laughs',
+      time: '7:30 AM – 8:00 AM',
+      blurb: 'A show where stand up comics tell awesome jokes',
     },
     {
-      name: 'Morning Hip-Hop Rise',
-      time: '7:00 AM – 10:00 AM',
-      blurb:
-        'Fresh bars and beats from tomorrow’s stars to start your morning — high-energy Hip-Hop focused on new voices, not yesterday’s playlist.',
+      name: 'Morning Street Raps',
+      time: '8:00 AM – 10:30 AM',
+      blurb: 'Up beat Hip-Hop show',
     },
     {
-      name: 'Midday R&B Flow',
-      time: '10:00 AM – 2:00 PM',
-      blurb:
-        'Midday grooves and newer R&B cuts that fit work, study, or the road — smooth enough to focus, still rooted in artists you have not heard on mainstream radio yet.',
+      name: 'Just RnB',
+      time: '10:30 AM – 1:00 PM',
+      blurb: 'Up Beat RnB show',
     },
     {
-      name: 'Afternoon Discovery',
-      time: '2:00 PM – 6:00 PM',
-      blurb:
-        'Deep cuts and debut tracks from unsigned artists we want listeners to discover first — the block most aligned with why NSR exists.',
+      name: 'KILO',
+      time: '1:00 PM – 1:30 PM',
+      blurb: 'A show dedicated to local artists',
     },
     {
-      name: 'Drive Time Heat',
-      time: '6:00 PM – 9:00 PM',
-      blurb:
-        'Peak-hour Hip-Hop and R&B energy for the commute home — anthems and newcomers side by side when you want the volume up.',
+      name: 'Jus 4 Laughs',
+      time: '1:30 PM – 2:00 PM',
+      blurb: 'Stand up Comics telling awesome jokes',
     },
     {
-      name: 'Late Night Lounge',
-      time: '9:00 PM – 12:00 AM',
-      blurb:
-        'Slow R&B and mellow late-night Hip-Hop to wind down — still centred on rising talent, with a softer tempo for the end of the day.',
+      name: 'Just RnB',
+      time: '2:00 PM – 3:00 PM',
+      blurb: 'Slow R&B and mellow late-night Hip-Hop to wind down.',
     },
   ] satisfies readonly ProgrammeShowBlurb[],
 } as const;
