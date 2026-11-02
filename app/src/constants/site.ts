@@ -105,7 +105,7 @@ export const PROGRAMME_SHOWS_SECTION = {
     {
       name: 'Just RnB',
       time: '2:00 PM – 3:00 PM',
-      blurb: 'Slow R&B and mellow late-night Hip-Hop to wind down.',
+      blurb: 'Up Beat RnB show',
     },
   ] satisfies readonly ProgrammeShowBlurb[],
 } as const;
