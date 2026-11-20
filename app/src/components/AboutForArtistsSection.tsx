@@ -14,6 +14,7 @@ export function AboutForArtistsSection({ className = '' }: AboutForArtistsSectio
       <h2 className="text-base font-semibold text-pink-300 mb-2">{FOR_ARTISTS_SECTION.title}</h2>
       <p className="mb-3">{FOR_ARTISTS_SECTION.intro}</p>
       <p className="mb-3">{FOR_ARTISTS_SECTION.genresNote}</p>
+      <p className="mb-3">{FOR_ARTISTS_SECTION.howWeChoose}</p>
       <p className="mb-3">{FOR_ARTISTS_SECTION.submitViaEmail}</p>
       <p className="mb-2 text-gray-200 font-medium">Include in your email:</p>
       <ul className="list-disc pl-5 space-y-2 mb-4">

@@ -1,6 +1,13 @@
 import { RADIO_CONFIG } from '../constants';
 import { PRIVACY_POLICY_URL } from '../constants/privacy';
-import { ABOUT_URL, CONTACT_EMAIL, musicSubmissionMailto } from '../constants/site';
+import {
+  ABOUT_URL,
+  ADVERTISE_URL,
+  CONTACT_EMAIL,
+  FAQ_URL,
+  LISTEN_GUIDE_URL,
+  musicSubmissionMailto,
+} from '../constants/site';
 
 interface SiteFooterProps {
   className?: string;
@@ -15,6 +22,15 @@ export function SiteFooter({ className = '' }: SiteFooterProps) {
       <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mb-3" aria-label="Legal and information">
         <a href={ABOUT_URL} className="text-pink-300 hover:text-pink-200 underline">
           About
+        </a>
+        <a href={LISTEN_GUIDE_URL} className="text-pink-300 hover:text-pink-200 underline">
+          How to listen
+        </a>
+        <a href={FAQ_URL} className="text-pink-300 hover:text-pink-200 underline">
+          FAQ
+        </a>
+        <a href={ADVERTISE_URL} className="text-pink-300 hover:text-pink-200 underline">
+          Advertise
         </a>
         <a href={`${ABOUT_URL}#for-artists`} className="text-pink-300 hover:text-pink-200 underline">
           For artists

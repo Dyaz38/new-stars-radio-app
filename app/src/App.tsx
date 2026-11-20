@@ -19,7 +19,13 @@ import { PWAInstallPanel } from './components/PWAInstallPanel';
 import { AdBanner } from './components/AdBanner';
 import { AD_PLACEMENTS } from './constants/adPlacements';
 import { PRIVACY_POLICY_URL } from './constants/privacy';
-import { ABOUT_URL, STATION_ABOUT_SUMMARY } from './constants/site';
+import {
+  ABOUT_URL,
+  ADVERTISE_URL,
+  FAQ_URL,
+  LISTEN_GUIDE_URL,
+  STATION_ABOUT_SUMMARY,
+} from './constants/site';
 import { SiteFooter } from './components/SiteFooter';
 import type { ScheduleDayKey, ScheduleByDay, StationEvent } from './types';
 
@@ -1281,6 +1287,15 @@ const RadioStreamingApp = () => {
                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                   <a href={ABOUT_URL} className="text-pink-300 hover:text-pink-200 underline">
                     About
+                  </a>
+                  <a href={LISTEN_GUIDE_URL} className="text-pink-300 hover:text-pink-200 underline">
+                    How to listen
+                  </a>
+                  <a href={FAQ_URL} className="text-pink-300 hover:text-pink-200 underline">
+                    FAQ
+                  </a>
+                  <a href={ADVERTISE_URL} className="text-pink-300 hover:text-pink-200 underline">
+                    Advertise
                   </a>
                   <a
                     href={PRIVACY_POLICY_URL}
