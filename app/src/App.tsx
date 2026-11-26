@@ -54,7 +54,11 @@ import {
 import { filterEventsForCountry } from './utils/eventGeo';
 import { filterListenerEvents, formatDoorsAtLabel } from './utils/eventVisibility';
 import { formatScheduleHostLabel, getScheduleHostInitials } from './utils/scheduleHost';
-import { applyCurrentScheduleFlags } from './utils/scheduleTime';
+import {
+  applyCurrentScheduleFlags,
+  formatScheduleTimeRangeLocal,
+  getScheduleTimezoneDisclaimer,
+} from './utils/scheduleTime';
 import { mapEventFromApi, parseStoredEvents } from './utils/stationEvent';
 import { EventPosterImage } from './components/EventPosterImage';
 import { EventHousePromo } from './components/EventHousePromo';
@@ -600,7 +604,9 @@ const RadioStreamingApp = () => {
                   : 'Loading schedule…'}
               </p>
               <p className="text-xs sm:text-sm text-gray-400">
-                {currentScheduleSlot?.time ?? '—'}
+                {currentScheduleSlot
+                  ? formatScheduleTimeRangeLocal(currentScheduleSlot.time)
+                  : '—'}
               </p>
             </div>
               </div>
@@ -749,7 +755,7 @@ const RadioStreamingApp = () => {
             </div>
 
             <p className="text-xs text-gray-400 mb-4">
-              All show times are <strong className="text-gray-300">Namibia (Windhoek, CAT)</strong>.
+              {getScheduleTimezoneDisclaimer()}
             </p>
 
             <div className="space-y-3 sm:space-y-4">
@@ -785,7 +791,9 @@ const RadioStreamingApp = () => {
                       <p className="text-gray-300 text-xs sm:text-sm mt-1 line-clamp-3">{slot.description}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 sm:gap-2 shrink-0">
-                      <p className="text-gray-400 text-xs sm:text-sm font-mono text-right">{slot.time}</p>
+                      <p className="text-gray-400 text-xs sm:text-sm font-mono text-right">
+                        {formatScheduleTimeRangeLocal(slot.time)}
+                      </p>
                       {(() => {
                         const reminded = isShowReminded(scheduleTab, slot.id);
                         const onAirNow = Boolean(slot.current);

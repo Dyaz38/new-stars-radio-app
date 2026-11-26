@@ -78,7 +78,7 @@ export type ProgrammeShowBlurb = {
 export const PROGRAMME_SHOWS_SECTION = {
   title: 'Programme highlights',
   intro:
-    'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B artists. Open the Schedule tab in the app for the full Mon–Sun grid and reminders. Schedule times are currently listed in Windhoek time (CAT); showing each listener’s local clock is planned.',
+    'New Stars Radio runs on an automated programme built around undiscovered Hip-Hop and R&B artists. Open the Schedule tab in the app for the full Mon–Sun grid and reminders. In the app, show times are converted to your local clock; the station itself runs on Namibia time (Windhoek, CAT). Times below are Namibia time.',
   shows: [
     {
       name: 'Da Morning Buzz',
@@ -143,7 +143,7 @@ export const LISTEN_GUIDE_SECTION = {
     'Install New Stars Radio as an app on your phone or desktop when your browser offers Add to Home Screen / Install (PWA).',
   ] as const,
   timezoneNote:
-    'Schedule times are currently listed in Windhoek time (CAT). We plan to make times geo-sensitive so they match your local clock.',
+    'In the app, schedule times are shown in your local clock. The station runs on Namibia time (Windhoek, CAT).',
 } as const;
 
 export type FaqItem = {

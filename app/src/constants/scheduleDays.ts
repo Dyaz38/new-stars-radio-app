@@ -1,4 +1,5 @@
 import type { ScheduleDayKey } from '../types';
+import { getWindhoekParts } from '../utils/scheduleTime';
 
 export type { ScheduleDayKey };
 
@@ -18,9 +19,9 @@ export const SCHEDULE_DAY_LABELS_LONG: Record<ScheduleDayKey, string> = {
   sun: 'Sunday',
 };
 
-/** Which schedule tab applies to a calendar date (local timezone). */
+/** Which schedule tab is on air for an instant (Namibia / Windhoek weekday). */
 export function getScheduleDayKeyForDate(date: Date = new Date()): ScheduleDayKey {
-  const day = date.getDay();
+  const day = getWindhoekParts(date).weekday;
   if (day === 0) return 'sun';
   if (day === 5) return 'fri';
   if (day === 6) return 'sat';
